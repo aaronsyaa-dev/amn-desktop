@@ -111,6 +111,28 @@ jobs:
         run: npm run check:socle
       - name: Bus de moments — abonnés, isolement, catalogue
         run: npm run check:moments
+      - name: LOT-00 — contrôles du socle
+        run: npm run check:socle-controles
+      - name: LOT-00 — graphiques du socle
+        run: npm run check:socle-graphiques
+      - name: LOT-00 — situations du socle
+        run: npm run check:socle-situations
+      - name: LOT-00 — archétypes du socle
+        run: npm run check:socle-archetypes
+      - name: LOT-00 — coquille du socle
+        run: npm run check:socle-coquille
+      - name: LOT-00 — tous les modules
+        run: npm run check:systeme-modules
+      - name: LOT-00 — notifications
+        run: npm run check:systeme-notifications
+      - name: LOT-00 — recherche
+        run: npm run check:systeme-recherche
+      - name: LOT-00 — Ajmani
+        run: npm run check:systeme-ajmani
+      - name: LOT-00 — démo
+        run: npm run check:systeme-demo
+      - name: LOT-00 — démarrage
+        run: npm run check:systeme-demarrage
       - name: Ajmani et l'Accueil vivant — parole, scènes, fil du jour, éditions
         run: npm run check:ajmani
       - name: Garde visible (S3) — accents, résumé, fil, contrat d'alertes, isolement

@@ -21,6 +21,7 @@
       "@edition/socle": ["src/edition/socle.business.tsx"],
       "@edition/vivant": ["src/edition/vivant.business.tsx"],
       "@edition/navigation": ["src/edition/navigation.business.tsx"],
+      "@edition/coquille": ["src/edition/coquille.business.tsx"],
       "@edition/mainExclusive": ["src/main/exclusive.business.ts"],
       "@edition/preloadExclusive": ["src/preload.exclusive.business.ts"]
     }

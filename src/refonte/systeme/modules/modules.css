@@ -1,0 +1,119 @@
+/*
+  TOUS LES MODULES (D02) — panneau de 1240 × 788 à (100, 56), huit cartes de 285 × 301.
+  Valeurs de la fiche D02 ; couleurs : jetons `src/socle/noir.css` seulement.
+*/
+:root[data-ambiance='noir'] .dm-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 56px 100px;
+  background: var(--sc-dm-voile);
+  --sc-dm-voile: rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+:root[data-ambiance='noir'] .dm-panneau {
+  display: flex;
+  width: min(1240px, 100%);
+  height: min(788px, 100%);
+  flex-direction: column;
+  padding: 29px;
+  border: 1px solid var(--socle-bord-panneau);
+  border-radius: 24px;
+  background: var(--socle-panneau);
+  box-shadow: 0 32px 96px rgba(0, 0, 0, 0.6);
+  color: var(--socle-texte-1);
+  outline: none;
+}
+
+.dm-entete { display: flex; flex: none; align-items: center; gap: 16px; }
+.dm-entete__titres { min-width: 0; flex: 1; }
+.dm-titre { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.dm-sous { margin: 6px 0 0; color: var(--socle-texte-3); font-size: 13px; line-height: 1.3; }
+.dm-recherche { width: 400px; flex: none; }
+.dm-echap {
+  flex: none;
+  width: 61px;
+  height: 30px;
+  border: 1px solid var(--socle-bord-bouton);
+  border-radius: var(--socle-rayon-controle);
+  background: transparent;
+  color: var(--socle-texte-3);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dm-echap:hover { border-color: var(--color-socle-bord-fort); background: var(--socle-survol); color: var(--socle-texte-1); }
+
+.dm-filtres { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; }
+.dm-pastilles { display: flex; flex-wrap: wrap; gap: 9px; }
+.dm-presence { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--socle-texte-2); font-size: 12.5px; }
+
+.dm-corps { display: flex; min-height: 0; flex: 1; flex-direction: column; margin-top: 18px; overflow-y: auto; }
+.dm-grille { display: grid; flex: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(301px, 1fr); gap: 14px; }
+
+/* ── La carte d'une famille ── */
+.dm-carte {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: var(--socle-rayon-carte);
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+}
+:root[data-ambiance='noir'] .dm-carte { border-color: var(--socle-bord-sous-carte); }
+:root[data-ambiance='noir'] .dm-carte[data-active='true'] { border-color: var(--socle-bord-carte-active); background: linear-gradient(180deg, var(--socle-carte-active-haut), var(--socle-carte-bas)); }
+.dm-carte__entete { display: flex; height: 52px; flex: none; align-items: center; gap: 10px; padding: 0 19px; }
+.dm-carte__nom { min-width: 0; flex: 1; margin: 0; overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.dm-carte__nom a { color: inherit; text-decoration: none; }
+.dm-carte__nom a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dm-carte__effectif { flex: none; color: var(--socle-texte-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dm-carte__bouclier { flex: none; width: 9px; height: 9px; border: 1.5px solid var(--socle-texte-1); border-radius: 3px 3px 5px 5px; }
+
+.dm-lignes { display: flex; min-height: 0; flex: 1; flex-direction: column; margin: 0; padding: 0 11px; list-style: none; }
+.dm-lignes--complet { overflow-y: auto; }
+.dm-ligne {
+  display: flex;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--socle-texte-courant);
+  font-size: 13px;
+  text-decoration: none;
+}
+.dm-ligne:hover { background: var(--socle-survol); }
+.dm-ligne[data-choisie='true'] { background: var(--socle-ligne-choisie); color: var(--socle-texte-3); }
+.dm-ligne[data-choisie='true'] b { color: var(--socle-texte-1); }
+.dm-ligne__libelle { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-ligne__libelle b { color: var(--socle-texte-1); font-weight: 600; }
+.dm-ligne[data-action='true'] .dm-ligne__libelle { font-weight: 500; }
+.dm-ligne__acc { display: flex; flex: none; align-items: center; gap: 6px; }
+.dm-badge { min-width: 20px; padding: 0 5px; border-radius: 6px; background: var(--socle-onglet-compteur); color: var(--socle-texte-1); font-size: 12px; font-weight: 600; line-height: 18px; text-align: center; }
+.dm-presents { display: inline-flex; }
+.dm-presents .sc-avatar + .sc-avatar { margin-left: -5px; box-shadow: 0 0 0 2px var(--socle-carte-bas); }
+.dm-pied { flex: none; margin: auto 0 0; padding: 0 19px 17px; border: 0; background: transparent; color: var(--socle-texte-3); font-family: inherit; font-size: 11.5px; text-align: left; cursor: pointer; }
+.dm-pied:hover { color: var(--socle-texte-1); }
+.dm-carte__vide { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 8px; padding: 0 19px 17px; color: var(--socle-texte-3); font-size: 12.5px; }
+.dm-carte__vide p { margin: 0; }
+.dm-lien { align-self: flex-start; padding: 0; border: 0; background: transparent; color: var(--socle-texte-courant); font-family: inherit; font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.dm-ajmani { cursor: pointer; }
+.dm-focus:focus-visible { outline: 2px solid var(--color-socle-focus); outline-offset: 2px; }
+
+/* ── Fenêtre étroite : marge de 24 px, deux colonnes, la grille défile dans le panneau ── */
+@media (max-width: 1279.98px) {
+  :root[data-ambiance='noir'] .dm-voile { padding: 24px; }
+  .dm-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dm-entete { flex-wrap: wrap; }
+  .dm-recherche { order: 3; width: 100%; }
+}
+@media (max-width: 719.98px) {
+  .dm-grille { grid-template-columns: minmax(0, 1fr); }
+  .dm-filtres { flex-direction: column; align-items: flex-start; }
+}

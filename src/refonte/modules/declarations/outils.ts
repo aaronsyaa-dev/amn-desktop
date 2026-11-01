@@ -12,7 +12,7 @@ export default declarerFamille({
   id: 'outils',
   ordre: 7,
   teinte: 'outils',
-  nom: { fr: 'Outils', en: 'Tools' },
+  nom: { fr: 'Outils et réglages', en: 'Tools and settings' },
   actions: {
     pratique: { fr: 'Petits outils', en: 'Handy tools' },
     automatiser: { fr: 'Automatiser et importer', en: 'Automate and import' },

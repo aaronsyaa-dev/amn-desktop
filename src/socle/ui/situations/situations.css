@@ -1,0 +1,389 @@
+/*
+  LES SITUATIONS — états, chargements, confirmations, toasts (LOT-00, écran H43).
+  ═══════════════════════════════════════════════════════════════════════════════
+
+  Chargée par `Ambiance.tsx` APRÈS `briques.css` : c'est elle qui l'emporte, sans qu'on touche à ce dernier.
+  Édition interne seulement. Les couleurs sont des jetons `--socle-*` de `noir.css`. Les trois seules valeurs
+  que la fiche donne sans jeton (le bord d'une tuile, le voile et l'ombre d'une boîte) sont posées ICI, une
+  fois, sous `--sc-…`, et `check:socle-situations` refuse tout autre `#hex` ou `rgb()` dans ce fichier.
+
+  Les cotes viennent de la fiche H43, rubrique 3 :
+    · bouton de 31 px, 8 px d'écart ; tuile d'icône 48 × 48, rayon 14 ;
+    · squelette : carré 34, barres 122 × 10 et 78 × 8, pastille 42 × 10, pas de 50 ;
+    · boîte de confirmation 276 × 148 (400 px dans une vraie page) ; toast 276 × 79 (340 px max) + barre de 3 px ;
+    · tuiles de la page de démonstration 314 × 330, écarts 22 et 20.
+
+  Les encres « discret » (`--socle-trait-discret`, `--socle-trait-tres-discret`) ne servent jamais de couleur de
+  texte : le texte lu est T1 à T4 au plus bas (`--socle-texte-3`, 5,3:1).
+*/
+
+:root[data-ambiance='noir'] {
+  /* Le bord d'une tuile de la page de démonstration (H43 : #202022, entre les deux bords de carte). */
+  --sc-bord-tuile: #202022;
+  /* Le voile d'un dialogue (H43 : « comme H41 »). */
+  --sc-voile-dialogue: rgba(0, 0, 0, 0.5);
+  /* L'ombre d'une boîte qui flotte (dialogue, toast), jamais d'une boîte posée dans la page. */
+  --sc-ombre-boite: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Les boutons des situations : 31 px de haut, texte de 12,5 px (H43, §3) ── */
+:root[data-ambiance='noir'] :is(.sc-bloc-etat__actions, .sc-dialogue__actions, .sc-avis__actions, .sc-toast-bloc, .sc-chargement) [data-socle='bouton'][data-taille][data-variante] {
+  height: 31px;
+  min-height: 31px;
+  /* 12,5 px + 1 px de bord : les largeurs de la maquette (Importer 77, Annuler 74, Réessayer 112, Différences 118) à ±1 px près, mesurées avec les chasses d'Inter. */
+  padding: 0 12.5px;
+  border-radius: var(--socle-rayon-controle);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+:root[data-ambiance='noir'] :is(.sc-bloc-etat__actions, .sc-dialogue__actions, .sc-avis__actions, .sc-toast-bloc, .sc-chargement) [data-socle='bouton'][data-taille][data-variante='primaire'] {
+  padding: 0 15px;
+  font-weight: 600;
+}
+:root[data-ambiance='noir'] :is(.sc-bloc-etat__actions, .sc-dialogue__actions, .sc-avis__actions, .sc-toast-bloc, .sc-chargement) [data-socle='bouton'][data-taille][data-variante='secondaire'] {
+  border-color: var(--socle-bord-bouton);
+  color: var(--socle-texte-courant);
+}
+:root[data-ambiance='noir'] :is(.sc-bloc-etat__actions, .sc-dialogue__actions, .sc-avis__actions, .sc-toast-bloc, .sc-chargement) [data-socle='bouton'][data-taille][data-variante='secondaire']:hover:not(:disabled) {
+  border-color: var(--socle-bord-bouton);
+  background: var(--socle-survol);
+}
+
+/* ── Le bloc d'état : la colonne centrée de « quand il n'y a rien » ── */
+.sc-bloc-etat {
+  --sc-ton: var(--socle-texte-2);
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.sc-bloc-etat[data-ton='famille'] { --sc-ton: var(--fam, var(--socle-fam-outils)); }
+.sc-bloc-etat[data-ton='attention'] { --sc-ton: var(--socle-etat-attention); }
+.sc-bloc-etat[data-ton='neutre'] { --sc-ton: var(--socle-texte-2); }
+.sc-bloc-etat[data-ton='critique'] { --sc-ton: var(--socle-etat-critique); }
+.sc-bloc-etat__icone {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--sc-ton) 13%, transparent);
+  color: var(--sc-ton);
+}
+.sc-bloc-etat__titre {
+  margin: 10px 0 0;
+  color: var(--socle-texte-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.sc-bloc-etat__texte {
+  max-width: 240px;
+  margin: 9px 0 0;
+  color: var(--socle-texte-3);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+.sc-bloc-etat__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* L'état vide d'origine (cadre pointillé, quand l'état occupe une carte entière) suit les cotes de H43 : titre 15 px, texte 12,5 px. */
+:root[data-ambiance='noir'] .sc-vide__titre { font-size: 15px; }
+:root[data-ambiance='noir'] .sc-vide__texte { font-size: 12.5px; }
+
+/* ── Le squelette : fond, lignes et reflet de H43 ── */
+:root[data-ambiance='noir'] .sc-squelette {
+  background-image: linear-gradient(90deg, var(--socle-squelette) 0%, var(--socle-squelette-reflet) 50%, var(--socle-squelette) 100%);
+  background-size: 200% 100%;
+  animation-duration: 1.4s;
+}
+:root[data-ambiance='noir'] .sc-squelette[data-ligne='true'] {
+  background-image: linear-gradient(90deg, var(--socle-squelette-ligne) 0%, var(--socle-squelette-reflet) 50%, var(--socle-squelette-ligne) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ambiance='noir'] .sc-squelette { animation: none; }
+}
+
+.sc-squelette-lignes {
+  --sc-squelette-carre: 34px;
+  --sc-squelette-rayon: 10px;
+  --sc-squelette-barre-longue: 122px;
+  --sc-squelette-barre-haut: 10px;
+  --sc-squelette-barre-courte: 78px;
+  --sc-squelette-barre-fine: 8px;
+  --sc-squelette-pastille: 42px;
+  --sc-squelette-pas: 50px;
+  display: grid;
+  width: 100%;
+  row-gap: calc(var(--sc-squelette-pas) - var(--sc-squelette-carre));
+}
+.sc-squelette-lignes__ligne {
+  display: flex;
+  height: var(--sc-squelette-carre);
+  align-items: center;
+  gap: 13px;
+}
+.sc-squelette-lignes__ligne > :last-child { margin-left: auto; }
+.sc-squelette-lignes__textes { display: flex; flex-direction: column; gap: 7px; }
+.sc-squelette-lignes .sc-squelette { flex: none; }
+
+.sc-chargement {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+.sc-chargement__legende {
+  margin: 18px 0 0;
+  color: var(--socle-texte-2);
+  font-size: 12.5px;
+  line-height: 15px;
+  text-align: center;
+}
+.sc-chargement > [data-socle='bouton'] { margin-top: 14px; }
+
+/* ── Le dialogue de confirmation : 400 px dans une page, 276 px dans la maquette ── */
+.sc-dialogue-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--sc-voile-dialogue);
+}
+.sc-dialogue {
+  box-sizing: border-box;
+  width: min(var(--sc-dialogue-largeur, 400px), 100%);
+  padding: 19px;
+  border: 1px solid var(--socle-bord-dialogue);
+  border-radius: var(--socle-rayon-carte);
+  background: var(--socle-dialogue);
+  color: var(--socle-texte-1);
+  outline: none;
+}
+.sc-dialogue-voile .sc-dialogue { box-shadow: var(--sc-ombre-boite); }
+.sc-dialogue__titre {
+  margin: 0;
+  color: var(--socle-texte-1);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.sc-dialogue__texte {
+  margin: 6px 0 0;
+  color: var(--socle-texte-2);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+.sc-dialogue__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 15px;
+}
+/* Sur téléphone, la boîte monte du bas comme une feuille. */
+@media (max-width: 719.98px) {
+  .sc-dialogue-voile { align-items: flex-end; }
+}
+
+/* ── Les toasts : 340 px au plus, 276 px dans la maquette ── */
+.sc-toasts {
+  position: fixed;
+  z-index: 48;
+  right: var(--sc-toast-droite, 20px);
+  bottom: var(--sc-toast-bas, calc(var(--socle-hauteur-ajmani) + 20px));
+  display: flex;
+  max-width: calc(100vw - 40px);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+.sc-toasts__rang { pointer-events: auto; }
+.sc-toast-bloc { width: min(var(--sc-toast-largeur, 340px), calc(100vw - 40px)); }
+.sc-toast {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 17px 14px 18px;
+  border: 1px solid var(--socle-bord-toast);
+  border-radius: var(--socle-rayon-carte);
+  background: var(--socle-dialogue);
+  color: var(--socle-texte-1);
+}
+.sc-toasts .sc-toast { box-shadow: var(--sc-ombre-boite); }
+.sc-toast__icone { display: inline-flex; flex: none; color: var(--socle-etat-succes); }
+.sc-toast__corps { min-width: 0; flex: 1; }
+.sc-toast__titre {
+  margin: 0;
+  color: var(--socle-texte-1);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.sc-toast__detail {
+  margin: 2px 0 0;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+}
+/* L'erreur : alerte rouge (jamais la couleur seule : l'icône et le titre le disent), bord teinté, « Réessayer » sous le texte. */
+.sc-toast-bloc[data-type='erreur'] .sc-toast {
+  align-items: flex-start;
+  border-color: color-mix(in srgb, var(--socle-etat-critique) 30%, var(--socle-dialogue));
+}
+.sc-toast-bloc[data-type='erreur'] .sc-toast__icone { color: var(--socle-etat-critique); }
+.sc-toast-bloc[data-type='erreur'] .sc-toast__corps > [data-socle='bouton'] { margin-top: 10px; }
+.sc-toast__fermer {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -6px -9px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--socle-texte-2);
+  cursor: pointer;
+}
+.sc-toast__fermer:hover { background: var(--socle-survol); color: var(--socle-texte-1); }
+/* La barre de temps : 3 px sous la carte, 14 px plus bas ; elle se vide de droite à gauche. */
+.sc-toast__barre {
+  display: block;
+  height: 3px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--socle-bord-carte);
+}
+.sc-toast__remplissage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--socle-etat-succes);
+  transform-origin: left center;
+  transition: transform 0.2s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-toast__remplissage { transition: none; }
+}
+
+/* ── L'avis de collaboration : deux personnes, une page ── */
+.sc-avis { display: flex; width: 100%; flex-direction: column; }
+.sc-avis__entete { display: flex; align-items: center; gap: 10px; }
+.sc-avis__phrase {
+  min-width: 0;
+  margin: 0;
+  color: var(--socle-texte-1);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+.sc-avis .sc-pile .sc-avatar {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--socle-carte-bas);
+  color: var(--socle-texte-1);
+}
+.sc-avis .sc-pile .sc-avatar:nth-child(6n + 1) { background: var(--socle-avatar-a); }
+.sc-avis .sc-pile .sc-avatar:nth-child(6n + 2) { background: var(--socle-avatar-m); }
+.sc-avis .sc-pile .sc-avatar:nth-child(6n + 3) { background: var(--socle-avatar-r); }
+.sc-avis .sc-pile .sc-avatar:nth-child(6n + 4) { background: var(--socle-avatar-c); }
+.sc-avis .sc-pile .sc-avatar:nth-child(6n + 5) { background: var(--socle-avatar-t); }
+.sc-avis .sc-pile .sc-avatar:nth-child(6n) { background: var(--socle-avatar-l); }
+.sc-avis__fusion {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: var(--socle-rayon-sous-carte);
+  background: var(--socle-sous-carte);
+  color: var(--socle-texte-2);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+.sc-avis__fusion b { color: var(--socle-texte-1); font-weight: 600; }
+.sc-avis__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+
+/* ── La page de démonstration H43 (src/refonte/systeme/h43-etats) : 1440 × 900, sans coquille ── */
+.sc-demo {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 48px 20px 67px;
+  background: var(--socle-fond-page);
+  color: var(--socle-texte-1);
+}
+.sc-demo__cadre { width: min(1336px, 100%); margin: 0 auto; }
+.sc-demo__etiquette,
+.sc-demo__tuile-etiquette {
+  margin: 0;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 13px;
+  text-transform: uppercase;
+}
+.sc-demo__titre {
+  margin: 8px 0 0;
+  color: var(--socle-texte-1);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 34px;
+}
+.sc-demo__sous {
+  margin: 8px 0 0;
+  color: var(--socle-texte-3);
+  font-size: 14px;
+  line-height: 20px;
+}
+.sc-demo__grille {
+  display: grid;
+  grid-template-columns: repeat(4, 314px);
+  justify-content: center;
+  gap: 20px 22px;
+  margin: 22px 0 0;
+}
+.sc-demo__tuile {
+  display: flex;
+  box-sizing: border-box;
+  height: 330px;
+  flex-direction: column;
+  padding: 17px 18px 18px;
+  border: 1px solid var(--sc-bord-tuile);
+  border-radius: 18px;
+  background: var(--socle-carte-bas);
+}
+.sc-demo__tuile-etiquette { margin-bottom: 14px; }
+.sc-demo__tuile-corps {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 1279.98px) {
+  .sc-demo__grille { grid-template-columns: repeat(2, 314px); }
+}
+@media (max-width: 719.98px) {
+  .sc-demo__grille { grid-template-columns: minmax(0, 314px); }
+}

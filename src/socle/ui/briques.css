@@ -1,0 +1,425 @@
+/*
+  LES BRIQUES DE LA REFONTE — noir et gris (session DS).
+  ═════════════════════════════════════════════════════
+
+  Tout ce qui se répète d'un écran à l'autre : carte, tuile KPI, pastille
+  d'état, étiquette, avatar, case à cocher, ligne de tâche, barre et anneau de
+  progression, état vide, squelette. Les valeurs viennent de
+  `src/socle/noir.css` (`--socle-*`) ; aucune couleur n'est écrite ici.
+
+  Chargé une seule fois, par `Ambiance.tsx` (édition interne). Les règles qui
+  retouchent `Bouton` et `Carte` d'origine sont sous `:root[data-ambiance='noir']`
+  et portent un attribut `data-socle` : sans l'ambiance, ces deux briques
+  restent exactement ce qu'elles étaient.
+
+  Les encres : principal (`--socle-texte-1`), secondaire (`-2`), atténué
+  (`-3`, le plancher). `--socle-trait-discret` et `--socle-trait-tres-discret`
+  ne se posent JAMAIS en `color` (voir `check:socle`).
+*/
+
+/* ── Le focus : le même partout, visible sur chaque fond ── */
+:root[data-ambiance='noir'] .sc-focus:focus-visible,
+:root[data-ambiance='noir'] [data-socle]:focus-visible {
+  outline: 2px solid var(--color-socle-focus);
+  outline-offset: 2px;
+}
+
+/* ── Un point de couleur : famille ou état, 6 à 8 px, jamais plus ── */
+.sc-point {
+  display: inline-block;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: var(--fam, var(--socle-fam-outils));
+}
+.sc-point[data-taille='6'] { width: 6px; height: 6px; }
+.sc-point[data-taille='8'] { width: 8px; height: 8px; }
+.sc-point[data-taille='9'] { width: 9px; height: 9px; }
+/* Le halo d'un point « vivant » (La Garde veille) : fixe, il ne bat pas. */
+.sc-point[data-halo='true'] { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent); }
+
+/* ── La carte (brique d'origine, retouchée) ── */
+:root[data-ambiance='noir'] [data-socle='carte'] {
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+  border-color: var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+:root[data-ambiance='noir'] [data-socle='carte']:not([data-sans-marge='true']) { padding: 16px 18px; }
+:root[data-ambiance='noir'] [data-socle='carte'][data-compacte='true']:not([data-sans-marge='true']) { padding: 14px 16px; }
+/* La carte « active » d'un panneau (D02) : bordure plus claire, haut éclairci. */
+:root[data-ambiance='noir'] [data-socle='carte'][data-active='true'] { border-color: var(--socle-bord-carte-active); background: linear-gradient(180deg, var(--socle-carte-active-haut), var(--socle-carte-bas)); }
+:root[data-ambiance='noir'] button[data-socle='carte']:hover {
+  border-color: var(--color-socle-bord-fort);
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-haut));
+}
+
+/* ── Le bouton : UN seul plein blanc par écran (01-SOCLE-DESIGN §4) ──
+   Primaire : fond #ededed, texte #0c0c0d 12,5 px / 600, 8 × 15, rayon 9, 31 px de haut.
+   Secondaire : bordure #2e2e31, texte T2 12,5 px, 7 × 13 + 1 px de bordure, rayon 9, 31 px de haut. */
+:root[data-ambiance='noir'] [data-socle='bouton'] {
+  gap: 7px;
+  border-radius: var(--socle-rayon-controle);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 15px;
+  min-height: 31px;
+  padding: 8px 15px;
+}
+:root[data-ambiance='noir'] [data-socle='bouton'] svg { width: 14px; height: 14px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='primaire'] {
+  background: var(--socle-primaire);
+  color: var(--socle-primaire-encre);
+  box-shadow: none;
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='primaire']:hover:not(:disabled) { background: #ffffff; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire'] {
+  padding: 7px 13px;
+  border-color: var(--socle-bord-bouton);
+  color: var(--socle-texte-courant);
+  font-weight: 500;
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='secondaire']:hover:not(:disabled) {
+  border-color: var(--color-socle-bord-fort);
+  background: var(--socle-survol);
+}
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='discret'] { padding: 8px 11px; font-weight: 500; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-variante='danger'] { font-weight: 600; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'] { min-height: 26px; padding: 4px 11px; font-size: 12px; line-height: 16px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='petit'][data-variante='secondaire'] { padding: 3px 10px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='grand'] { min-height: 38px; padding: 10px 18px; font-size: 13.5px; line-height: 17px; border-radius: 10px; }
+:root[data-ambiance='noir'] [data-socle='bouton'][data-taille='grand'][data-variante='secondaire'] { padding: 9px 16px; }
+/* Le raccourci d'un bouton : le Kbd se fond dans le fond du bouton (opacité .6). */
+:root[data-ambiance='noir'] [data-socle='bouton'] .sc-kbd { margin-left: 2px; border-color: color-mix(in srgb, currentColor 30%, transparent); background: transparent; color: inherit; opacity: 0.6; }
+
+/* ── Étiquette (pill) ── */
+.sc-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border: 1px solid var(--socle-bord-pilule);
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--socle-pilule);
+  color: var(--socle-texte-courant);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.sc-etiquette[data-compacte='true'] { padding: 3px 9px; }
+.sc-etiquette b { color: var(--socle-texte-1); font-weight: 600; }
+
+/* ── Pastille d'état ── */
+.sc-etat {
+  --etat: var(--socle-texte-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: var(--socle-rayon-pastille);
+  background: color-mix(in srgb, var(--etat) 12%, transparent);
+  color: var(--etat);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+/* Allégée : le point et le libellé, sans fond ni marge (« ● en cours », D02). */
+.sc-etat[data-allegee='true'] { padding: 0; background: transparent; font-size: 12px; }
+.sc-etat[data-etat='succes'] { --etat: var(--socle-etat-succes); }
+.sc-etat[data-etat='attention'] { --etat: var(--socle-etat-attention); }
+.sc-etat[data-etat='critique'] { --etat: var(--socle-etat-critique); }
+.sc-etat[data-etat='info'] { --etat: var(--socle-etat-info); }
+.sc-etat::before { content: ''; width: 6px; height: 6px; border-radius: 99px; background: var(--etat); }
+
+/* ── Avatar (une initiale) et pile d'avatars ── */
+.sc-avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sc-avatar, 24px);
+  height: var(--sc-avatar, 24px);
+  border-radius: 99px;
+  background: var(--sc-avatar-fond, var(--socle-avatar-a));
+  color: var(--socle-texte-1);
+  font-size: max(10.5px, calc(var(--sc-avatar, 24px) * 0.42));
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.sc-avatar[data-forme='carre'] { border-radius: 9px; }
+.sc-avatar[data-teinte='0'] { --sc-avatar-fond: var(--socle-avatar-a); }
+.sc-avatar[data-teinte='1'] { --sc-avatar-fond: var(--socle-avatar-m); }
+.sc-avatar[data-teinte='2'] { --sc-avatar-fond: var(--socle-avatar-r); }
+.sc-avatar[data-teinte='3'] { --sc-avatar-fond: var(--socle-avatar-c); }
+.sc-avatar[data-teinte='4'] { --sc-avatar-fond: var(--socle-avatar-t); }
+.sc-avatar[data-teinte='5'] { --sc-avatar-fond: var(--socle-avatar-l); }
+/* La pastille « en ligne » : 8 px, anneau de 2 px de la couleur du fond. */
+.sc-avatar[data-en-ligne='true']::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--socle-etat-succes);
+  box-shadow: 0 0 0 2px var(--sc-fond-anneau, var(--socle-fond-page));
+}
+.sc-pile { display: inline-flex; align-items: center; }
+.sc-pile .sc-avatar { box-shadow: 0 0 0 2px var(--sc-fond-anneau, var(--socle-fond-page)); }
+.sc-pile .sc-avatar + .sc-avatar { margin-left: -7px; }
+
+/* ── Barre de progression : 5 px, dégradé gris → blanc ── */
+.sc-barre {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--socle-piste);
+}
+.sc-barre[data-hauteur='4'] { height: 4px; }
+.sc-barre[data-hauteur='8'] { height: 8px; }
+.sc-barre { position: relative; }
+.sc-barre > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--socle-fam-outils), var(--socle-texte-1));
+  transition: width 0.18s ease-out;
+}
+.sc-barre[data-ton='succes'] > span { background: var(--socle-etat-succes); }
+.sc-barre[data-ton='attention'] > span { background: var(--socle-etat-attention); }
+.sc-barre[data-ton='critique'] > span { background: var(--socle-etat-critique); }
+.sc-barre[data-ton='info'] > span { background: var(--socle-etat-info); }
+/* Les repères à 25, 50 et 75 % d'un jalon. */
+.sc-barre > i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--socle-fond-page); opacity: 0.8; }
+
+/* ── Anneau de progression ── */
+.sc-anneau { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; }
+.sc-anneau svg { display: block; transform: rotate(-90deg); }
+.sc-anneau circle { fill: none; stroke-linecap: round; }
+.sc-anneau .sc-anneau__piste { stroke: var(--socle-piste); }
+.sc-anneau .sc-anneau__trait { stroke: var(--socle-texte-1); transition: stroke-dashoffset 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.sc-anneau__centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--socle-texte-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Tuile KPI : 92 px, dégradé, libellé / valeur / variation / barre ── */
+.sc-kpi {
+  display: flex;
+  min-height: 84px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: var(--socle-rayon-carte);
+  background: linear-gradient(180deg, var(--socle-carte-haut), var(--socle-carte-bas));
+  color: var(--socle-texte-1);
+  text-align: left;
+}
+.sc-kpi[data-hauteur='92'] { min-height: 92px; }
+.sc-kpi { position: relative; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035); }
+.sc-kpi__droite { position: absolute; right: 16px; bottom: 14px; display: flex; align-items: flex-end; }
+button.sc-kpi { width: 100%; cursor: pointer; transition: border-color 0.15s; }
+button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
+.sc-kpi__label {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 7px;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.sc-kpi__label > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-kpi__valeur {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.sc-kpi__variation { min-width: 0; color: var(--socle-texte-3); font-size: 12px; font-weight: 500; letter-spacing: 0; line-height: 1.35; }
+.sc-kpi__variation[data-ton='succes'] { color: var(--socle-etat-succes); }
+.sc-kpi__variation[data-ton='attention'] { color: var(--socle-etat-attention); }
+.sc-kpi__variation[data-ton='critique'] { color: var(--socle-etat-critique); }
+.sc-kpi__variation[data-ton='info'] { color: var(--socle-etat-info); }
+.sc-kpi .sc-barre { width: 100%; }
+/* « Ajouter une carte » : l'emplacement vide est une invitation, jamais un trou. */
+.sc-kpi[data-vide='true'] {
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  background: transparent;
+  color: var(--socle-texte-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+.sc-kpi[data-vide='true']:hover { color: var(--socle-texte-1); }
+
+/* ── Case à cocher : 20 px ── */
+.sc-case {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1.5px solid var(--socle-case-vide);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--socle-primaire-encre);
+  cursor: pointer;
+  transition: background-color 0.18s ease-out, border-color 0.18s ease-out;
+}
+.sc-case[data-taille='serie'] { width: 24px; height: 24px; }
+.sc-case[aria-checked='true'] { border-color: var(--socle-primaire); background: var(--socle-primaire); }
+.sc-case:hover:not([aria-disabled='true']) { border-color: var(--socle-texte-1); }
+.sc-case[aria-disabled='true'] { cursor: default; opacity: 0.7; }
+
+/* ── Ligne de tâche : 60 px, filet #19191b ── */
+.sc-ligne {
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--socle-bord-ligne);
+}
+.sc-ligne:last-child { border-bottom: 0; }
+.sc-ligne__heure {
+  flex: none;
+  width: 44px;
+  color: var(--socle-texte-3);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.sc-ligne__corps { display: block; min-width: 0; flex: 1; border-radius: 6px; background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; }
+button.sc-ligne__corps { cursor: pointer; }
+button.sc-ligne__corps:disabled { cursor: default; }
+.sc-ligne__titre {
+  display: block;
+  overflow: hidden;
+  color: var(--socle-texte-1);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-ligne[data-fait='true'] .sc-ligne__titre { color: var(--socle-texte-3); text-decoration: line-through; text-decoration-color: var(--socle-trait-discret); }
+.sc-ligne__meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 1px;
+  color: var(--socle-texte-3);
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.sc-ligne__droite { display: flex; flex: none; align-items: center; gap: 8px; }
+
+/* ── État vide : une invitation à agir ── */
+.sc-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 18px;
+  border: 1px dashed var(--socle-bord-controle);
+  border-radius: 12px;
+  background: var(--socle-encart);
+}
+.sc-vide__titre { color: var(--socle-texte-1); font-size: 14px; font-weight: 600; }
+.sc-vide__texte { color: var(--socle-texte-3); font-size: 13px; line-height: 1.45; }
+
+/* ── Raccourci clavier ── */
+.sc-kbd {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 1px 6px;
+  border: 1px solid var(--socle-bord-kbd);
+  border-radius: 5px;
+  background: var(--socle-kbd);
+  color: var(--socle-texte-3);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* ── Squelette : un chargement qui garde la place ── */
+.sc-squelette {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--socle-encart) 0%, var(--socle-survol) 50%, var(--socle-encart) 100%);
+  background-size: 200% 100%;
+  animation: sc-squelette 1.4s ease-in-out infinite;
+}
+@keyframes sc-squelette {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-squelette { animation: none; }
+  .sc-barre > span, .sc-anneau .sc-anneau__trait { transition: none; }
+}
+
+/* ── Activité : une ligne de 54 px, et l'étape franchie (carte de 56 px) ── */
+.sc-activite { display: flex; min-height: 54px; align-items: center; gap: 12px; }
+.sc-activite__corps { display: block; min-width: 0; flex: 1; }
+.sc-activite__texte {
+  display: block;
+  color: var(--socle-texte-1);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.sc-activite__quand { display: block; color: var(--socle-texte-3); font-size: 11px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.sc-etape {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--socle-bord-carte);
+  border-radius: 12px;
+  background: var(--socle-encart);
+}
+.sc-etape__marque {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--fam, var(--socle-fam-outils)) 16%, transparent);
+  color: var(--fam, var(--socle-fam-outils));
+}
+.sc-etape__etiquette { color: var(--fam, var(--socle-texte-3)); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }

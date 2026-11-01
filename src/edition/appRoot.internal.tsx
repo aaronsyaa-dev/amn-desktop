@@ -1,5 +1,5 @@
 import { routesBureaux } from '../bureaux/routes';
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { AccueilChoisi } from '../accueils/useAccueil';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -8,7 +8,18 @@ import { ModuleRoute } from '../components/ModuleRoute';
 import { AppLayout } from '../components/AppLayout';
 import { ROUTE_TOUS_LES_MODULES, TousLesModules } from '@edition/navigation';
 import { routesDuRegistre } from '../refonte/modules/routes';
-import { LoginScreen } from '../screens/LoginScreen';
+import { ConnexionRefonte } from '../refonte/systeme/connexion/ConnexionRefonte';
+import { FournisseurToasts } from '../socle/ui/situations';
+import { ROUTE_DEMARRAGE, ROUTE_METIER, ROUTE_NOTIFICATIONS } from '../refonte/systeme/routes';
+
+/* Les pages de démonstration du socle : réservées au développement (`import.meta.env.DEV` est remplacé à la
+   construction, la branche et ses morceaux disparaissent du paquet livré). */
+const PageDemarrage = lazy(() => import('../refonte/systeme/demarrage/PageDemarrage'));
+const PageMetier = lazy(() => import('../refonte/systeme/demarrage/PageMetier'));
+const PageNotificationsRoute = lazy(() => import('../refonte/systeme/PageNotificationsRoute'));
+const PageEnsembleFamille = lazy(() => import('../refonte/systeme/PageEnsembleFamille'));
+const PageDemoSocle = lazy(() => import('../refonte/systeme/demo/PageDemoSocle'));
+const PageEtatsMessages = lazy(() => import('../refonte/systeme/h43-etats/PageEtatsMessages'));
 import { InvitationScreen } from '../screens/InvitationScreen';
 import { ReinitialisationScreen } from '../screens/ReinitialisationScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
@@ -191,8 +202,9 @@ import { ContextError } from '../components/org-rail/ContextError';
  */
 export function AppRoot() {
   return (
+    <FournisseurToasts>
     <Routes>
-      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/login" element={<ConnexionRefonte />} />
       {/* Publique, et volontairement AVANT le garde d'authentification :
           l'invitée n'a par définition pas encore de compte, donc l'écran
           d'activation ne peut pas vivre derrière une exigence de session. */}
@@ -213,6 +225,31 @@ export function AppRoot() {
       {/* La mini-page et les formulaires publics : même doctrine, sans session. */}
       <Route path="/p" element={<PublicPageScreen />} />
       <Route path="/f" element={<PublicFormScreen />} />
+      {/* H43 — États et messages : la page de référence des huit situations, hors coquille, connectée, en développement seulement. */}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/socle"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={null}>
+                <PageDemoSocle />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+      )}
+      {import.meta.env.DEV && (
+        <Route
+          path="/dev/etats"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={null}>
+                <PageEtatsMessages />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+      )}
 
       <Route
         path="/*"
@@ -230,6 +267,7 @@ export function AppRoot() {
         }
       />
     </Routes>
+    </FournisseurToasts>
   );
 }
 
@@ -366,6 +404,13 @@ function AmnRoutes() {
         <Route path="/bibliotheque" element={<LibraryScreen />} />
         {/* Refonte (S1) : tous les modules, rangés par famille puis par action. Pas un module du catalogue. */}
         <Route path={ROUTE_TOUS_LES_MODULES} element={<TousLesModules />} />
+        {/* La vue d'ensemble d'une famille (première ligne de la barre latérale) : page générique en attendant celle de chaque lot. */}
+        {/* H40 — Notifications : la cloche de l'en-tête y mène ; pas d'entrée de barre latérale. */}
+        <Route path={ROUTE_NOTIFICATIONS} element={<Suspense fallback={null}><PageNotificationsRoute /></Suspense>} />
+        {/* H42 et H47 — Démarrage et Choisir son métier : hors registre (le total reste 101), sans entrée de barre latérale. */}
+        <Route path={ROUTE_DEMARRAGE} element={<Suspense fallback={null}><PageDemarrage /></Suspense>} />
+        <Route path={ROUTE_METIER} element={<Suspense fallback={null}><PageMetier /></Suspense>} />
+        <Route path="/ensemble/:famille" element={<Suspense fallback={null}><PageEnsembleFamille /></Suspense>} />
         {/* Refonte S5 : les écrans neufs déclarés au registre (`src/refonte/modules/declarations/`)
             montent ici leur route, sans qu'on ait à l'écrire. Aucun aujourd'hui. */}
         {routesDuRegistre()}

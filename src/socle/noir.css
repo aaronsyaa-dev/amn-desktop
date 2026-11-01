@@ -1,0 +1,215 @@
+/*
+  LE NOIR ET GRIS — les jetons de design de la refonte (session DS).
+  ═══════════════════════════════════════════════════════════════════
+
+  Direction validée par Harun (2026-10-22) : noir et gris, sobre, deluxe,
+  ludique mais pro. Ce fichier est LA source des valeurs ; rien d'autre ne les
+  recopie. Il n'est importé que par le code interne (`Ambiance.tsx`, posé par
+  la couture `@edition/vivant`) : la feuille de l'édition cliente ne change
+  pas d'un octet. L'attribut `data-ambiance="noir"` sur <html> l'allume.
+
+  Deux écritures, volontairement :
+
+    · `--socle-*` — les jetons bruts de la refonte (fonds, bordures, encres,
+      rayons, gabarits). Lus par `src/socle/ui/briques.css` et
+      `src/socle/coquille/coquille.css`.
+    · `--color-socle-*`, `--color-fam-*`, `--color-etat-*` — les noms du
+      socle S0 (`@theme`, `src/index.css`), redéfinis ici pour que les briques
+      d'origine (`Bouton`, `Carte`, `Modale`, `Saisie`) et les utilitaires
+      Tailwind prennent le noir et gris sans qu'on les touche.
+
+  `check:socle` vérifie que les deux écritures disent la même chose, et que
+  chaque encre posée sur un texte tient 4,5:1 sur chaque fond.
+
+  LA RÈGLE DES ENCRES. Trois encres servent au texte : principal, secondaire,
+  atténué (`#8a8a8e` — le PLANCHER, 5,3:1 au pire). « Discret » (`#77777c`) et
+  « très discret » (`#5f5f64`) sont sous 4,5:1 : ils sont réservés aux filets,
+  aux icônes décoratives et aux éléments désactivés, jamais à un texte lu.
+  `check:socle` refuse qu'une feuille ou une brique les pose en `color`.
+*/
+:root[data-ambiance='noir'] {
+  /* ── Fonds ── */
+  --socle-fond-page: #0c0c0d;
+  --socle-fond-lateral: #101011;
+  --socle-carte-haut: #161617;
+  --socle-carte-bas: #131314;
+  --socle-encart: #141415;
+  --socle-champ: #131314;
+  --socle-survol: #1c1c1e;
+  --socle-piste: #252528;
+  --socle-halo: radial-gradient(1000px 520px at 85% -10%, rgba(255, 255, 255, 0.045), transparent 70%);
+
+  /* ── Bordures ── */
+  --socle-bord-lateral: #222224;
+  --socle-bord-carte: #232325;
+  --socle-bord-controle: #28282b;
+  --socle-bord-entete: #1d1d1f;
+  --socle-bord-ligne: #19191b;
+
+  /* ── Encres ── */
+  --socle-texte-1: #ededed;
+  --socle-texte-2: #a0a0a5;
+  --socle-texte-3: #8a8a8e;
+  /* Filets, icônes décoratives, éléments désactivés — JAMAIS un texte lu. */
+  --socle-trait-discret: #77777c;
+  --socle-trait-tres-discret: #5f5f64;
+  --socle-primaire: #ededed;
+  --socle-primaire-encre: #0c0c0d;
+
+  /* ── Rayons ── */
+  --socle-rayon-carte: 14px;
+  --socle-rayon-controle: 9px;
+  --socle-rayon-bouton: 10px;
+  --socle-rayon-pastille: 99px;
+
+  /* ── Gabarits ── */
+  --socle-largeur-lateral: 252px;
+  --socle-hauteur-entete: 60px;
+  --socle-hauteur-ajmani: 46px;
+
+  /* ── Familles : de petites pastilles de 7 à 8 px, rien de plus ── */
+  --socle-fam-jour: #8aa4d6;
+  --socle-fam-contacts: #6fb7a8;
+  --socle-fam-ecrire: #a79bdb;
+  --socle-fam-argent: #8fbf7a;
+  --socle-fam-echanger: #d98fa8;
+  --socle-fam-creer: #d9a27a;
+  --socle-fam-outils: #9a9aa0;
+  /* La Garde et la supervision : l'icône bouclier, jamais une pastille (01-SOCLE-DESIGN §1). */
+  --socle-fam-garde: #d6d6da;
+
+  /* ── États ── */
+  --socle-etat-succes: #8fbf7a;
+  --socle-etat-attention: #e0b35a;
+  --socle-etat-critique: #e08a80;
+  --socle-etat-info: #8aa4d6;
+
+  /* ── LOT-00 : les valeurs exactes des 127 maquettes (01-SOCLE-DESIGN, §1 et §4) ──
+     Texte : T1 `texte-1`, T2 `texte-courant`, T3 `texte-2`, T4 `texte-3` (le plancher). */
+  --socle-texte-courant: #c4c4c8;
+  --socle-sous-carte: #111112;
+  --socle-bord-sous-carte: #212123;
+  --socle-bord-bouton: #2e2e31;
+  --socle-bord-champ: #5a5a60;
+  --socle-bord-kanban: #1e1e20;
+  --socle-ticket: #171718;
+  --socle-bord-ticket: #262628;
+  --socle-suggestion-haut: #17181a;
+  --socle-suggestion-bas: #141415;
+  --socle-bord-suggestion: #2c2e32;
+  --socle-pointille: #2e2e33;
+  --socle-tag: #1a1a1c;
+  --socle-pilule: #171718;
+  --socle-bord-pilule: #2a2a2d;
+  --socle-bord-kbd: #333336;
+  --socle-kbd: #111112;
+  --socle-case-vide: #3a3a3e;
+  --socle-toggle-actif: #2e4327;
+  --socle-toggle-inactif: #242427;
+  --socle-onglet-compteur: #1c1c1e;
+  --socle-segment-actif: #242427;
+  --socle-segment-fond: #141415;
+  --socle-anneau-fond: #1e1e20;
+  --socle-grille-graphique: #1e1e20;
+  --socle-colonne-graphique: #2a2b31;
+  --socle-filet-vertical: #2a2a2d;
+  --socle-ligne-active: #1a1a1c;
+  --socle-ligne-choisie: #262629;
+  --socle-sous-element-actif: #242427;
+  /* La connexion (G06) : lueur du panneau gauche, bordures de champ, note de protection. */
+  --socle-connexion-lueur: #151715;
+  --socle-connexion-milieu: #0c0c0e;
+  --socle-connexion-bas: #0a0a0b;
+  --socle-connexion-bord-champ: #2a2a2d;
+  --socle-connexion-bord-focus: #30323a;
+  --socle-connexion-cadenas: #7da76b;
+  --socle-connexion-fond-note: #121314;
+  --socle-connexion-bord-note: #222325;
+  --socle-connexion-survol: #f5f5f5;
+  --socle-logo-haut: #ebebec;
+  --socle-logo-bas: #bfbfc3;
+  --socle-bord-carte-active: #3a3a3e;
+  --socle-carte-active-haut: #1a1a1c;
+
+  /* Squelette : fond, lignes, reflet (H43). */
+  --socle-squelette: #1e1e21;
+  --socle-squelette-ligne: #222225;
+  --socle-squelette-reflet: #26262a;
+
+  /* Dialogue, toast, palette, panneau « Tous les modules » (H41, H43, G05, D02). */
+  --socle-dialogue: #1a1a1c;
+  --socle-bord-dialogue: #34343a;
+  --socle-bord-toast: #2c3327;
+  --socle-palette-fond: #141416;
+  --socle-bord-palette: #34343a;
+  --socle-panneau: #111112;
+  --socle-bord-panneau: #29292c;
+
+  /* Avatars : la couleur d'une personne ou d'une organisation (lettre seule, jamais un visage). */
+  --socle-avatar-a: #4b4b55;
+  --socle-avatar-m: #5a524a;
+  --socle-avatar-r: #46544f;
+  --socle-avatar-c: #3f4a5c;
+  --socle-avatar-t: #54485c;
+  --socle-avatar-l: #5c4a4a;
+
+  /* Rayons des composants (§4). */
+  --socle-rayon-sous-carte: 11px;
+  --socle-rayon-champ: 10px;
+  --socle-rayon-tag: 6px;
+  --socle-rayon-ticket: 12px;
+  --socle-rayon-kanban: 14px;
+
+  /* ── Les noms du socle S0, redéfinis ── */
+  --color-bg: #0c0c0d;
+
+  --color-socle-fond: #0c0c0d;
+  --color-socle-creux: #0a0a0b;
+  --color-socle-surface: #131314;
+  --color-socle-eleve: #161617;
+  --color-socle-survol: #1c1c1e;
+  --color-socle-bord: #232325;
+  --color-socle-bord-fort: #6e6e73;
+  --color-socle-texte: #ededed;
+  --color-socle-texte-doux: #8a8a8e;
+  --color-socle-texte-discret: #8a8a8e;
+  --color-socle-focus: #ededed;
+  --color-socle-primaire: #ededed;
+  --color-socle-primaire-survol: #ffffff;
+  --color-socle-primaire-encre: #0c0c0d;
+  --color-socle-voile: rgba(0, 0, 0, 0.66);
+
+  /* Sur ce fond, la base d'une famille est déjà lisible en texte (≥ 7:1). */
+  --color-fam-jour: #8aa4d6;
+  --color-fam-jour-texte: #8aa4d6;
+  --color-fam-contacts: #6fb7a8;
+  --color-fam-contacts-texte: #6fb7a8;
+  --color-fam-ecrire: #a79bdb;
+  --color-fam-ecrire-texte: #a79bdb;
+  --color-fam-argent: #8fbf7a;
+  --color-fam-argent-texte: #8fbf7a;
+  --color-fam-echanger: #d98fa8;
+  --color-fam-echanger-texte: #d98fa8;
+  --color-fam-creer: #d9a27a;
+  --color-fam-creer-texte: #d9a27a;
+  --color-fam-outils: #9a9aa0;
+  --color-fam-outils-texte: #9a9aa0;
+
+  --color-etat-succes: #8fbf7a;
+  --color-etat-succes-texte: #8fbf7a;
+  --color-etat-attention: #e0b35a;
+  --color-etat-attention-texte: #e0b35a;
+  --color-etat-danger: #e08a80;
+  --color-etat-danger-texte: #e08a80;
+  --color-etat-info: #8aa4d6;
+  --color-etat-info-texte: #8aa4d6;
+  --color-etat-info-fond: color-mix(in srgb, var(--color-etat-info) 14%, transparent);
+  --color-etat-info-bord: color-mix(in srgb, var(--color-etat-info) 40%, transparent);
+}
+
+/* La police de la refonte : Inter, chiffres tabulaires, sur les écrans qui ont migré. */
+[data-refonte-police='inter'] {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'cv11', 'ss01';
+}

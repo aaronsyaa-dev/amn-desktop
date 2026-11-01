@@ -13,7 +13,7 @@ export default declarerFamille({
   id: 'ecrire',
   ordre: 3,
   teinte: 'ecrire',
-  nom: { fr: 'Écrire', en: 'Write' },
+  nom: { fr: 'Écrire et retenir', en: 'Write and remember' },
   actions: {
     noter: { fr: 'Noter', en: 'Take notes' },
     rediger: { fr: 'Rédiger', en: 'Write' },

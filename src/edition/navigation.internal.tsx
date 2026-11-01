@@ -8,7 +8,7 @@
  * rien de la refonte n'entre dans le paquet client.
  */
 export { RailDuMoment } from '../refonte/navigation/RailDuMoment';
-export { TousLesModules } from '../refonte/navigation/TousLesModules';
+export { PanneauTousLesModules as TousLesModules } from '../refonte/systeme/modules/PanneauTousLesModules';
 export { RaccourciAccueil } from '../refonte/navigation/RaccourciAccueil';
 export { chercherModules, placeholderRecherche } from '../refonte/navigation/palette';
 export { restaurerDernierOnglet } from '../refonte/navigation/ouverture';
