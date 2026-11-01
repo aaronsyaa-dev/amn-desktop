@@ -135,6 +135,8 @@ jobs:
         run: npm run check:systeme-demo
       - name: LOT-00 — démarrage
         run: npm run check:systeme-demarrage
+      - name: LOT-00 — connexion
+        run: npm run check:systeme-connexion
       - name: Ajmani et l'Accueil vivant — parole, scènes, fil du jour, éditions
         run: npm run check:ajmani
       - name: Garde visible (S3) — accents, résumé, fil, contrat d'alertes, isolement

@@ -324,11 +324,6 @@ function RouteSeenTracker() {
 }
 
 /**
- * Au poste de travail, la source des bureaux s'engage après quelques secondes
- * de calme : le carton du premier sas aura sa ligne ambre, sans rien coûter à
- * l'ouverture de l'application.
- */
-/**
  * La bulle d'Ajmani : telle quelle sur l'ancienne coquille. Sur la nouvelle (drapeau `@edition/coquille`, éteint
  * par défaut et toujours éteint côté cliente), le point flottant du repos n'est pas posé — la barre Ajmani et ⌘J
  * en tiennent lieu — mais la bulle s'ouvre encore quand on l'appelle (F9, la voix).
@@ -339,6 +334,11 @@ function BulleAjmaniSelonCoquille({ coquille }: { coquille: boolean }) {
   return <AjmaniBubble />;
 }
 
+/**
+ * Au poste de travail, la source des bureaux s'engage après quelques secondes
+ * de calme : le carton du premier sas aura sa ligne ambre, sans rien coûter à
+ * l'ouverture de l'application.
+ */
 function SourceEnAttente() {
   useActiverSourceBureaux(8_000);
   return null;
