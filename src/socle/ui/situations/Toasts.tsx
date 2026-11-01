@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, CircleAlert, X } from 'lucide-react';
+import { Check, CircleAlert, Undo2, X } from 'lucide-react';
 import { calquesOuverts } from '../../../lib/pileCalques';
 import { useSocleLangue } from '../../i18n';
 import { Bouton } from '../Bouton';
@@ -68,15 +68,21 @@ export interface ToastProps {
   statique?: boolean;
   /** En pixels : 340 par défaut, 276 dans la maquette. */
   largeur?: number;
+  /**
+   * Les cotes v3 (H43 en situation, modèle 7) : rayon 12, coche de 16, titre 13 px / 600, compte à rebours 11,5 px T4,
+   * « Annuler » compact avec sa flèche de retour, et la barre de 3 px posée DANS le pied de la carte.
+   */
+  compact?: boolean;
 }
 
-export function Toast({ type, titre, detail, detailDecoratif, fraction, onAnnuler, onReessayer, onFermer, onSurvol, onFocusDedans, statique, largeur }: ToastProps) {
+export function Toast({ type, titre, detail, detailDecoratif, fraction, onAnnuler, onReessayer, onFermer, onSurvol, onFocusDedans, statique, largeur, compact = false }: ToastProps) {
   const { ts } = useSocleLangue();
   const erreur = type === 'erreur';
   return (
     <div
       role={erreur ? 'alert' : 'status'}
       data-type={type}
+      data-compact={compact || undefined}
       className="sc-toast-bloc"
       style={largeur ? ({ '--sc-toast-largeur': `${largeur}px` } as React.CSSProperties) : undefined}
       onMouseEnter={onSurvol ? () => onSurvol(true) : undefined}
@@ -108,7 +114,7 @@ export function Toast({ type, titre, detail, detailDecoratif, fraction, onAnnule
           )}
         </div>
         {!erreur && onAnnuler && (
-          <Bouton variante="secondaire" taille="petit" {...propsBouton(statique, onAnnuler)}>
+          <Bouton variante="secondaire" taille="petit" icone={compact ? <Undo2 size={13} strokeWidth={1.9} /> : undefined} {...propsBouton(statique, onAnnuler)}>
             {ts('toast.annuler')}
           </Bouton>
         )}

@@ -3,7 +3,8 @@
  *
  *   npm run check:systeme-notifications
  *
- * Le modèle (tri, groupes, compteurs, cloche, heure, report, suggestion), l'état (lu, reporté, rétention), le magasin
+ * Le modèle (tri, groupes v3, paquets, compteurs, cloche, heure, report, journée, point d'Ajmani, suggestion), l'état
+ * (lu, reporté, rétention), le magasin
  * (stockage refusé, échéance de report), les préférences (règle de la sécurité, retour arrière), les sources réelles
  * (type, famille, deep-link, aucun nom d'hôte dans une alerte de sécurité), le rendu statique de chaque état de la page
  * et la feuille de style (cotes de la fiche, aucune couleur en dur, aucune encre « discret » en texte).
@@ -69,9 +70,9 @@ const HUIT = [
   N('a3', J(29, 8, 19), { type: 'securite', famille: 'outils' }),
   N('a4', J(29, 8, 2), { type: 'mention', famille: 'echanger' }),
   N('a5', J(29, 10, 30), { type: 'rendez-vous', lue: true }),
-  N('h1', J(28, 17, 40), { type: 'devis', lue: true }),
-  N('h2', J(28, 15, 2), { type: 'stock', lue: true }),
-  N('s1', J(27, 9, 0), { type: 'client', lue: true }),
+  N('h1', J(28, 17, 40), { type: 'devis', famille: 'argent', lue: true }),
+  N('h2', J(28, 15, 2), { type: 'stock', famille: 'creer', lue: true }),
+  N('s1', J(27, 9, 0), { type: 'client', famille: 'contacts', lue: true }),
 ];
 
 /* ════════════════════════════════ le modèle ════════════════════════════════ */
@@ -84,19 +85,59 @@ await dit('tri : non lues d’abord, urgentes en tête, puis lues — chacune pa
   assert.deepEqual(modele.trier([N('b', J(29, 9, 0)), N('a', J(29, 9, 0))]).map((n: any) => n.id), ['a', 'b']); // égalité : l'identifiant, stable
 });
 
-await dit('groupes : Aujourd’hui, Hier, Cette semaine, Plus tôt — vides omis, chacun trié', () => {
+await dit('groupes (v3) : Maintenant (urgentes non lues, échéance dans l’heure), Aujourd’hui, Plus tôt — vides omis, chacun trié', () => {
   const g = modele.grouper(HUIT, MAINTENANT);
-  assert.deepEqual(g.map((x: any) => x.cle), ['aujourdhui', 'hier', 'semaine']);
-  assert.deepEqual(g[0].notifications.map((n: any) => n.id), ['a1', 'a2', 'a3', 'a4', 'a5']);
-  assert.deepEqual(g[1].notifications.map((n: any) => n.id), ['h1', 'h2']);
-  assert.deepEqual(g[2].notifications.map((n: any) => n.id), ['s1']);
-  const plusTot = modele.grouper([...HUIT, N('p1', J(25, 12, 0))], MAINTENANT);
-  assert.deepEqual(plusTot.map((x: any) => x.cle), ['aujourdhui', 'hier', 'semaine', 'plus-tot']);
-  // Un lundi, « hier » est le dimanche : il reste « Hier », jamais « Cette semaine ».
+  assert.deepEqual(g.map((x: any) => x.cle), ['maintenant', 'aujourdhui', 'plus-tot']);
+  assert.deepEqual(g[0].notifications.map((n: any) => n.id), ['a1']);
+  assert.deepEqual(g[1].notifications.map((n: any) => n.id), ['a2', 'a3', 'a4', 'a5'], 'non lues d’abord, puis la lue de 10:30');
+  assert.deepEqual(g[2].notifications.map((n: any) => n.id), ['h1', 'h2', 's1'], 'hier et la semaine passent dans « Plus tôt »');
+  const dans = (min: number) => new Date(MAINTENANT.getTime() + min * 60_000).toISOString();
+  const rdv = N('r', J(29, 10, 30), { type: 'rendez-vous', echeance: dans(30), lue: true });
+  assert.equal(modele.groupeDe(rdv, MAINTENANT), 'maintenant', 'une échéance dans l’heure, lue ou non');
+  assert.equal(modele.groupeDe({ ...rdv, echeance: dans(60) }, MAINTENANT), 'maintenant');
+  assert.equal(modele.groupeDe({ ...rdv, echeance: dans(61) }, MAINTENANT), 'aujourdhui');
+  assert.equal(modele.groupeDe({ ...rdv, echeance: dans(-1) }, MAINTENANT), 'aujourdhui', 'commencé : son jour');
+  assert.equal(modele.groupeDe({ ...HUIT[0], lue: true }, MAINTENANT), 'aujourdhui', 'une urgente lue rejoint son jour');
+  assert.ok(!modele.grouper(HUIT.map((n: any) => ({ ...n, lue: true })), MAINTENANT).some((x: any) => x.cle === 'maintenant'), 'Boîte à zéro : plus de « Maintenant »');
+  // Le jour d'une date (l'heure affichée) : un lundi, « hier » est le dimanche, jamais « cette semaine ».
   const lundi = new Date(2026, 9, 26, 11, 0);
-  assert.equal(modele.groupeDe(J(25, 20, 0), lundi), 'hier');
-  assert.equal(modele.groupeDe(J(24, 20, 0), lundi), 'plus-tot');
-  assert.equal(modele.groupeDe(J(26, 8, 0), lundi), 'aujourdhui');
+  assert.equal(modele.jourDe(J(25, 20, 0), lundi), 'hier');
+  assert.equal(modele.jourDe(J(24, 20, 0), lundi), 'plus-tot');
+  assert.equal(modele.jourDe(J(26, 8, 0), lundi), 'aujourdhui');
+  assert.equal(modele.jourDe(J(27, 9, 0), MAINTENANT), 'semaine');
+});
+
+await dit('paquets : ≥ 2 de même clé — source et type dans Aujourd’hui, famille dans Plus tôt, jamais dans Maintenant ; triés comme le fil', () => {
+  const liste = [
+    N('u1', J(29, 10, 0), { type: 'urgent', urgente: true }),
+    N('u2', J(29, 9, 0), { type: 'urgent', urgente: true }),
+    N('g1', J(29, 3, 0), { type: 'activite', famille: 'outils', lue: true }),
+    N('g2', J(29, 6, 0), { type: 'activite', famille: 'outils', lue: true }),
+    N('g3', J(29, 10, 30), { type: 'activite', famille: 'outils', lue: true }),
+    N('x', J(29, 10, 40), { type: 'activite', famille: 'outils', module: 'tasks', lue: true }),
+    N('p', J(29, 9, 48), { type: 'paiement', famille: 'argent', module: 'invoices' }),
+    N('d', J(28, 16, 0), { type: 'devis', famille: 'argent', lue: true }),
+    N('q', J(28, 11, 0), { type: 'paiement', famille: 'argent', lue: true }),
+    N('s', J(28, 9, 0), { type: 'stock', famille: 'creer', lue: true }),
+  ];
+  const [m, a, t] = modele.grouper(liste, MAINTENANT).map(modele.enPaquets);
+  const dire = (g: any) => g.elements.map((e: any) => (e.genre === 'paquet' ? `${e.par}:${e.notifications.map((n: any) => n.id).join(',')}` : e.id));
+  assert.deepEqual(dire(m), ['u1', 'u2'], 'chaque geste de « Maintenant » reste visible');
+  assert.deepEqual(dire(a), ['p', 'x', 'type:g3,g2,g1'], 'la non lue d’abord ; une autre source ne rejoint pas le paquet');
+  assert.equal(a.nonLues, 1);
+  assert.deepEqual(dire(t), ['famille:d,q', 's']);
+  const paquet = t.elements[0];
+  assert.equal(paquet.lue, true);
+  assert.equal(paquet.famille, 'argent');
+  assert.equal(paquet.id, 'paquet:plus-tot:famille:argent');
+  // Un paquet qui contient une non lue n'est pas lu, et passe devant les lues.
+  const [a2] = modele.grouper([...liste.slice(2, 6), { ...liste[2], id: 'g0', date: J(29, 2, 0), lue: false }], MAINTENANT).map(modele.enPaquets);
+  assert.deepEqual(dire(a2)[0], 'type:g0,g3,g2,g1');
+  assert.equal(a2.elements[0].lue, false);
+  assert.equal(tf('paquet.famille.argent', { n: 2 }), '2 nouvelles de L’argent');
+  assert.equal(tf('paquet.type.securite', { n: 3 }), '3 alertes de sécurité');
+  assert.equal(tf('paquet.detail.deux', { titre: 'Devis relu' }), 'Devis relu, et 1 autre');
+  assert.equal(tf('paquet.detail.n', { titre: 'Ronde', n: 2 }), 'Ronde, et 2 autres');
 });
 
 await dit('compteurs : Tout, Non lues, Mentions, Urgent — et un seul prédicat par onglet', () => {
@@ -131,23 +172,63 @@ await dit('filtre : un module fermé disparaît, le canal App filtre, la sécuri
   assert.deepEqual(ids({ appActif: () => false, moduleOuvert: () => true }), ['s']);
 });
 
-await dit('heure affichée : « 10:12 » aujourd’hui et hier, « Mar. » dans la semaine, le jour et le mois au-delà (Intl fr-FR)', () => {
+await dit('heure affichée (v3) : « 10:12 » aujourd’hui, « Hier », « Mar. » dans la semaine, le jour et le mois au-delà (Intl fr-FR)', () => {
   assert.equal(modele.heureAffichee(J(29, 10, 12), MAINTENANT), '10:12');
-  assert.equal(modele.heureAffichee(J(28, 17, 40), MAINTENANT), '17:40');
+  assert.equal(modele.heureAffichee(J(29, 8, 2), MAINTENANT), '08:02');
+  assert.equal(modele.heureAffichee(J(28, 17, 40), MAINTENANT), 'Hier');
+  assert.equal(modele.heureAffichee(J(28, 17, 40), MAINTENANT, 'en-GB', 'Yesterday'), 'Yesterday');
   assert.equal(modele.heureAffichee(J(27, 9, 0), MAINTENANT), 'Mar.');
   assert.equal(modele.heureAffichee(J(26, 9, 0), MAINTENANT), 'Lun.');
   assert.equal(modele.heureAffichee(J(25, 9, 0), MAINTENANT), '25 oct.');
   assert.equal(modele.heureAffichee(J(27, 9, 0), MAINTENANT, 'en-GB'), 'Tue');
+  assert.equal(tf('jour.hier'), 'Hier');
   assert.equal(modele.heureCourte(new Date(2026, 9, 30, 9, 0)), '9:00');
   assert.equal(modele.heureCourte(new Date(2026, 9, 30, 18, 0)), '18:00');
+  assert.equal(modele.heureHorloge(new Date(2026, 9, 30, 9, 5)), '09:05');
 });
 
-await dit('sous-titre : « N nouvelles · l’important en haut, le reste attend » avec les pluriels français, « Boîte à zéro » à zéro', () => {
-  const dire = (n: number) => { const s = modele.sousTitre(n); return tf(s.cle, s.params); };
+await dit('sous-titre (v3) : « N nouvelles, dont U urgente(s) · l’important d’abord, le reste attend », « Boîte à zéro » à zéro', () => {
+  const dire = (n: number, u = 0) => { const st = modele.sousTitre(n, u); return tf(st.cle, st.params); };
   assert.equal(dire(0), 'Boîte à zéro · tout est lu');
-  assert.equal(dire(1), '1 nouvelle · l’important en haut, le reste attend');
-  assert.equal(dire(4), '4 nouvelles · l’important en haut, le reste attend');
-  assert.equal(dire(120), '120 nouvelles · l’important en haut, le reste attend');
+  assert.equal(dire(0, 2), 'Boîte à zéro · tout est lu');
+  assert.equal(dire(1), '1 nouvelle · l’important d’abord, le reste attend');
+  assert.equal(dire(4), '4 nouvelles · l’important d’abord, le reste attend');
+  assert.equal(dire(1, 1), '1 nouvelle, dont 1 urgente · l’important d’abord, le reste attend');
+  assert.equal(dire(4, 1), '4 nouvelles, dont 1 urgente · l’important d’abord, le reste attend');
+  assert.equal(dire(4, 2), '4 nouvelles, dont 2 urgentes · l’important d’abord, le reste attend');
+  assert.equal(dire(2, 5), '2 nouvelles, dont 2 urgentes · l’important d’abord, le reste attend', 'jamais plus d’urgentes que de nouvelles');
+  assert.equal(dire(120), '120 nouvelles · l’important d’abord, le reste attend');
+});
+
+await dit('journée : un rayon par notification du jour, dans l’ordre des heures ; « à voir » = non lues du jour, sur le total du jour', () => {
+  const j = modele.journee(HUIT, MAINTENANT);
+  assert.deepEqual(j.notifications.map((n: any) => n.id), ['a4', 'a3', 'a2', 'a1', 'a5']);
+  assert.equal(j.aVoir, 4);
+  assert.equal(j.total, 5, 'hier et la semaine n’ont pas de rayon');
+  assert.notEqual(j.total, modele.compteurs(HUIT).tout, '« sur 5 aujourd’hui » et « Tout 8 » ne mesurent pas la même chose');
+  assert.deepEqual(modele.journee([], MAINTENANT), { notifications: [], aVoir: 0, total: 0 });
+  assert.equal(modele.importanceDe(HUIT[0]), 'urgente');
+  assert.equal(modele.importanceDe(HUIT[1]), 'non-lue');
+  assert.equal(modele.importanceDe(HUIT[4]), 'lue');
+  assert.equal(modele.importanceDe({ ...HUIT[0], lue: true }), 'lue');
+  assert.equal(modele.minutesDuJour(new Date(2026, 9, 29, 10, 42)), 642);
+});
+
+await dit('point d’Ajmani : au plus 4 lignes, l’urgence d’abord, les titres des modules tels quels, rien d’inventé', () => {
+  const lignes = modele.pointDuJour(HUIT, MAINTENANT);
+  assert.deepEqual(lignes.map((l: any) => `${l.categorie}:${l.nombre}:${l.titre}`), ['urgent:1:Titre a1', 'paiement:1:Titre a2', 'securite:1:Titre a3', 'rendez-vous:1:Titre a5']);
+  assert.ok(lignes.length <= modele.LIGNES_DU_POINT);
+  // Une urgente lue n'est plus une urgence : elle compte dans sa catégorie, une seule fois.
+  const lue = modele.pointDuJour(HUIT.map((n: any) => (n.id === 'a1' ? { ...n, lue: true } : n)), MAINTENANT);
+  assert.ok(!lue.some((l: any) => l.categorie === 'urgent'));
+  assert.deepEqual(lue.map((l: any) => l.categorie), ['paiement', 'securite', 'rendez-vous', 'mention']);
+  // Seulement le jour ; rien d'important : aucune ligne.
+  assert.deepEqual(modele.pointDuJour(HUIT.filter((n: any) => Date.parse(n.date) < Date.parse(J(29, 0, 0))), MAINTENANT), []);
+  const deux = modele.pointDuJour([N('p1', J(29, 9, 0), { type: 'paiement' }), N('p2', J(29, 10, 0), { type: 'devis', titre: 'Plus récent' })], MAINTENANT);
+  assert.deepEqual(deux.map((l: any) => [l.nombre, l.titre]), [[2, 'Plus récent']], 'le devis suit « Paiements » ; la plus récente donne le titre');
+  assert.equal(tf('point.urgent.un', { titre: 'Ticket A' }), `1 urgence${NBSP}: Ticket A.`);
+  assert.equal(tf('point.ligne.deux', { titre: 'Facture' }), 'Facture, et 1 autre.');
+  assert.equal(tf('point.calme'), 'Journée calme pour l’instant.');
 });
 
 await dit('report : les échéances sont calculées (dans 1 heure, ce soir 18:00, demain 9:00, lundi 9:00) et jamais incohérentes', () => {
@@ -349,6 +430,52 @@ await dit('préférences : 5 types × 3 canaux, les valeurs de la maquette par d
   assert.ok(reglages.HEURES_PROPOSEES.every(reglages.estHeure));
 });
 
+await dit('préférences v3 : niveau de bruit (« L’essentiel » par défaut), « Silence 1 h », lecture défensive, retour arrière par champ', () => {
+  const d = reglages.reglagesParDefaut();
+  assert.equal(d.niveau, 'essentiel');
+  assert.equal(d.silenceJusqua, null);
+  assert.deepEqual([...reglages.NIVEAUX_BRUIT], ['tout', 'essentiel', 'urgences']);
+  assert.equal(reglages.normaliserReglages({ niveau: 'fort', silenceJusqua: 'demain' }).niveau, 'essentiel', 'valeur inconnue : le défaut');
+  assert.equal(reglages.normaliserReglages({ niveau: 'fort', silenceJusqua: 'demain' }).silenceJusqua, null);
+  assert.equal(reglages.normaliserReglages({ niveau: 'urgences' }).niveau, 'urgences');
+  const fin = new Date(MAINTENANT.getTime() + reglages.SILENCE_MS).toISOString();
+  let r = reglages.appliquerChangement(d, { chemin: 'silence', valeur: fin });
+  assert.equal(r.silenceJusqua, fin);
+  assert.equal(reglages.lireReglage(r, 'silence'), fin);
+  assert.equal(reglages.silenceEnCours(r, MAINTENANT)?.toISOString(), fin);
+  assert.equal(reglages.silenceEnCours(r, new Date(Date.parse(fin) + 1)), null, 'fini : plus de silence');
+  r = reglages.appliquerChangement(r, { chemin: 'silence', valeur: '' });
+  assert.equal(r.silenceJusqua, null, '« Silence » se coupe d’un second clic');
+  assert.equal(reglages.appliquerChangement(d, { chemin: 'niveau', valeur: 'tout' }).niveau, 'tout');
+  assert.equal(reglages.appliquerChangement(d, { chemin: 'niveau', valeur: 'n-importe' }).niveau, 'essentiel');
+  assert.equal(reglages.lireReglage(d, 'niveau'), 'essentiel');
+  assert.equal(tf('bruit.urgences.aide', { heure: '8:00' }), 'le reste attend le résumé de 8:00');
+  assert.equal(tf('bruit.silence.enCours', { n: 52 }), `Silence · 52${NBSP}min`);
+  assert.equal(tf('calmes.plage', { de: '20:00', a: '08:00' }), '20:00 → 08:00');
+});
+
+await dit('retenue : heures calmes (qui passent minuit), silence d’une heure, niveau de bruit — les urgences et la sécurité passent toujours', () => {
+  assert.ok(reglages.dansHeuresCalmes(21 * 60, '20:00', '08:00'));
+  assert.ok(reglages.dansHeuresCalmes(3 * 60, '20:00', '08:00'));
+  assert.ok(!reglages.dansHeuresCalmes(8 * 60, '20:00', '08:00'), 'la fin est exclue');
+  assert.ok(reglages.dansHeuresCalmes(13 * 60, '12:00', '14:00'));
+  assert.ok(!reglages.dansHeuresCalmes(10 * 60, '10:00', '10:00'), 'une plage vide ne retient rien');
+  const tout = { ...reglages.reglagesParDefaut(), niveau: 'tout' };
+  const nuit = N('n', J(29, 3, 0), { type: 'paiement' });
+  assert.equal(reglages.estRetenue(nuit, tout), true, 'arrivée pendant les heures calmes');
+  assert.equal(reglages.estRetenue(nuit, { ...tout, heuresCalmes: { ...tout.heuresCalmes, actif: false } }), false);
+  assert.equal(reglages.estRetenue(N('u', J(29, 3, 0), { type: 'urgent', urgente: true }), tout), false, 'l’urgence passe');
+  assert.equal(reglages.estRetenue(N('s', J(29, 3, 0), { type: 'securite' }), tout), false, 'la sécurité passe');
+  const jour = (type: string) => N(type, J(29, 10, 0), { type });
+  const essentiel = reglages.reglagesParDefaut();
+  assert.deepEqual(['paiement', 'mention', 'devis', 'rendez-vous', 'stock', 'client'].map((x) => reglages.estRetenue(jour(x), essentiel)), [false, false, false, true, true, true]);
+  const urgences = { ...essentiel, niveau: 'urgences' };
+  assert.deepEqual(['paiement', 'mention', 'securite', 'urgent'].map((x) => reglages.estRetenue(jour(x), urgences)), [true, true, false, false]);
+  const silence = { ...tout, silenceJusqua: new Date(2026, 9, 29, 10, 30).toISOString() };
+  assert.equal(reglages.estRetenue(jour('paiement'), silence), true, 'pendant l’heure de silence');
+  assert.equal(reglages.estRetenue(N('p', J(29, 9, 20), { type: 'paiement' }), silence), false, 'avant le silence');
+});
+
 await dit('préférences : la sécurité garde au moins un canal — la dernière case ne s’éteint pas', () => {
   let r = reglages.reglagesParDefaut();
   const off = (canal: string) => ({ chemin: `canaux.securite.${canal}`, valeur: false });
@@ -539,18 +666,21 @@ await dit('messages privés : un par correspondant, type « mention », lien ver
   assert.equal(sources.messagesVersNotifications([{ email: 'a@exemple.test', nom: 'A', nombre: 1, apercu: '', date: J(29, 8, 2) }], t)[0].detail, 'Ouvrez la conversation.');
 });
 
-await dit('rendez-vous : seulement ceux qui commencent dans l’heure, « dans N minutes » recalculé, jour et heure en détail', () => {
+await dit('rendez-vous : seulement ceux qui commencent dans l’heure, « dans N min » recalculé, l’heure en détail, l’échéance posée', () => {
   const rdv = (id: string, debut: Date, sur: Record<string, unknown> = {}) => ({ id, title: 'Point', startAt: debut.toISOString(), clientName: '', location: '', status: 'scheduled', ...sur });
   const dans = (min: number) => new Date(MAINTENANT.getTime() + min * 60_000);
   const out = sources.rendezVousVersNotifications([
     rdv('r1', dans(30), { clientName: 'Cabinet', location: 'salle A' }), rdv('r2', dans(61)), rdv('r3', dans(-5)), rdv('r4', dans(10), { status: 'cancelled' }), rdv('r5', dans(1)), rdv('r6', dans(0)), rdv('r7', dans(20), { title: '', clientName: '' }),
   ], MAINTENANT, t);
   assert.deepEqual(out.map((n: any) => n.id), ['rdv:r1', 'rdv:r5', 'rdv:r6', 'rdv:r7']);
-  assert.equal(out[0].titre, 'Rendez-vous Cabinet dans 30 minutes');
-  assert.equal(out[0].detail, 'Jeudi 11:30, salle A');
-  assert.equal(out[1].titre, 'Rendez-vous Point dans 1 minute');
+  assert.equal(out[0].titre, `Rendez-vous Cabinet dans 30${NBSP}min`);
+  assert.equal(out[0].detail, '11:30, salle A', 'le jour même : l’heure et le lieu (v3)');
+  assert.equal(out[0].echeance, dans(30).toISOString(), 'l’échéance fait passer le rendez-vous dans « Maintenant »');
+  assert.equal(out[1].titre, `Rendez-vous Point dans 1${NBSP}min`);
   assert.equal(out[2].titre, 'Rendez-vous Point maintenant');
-  assert.equal(out[3].titre, 'Rendez-vous dans 20 minutes');
+  assert.equal(out[3].titre, `Rendez-vous dans 20${NBSP}min`);
+  const tard = new Date(2026, 9, 29, 23, 30);
+  assert.equal(sources.rendezVousVersNotifications([rdv('n', new Date(2026, 9, 30, 0, 10))], tard, t)[0].detail, 'Vendredi 00:10', 'après minuit, le jour est dit');
   assert.equal(out[0].type, 'rendez-vous');
   assert.equal(out[0].module, 'agenda');
 });
@@ -567,7 +697,8 @@ await dit('bus : seuls les moments qui valent une notification, avec deep-link, 
   assert.deepEqual(m('client.cree', { clientId: '12' }).vers, { route: '/clients', state: { focusClientId: 12 } });
   assert.deepEqual(m('client.cree', { clientId: 'abc' }).vers, { route: '/clients' });
   assert.equal(m('rdv.proche', { rdvId: 'r1', dansMinutes: 30 }).id, 'rdv:r1');
-  assert.equal(m('rdv.proche', { rdvId: 'r1', dansMinutes: 30 }).titre, 'Rendez-vous dans 30 minutes');
+  assert.equal(m('rdv.proche', { rdvId: 'r1', dansMinutes: 30 }).titre, `Rendez-vous dans 30${NBSP}min`);
+  assert.equal(m('rdv.proche', { rdvId: 'r1', dansMinutes: 30 }).echeance, new Date(quand + 30 * 60_000).toISOString());
   assert.equal(m('message.recu', { conversationId: 'c1' }).type, 'mention');
   assert.equal(m('message.recu', { conversationId: 'a@exemple.test' }).vers.route, '/messages-prives?avec=a%40exemple.test');
   const susp = m('tentative.suspecte', { origine: 'connexion', reference: 'ip-secrète' });
@@ -602,14 +733,16 @@ const vue = (sur: Record<string, unknown> = {}): string =>
   }));
 const compter = (html: string, re: RegExp): number => (html.match(re) ?? []).length;
 const entre = (html: string, debut: string, finMarque: string): string => { const i = html.indexOf(debut); const j = html.indexOf(finMarque, i + debut.length); return html.slice(i, j < 0 ? undefined : j); };
-const carteListe = (html: string): string => entre(html, 'class="sc-notif__carte-liste"', 'class="sc-notif__droite"');
+const fil = (html: string): string => entre(html, 'class="sc-notif__fil"', 'class="sc-notif__volet sc-notif__volet--droit"');
+const gauche = (html: string): string => entre(html, 'class="sc-notif__volet sc-notif__volet--gauche"', 'class="sc-notif__fil"');
+const droite = (html: string): string => html.slice(html.indexOf('class="sc-notif__volet sc-notif__volet--droit"'));
 
-await dit('rendu : un seul h1, deux boutons SECONDAIRES dans l’en-tête, aucun primaire, sous-titre vivant', () => {
+await dit('rendu : un seul h1, deux boutons SECONDAIRES dans l’en-tête, aucun primaire, sous-titre « dont 1 urgente »', () => {
   const html = vue();
   assert.equal(compter(html, /<h1[ >]/g), 1);
   assert.match(html, /<h1[^>]*>Notifications<\/h1>/);
-  assert.match(html, />4 nouvelles · l’important en haut, le reste attend</);
-  const entete = entre(html, '<header', '</header>');
+  assert.match(html, />4 nouvelles, dont 1 urgente · l’important d’abord, le reste attend</);
+  const entete = entre(html, '<header class="sc-notif__entete"', '</header>');
   assert.equal(compter(entete, /data-variante="secondaire"/g), 2);
   assert.equal(compter(entete, /data-variante="primaire"/g), 0);
   assert.match(entete, /Tout marquer comme lu/);
@@ -618,98 +751,215 @@ await dit('rendu : un seul h1, deux boutons SECONDAIRES dans l’en-tête, aucun
   assert.match(vue({ notifications: [], compteurs: modele.compteurs([]) }), /<button[^>]*disabled=""[^>]*>[\s\S]*Tout marquer comme lu/, 'rien à marquer : le bouton est inactif');
 });
 
-await dit('rendu : onglets (tablist, 4 tab, un seul sélectionné) avec leurs compteurs, panneau relié', () => {
+await dit('rendu : trois volets — l’anneau et le point d’Ajmani à gauche, le fil au centre, les réglages du bruit à droite', () => {
   const html = vue();
-  assert.equal(compter(html, /role="tablist"/g), 1);
-  assert.equal(compter(html, /role="tab"/g), 4);
-  assert.equal(compter(html, /role="tab"[^>]*aria-selected="true"|aria-selected="true"[^>]*role="tab"/g), 1);
-  assert.equal(compter(html, /role="tabpanel"/g), 4);
-  const compteurs = [...html.matchAll(/<b class="sc-onglet__compteur"[^>]*>(\d+)<\/b>/g)].map((x) => Number(x[1]));
-  assert.deepEqual(compteurs, [8, 4, 1, 1]);
-  assert.match(vue({ ongletInitial: 'mentions' }), /<button[^>]*aria-selected="true"[^>]*>Mentions/);
+  assert.ok(html.indexOf('sc-notif__volet--gauche') < html.indexOf('class="sc-notif__fil"'));
+  assert.ok(html.indexOf('class="sc-notif__fil"') < html.indexOf('sc-notif__volet--droit'));
+  const g = gauche(html);
+  assert.match(g, /<h2[^>]*>Votre journée<\/h2>/);
+  assert.match(g, /<time class="sc-notif__journee-heure sc-mono"[^>]*>11:00<\/time>/);
+  assert.match(g, /<h2[^>]*>Le point d’Ajmani<\/h2>/);
+  const d = droite(html);
+  assert.match(d, /<h2[^>]*>Niveau de bruit<\/h2>/);
+  assert.match(d, /<h2[^>]*>Par type<\/h2>/);
+  assert.ok(d.indexOf('Niveau de bruit') < d.indexOf('Par type'));
 });
 
-await dit('rendu : les lignes — 61 px par la feuille, point non lu, drapeau Urgent, ellipsis + info-bulle, groupes en h2', () => {
-  const html = carteListe(vue());
-  assert.equal(compter(html, /class="sc-notif__ligne"/g), 8);
-  assert.equal(compter(html, /data-lue="false"/g), 4);
-  assert.equal(compter(html, /data-lue="true"/g), 4);
-  assert.equal(compter(html, /<span class="sc-notif__sr">Non lue<\/span>/g), 4, 'non lue : le point ET un mot');
-  assert.equal(compter(html, /class="sc-urgent"/g), 1);
-  assert.equal(compter(html, /data-urgente="true"/g), 1);
-  assert.match(html, /<h2[^>]*class="sc-notif__groupe-titre"[^>]*>Aujourd’hui<\/h2>/);
-  assert.match(html, />Hier<\/h2>/);
-  assert.match(html, />Cette semaine<\/h2>/);
-  assert.match(html, /<span class="sc-notif__ligne-nom" title="Titre a1">Titre a1<\/span>/);
-  assert.match(html, /<time class="sc-notif__heure" dateTime="[^"]+">10:12<\/time>/);
+await dit('rendu : l’anneau — piste, heures calmes, temps écoulé, 24 graduations, un rayon par notification du jour, aiguille et point vivant', () => {
+  const g = gauche(vue());
+  assert.match(g, /role="group"[^>]*aria-label="Votre journée sur 24 heures\u00a0: 5 notifications aujourd’hui, 4 à voir\."/);
+  assert.equal(compter(g, /class="sc-notif__rayon"[^>]*role="button" tabindex="0"/g), 1, 'les rayons : un seul arrêt de tabulation, les flèches font le reste');
+  assert.equal(compter(g, /class="sc-notif__rayon"[^>]*role="button" tabindex="-1"/g), 4);
+  assert.match(g, /role="button" tabindex="0" aria-label="08:02 · Titre a4"/);
+  assert.equal(compter(g, /class="sc-notif__anneau-piste"/g), 1);
+  assert.equal(compter(g, /class="sc-notif__anneau-calmes"/g), 1);
+  assert.equal(compter(g, /class="sc-notif__anneau-ecoule"[^>]*data-mvt="trace"/g), 1, 'le temps écoulé se dessine (couche de mouvement)');
+  assert.equal(compter(g, /class="sc-notif__anneau-graduation"/g), 24);
+  assert.equal(compter(g, /data-cardinale="true"/g), 4);
+  assert.equal(compter(g, /class="sc-notif__rayon"/g), 5, 'un rayon par notification du jour');
+  assert.equal(compter(g, /class="sc-notif__rayon" data-importance="urgente"/g), 1);
+  assert.equal(compter(g, /data-mvt="entree" style="--sc-mvt-rang:\d/g), 5, 'les rayons apparaissent un à un');
+  assert.match(g, /<title>10:12 · Titre a1<\/title>/);
+  assert.match(g, /data-retenue="true"[^>]*>[\s\S]*?<title>10:30 · Titre a5 \(gardée pour le résumé\)<\/title>/, 'un rendez-vous retenu par « L’essentiel » : en pointillé');
+  for (const libelle of ['0 h', '6 h', '12 h', '18 h']) assert.match(g, new RegExp(`class="sc-notif__anneau-heure sc-mono"[^>]*>${libelle.replace(' ', '\u00a0?\\s?')}<`));
+  assert.equal(compter(g, /class="sc-notif__aiguille"/g), 1);
+  assert.match(g, /class="sc-notif__anneau-maintenant"[\s\S]*?data-mvt="onde"[\s\S]*?Maintenant, 11:00/);
+  assert.match(g, /<b class="sc-notif__anneau-nombre sc-nombre">4<\/b><span class="sc-notif__anneau-avoir">à voir<\/span><span class="sc-notif__anneau-sur">sur 5 aujourd’hui<\/span>/);
+  assert.match(g, />une notification</);
+  assert.match(g, />heures calmes</);
+  assert.match(g, />gardée pour 8:00</);
+  assert.match(g, /class="sc-notif__anneau-lune"/);
+  const sansCalmes = gauche(vue({ reglages: { ...reglagesDefaut, heuresCalmes: { ...reglagesDefaut.heuresCalmes, actif: false } } }));
+  assert.equal(compter(sansCalmes, /class="sc-notif__anneau-calmes"/g), 0, 'les heures calmes viennent du réglage');
+  assert.doesNotMatch(sansCalmes, /sc-notif__anneau-lune/);
+  const zero = gauche(vue({ notifications: HUIT.map((n: any) => ({ ...n, lue: true })), compteurs: modele.compteurs(HUIT.map((n: any) => ({ ...n, lue: true }))) }));
+  assert.match(zero, /<b class="sc-notif__anneau-nombre sc-nombre">0<\/b><span class="sc-notif__anneau-avoir">à voir<\/span>/, 'Boîte à zéro : « 0 à voir »');
+});
+
+await dit('rendu : le point d’Ajmani — étincelle, heure du calcul, 4 lignes qui glissent, pied du résumé du matin', () => {
+  const g = gauche(vue());
+  const point = entre(g, 'sc-notif__point-ajmani', '</section>');
+  assert.match(point, /<svg[^>]*class="sc-etincelle/);
+  assert.match(point, />à 11:00</);
+  assert.equal(compter(point, /class="sc-notif__point-ligne" data-mvt="arrivee"/g), 4);
+  assert.match(point, />1 urgence\u00a0: Titre a1\.</);
+  assert.match(point, />Titre a2\.</);
+  assert.match(point, /data-categorie="urgent"/);
+  assert.match(point, />Résumé du matin à 8:00</);
+  assert.match(point, /<button[^>]*class="sc-notif__lien-fort"[^>]*>Régler<\/button>/);
+  const calme = gauche(vue({ notifications: [HUIT[5]], compteurs: modele.compteurs([HUIT[5]]) }));
+  assert.match(calme, />Journée calme pour l’instant\.</);
+  assert.match(gauche(vue({ reglages: { ...reglagesDefaut, resume: { ...reglagesDefaut.resume, actif: false } } })), />Résumé du matin désactivé</);
+});
+
+await dit('rendu : les puces de filtre (radiogroup, 4 radios, une seule cochée) avec leurs compteurs, « l’important d’abord »', () => {
+  const html = fil(vue());
+  assert.equal(compter(html, /role="radiogroup"/g), 1);
+  assert.equal(compter(html, /role="radio"/g), 4);
+  assert.equal(compter(html, /aria-checked="true"/g), 1);
+  const compteurs = [...html.matchAll(/<b class="sc-puce__compteur"[^>]*>(\d+)<\/b>/g)].map((x) => Number(x[1]));
+  assert.deepEqual(compteurs, [8, 4, 1, 1]);
+  assert.match(html, />l’important d’abord</);
+  assert.match(fil(vue({ filtreInitial: 'mentions' })), /<button[^>]*role="radio"[^>]*aria-checked="true"[^>]*>[\s\S]*?Mentions/);
+  assert.equal(compter(html, /role="tablist"/g), 0, 'les onglets sont devenus des puces (v3)');
+});
+
+await dit('rendu : « Maintenant » — point vivant, cartes d’action aux gestes visibles, UN seul primaire (« Ouvrir le ticket ») dans le fil', () => {
+  const html = fil(vue());
+  assert.match(html, /<h2[^>]*class="sc-notif__groupe-titre"[^>]*>[\s\S]*?data-ton="critique"[\s\S]*?data-mvt="onde"[\s\S]*?Maintenant<\/span><span class="sc-notif__groupe-aide sc-nombre">à traiter<\/span>/);
+  assert.equal(compter(html, /class="sc-notif__carte-action"/g), 1);
+  const carte = entre(html, 'class="sc-notif__carte-action"', '</article>');
+  assert.match(carte, /data-urgente="true"/);
+  assert.equal(compter(carte, /class="sc-urgent"/g), 1);
+  assert.match(carte, /<button[^>]*data-variante="primaire"[^>]*>[\s\S]*?Ouvrir le ticket/);
+  assert.match(carte, /aria-haspopup="menu"[\s\S]*?Reporter/);
+  assert.match(carte, /lucide-clock/);
+  assert.equal(compter(html, /data-variante="primaire"/g), 1, 'un seul bouton plein dans le fil');
+  // Deux urgentes : seule la première porte le bouton plein.
+  const deux = [HUIT[0], { ...HUIT[0], id: 'a0', date: J(29, 9, 0) }, ...HUIT.slice(1)];
+  const html2 = fil(vue({ notifications: deux, compteurs: modele.compteurs(deux) }));
+  assert.equal(compter(html2, /class="sc-notif__carte-action"/g), 2);
+  assert.equal(compter(html2, /data-variante="primaire"/g), 1);
+  // Un rendez-vous dans l'heure : carte neutre, un seul geste secondaire, pas de « Reporter ».
+  const rdv = N('r', J(29, 10, 40), { type: 'rendez-vous', icone: 'calendrier', echeance: new Date(MAINTENANT.getTime() + 18 * 60_000).toISOString(), lue: true });
+  const html3 = fil(vue({ notifications: [rdv], compteurs: modele.compteurs([rdv]) }));
+  const carte3 = entre(html3, 'class="sc-notif__carte-action"', '</article>');
+  assert.doesNotMatch(carte3, /data-urgente/);
+  assert.match(carte3, /data-variante="secondaire"[^>]*>[\s\S]*?lucide-eye[\s\S]*?Voir le détail/);
+  assert.doesNotMatch(carte3, /Reporter/);
+  assert.equal(compter(html3, /data-variante="primaire"/g), 0);
+});
+
+await dit('rendu : les lignes — point non lu, tuile teintée, ellipsis + info-bulle, heure à droite, ordre non chronologique, un seul arrêt de tabulation', () => {
+  const html = fil(vue());
+  assert.equal(compter(html, /class="sc-notif__ligne"/g), 7);
+  assert.equal(compter(html, /class="sc-notif__ligne" data-lue="false"/g), 3);
+  assert.equal(compter(html, /<span class="sc-notif__sr">Non lue<\/span>/g), 3, 'non lue : le point ET un mot');
+  assert.match(html, /<h2[^>]*>[\s\S]*?Aujourd’hui<\/span><span class="sc-notif__groupe-aide sc-nombre">3 non lues<\/span>/);
+  assert.match(html, /<h2[^>]*>[\s\S]*?Plus tôt<\/span><span class="sc-notif__groupe-aide sc-nombre">regroupées<\/span>/);
+  assert.match(html, /<span class="sc-notif__ligne-nom" title="Titre a2">Titre a2<\/span>/);
+  assert.match(html, /<time class="sc-notif__heure sc-nombre" dateTime="[^"]+">09:48<\/time>/);
+  assert.match(html, />Hier<\/time>/);
   assert.match(html, />Mar\.<\/time>/);
-  assert.equal(compter(html, /data-ligne="[^"]+" tabindex="0"/g), 1, 'un seul arrêt de tabulation dans la liste');
-  assert.equal(compter(html, /data-ligne="[^"]+" tabindex="-1"/g), 7);
   assert.match(html, /--sc-notif-teinte:var\(--socle-fam-argent\)/);
+  assert.match(html, /--sc-notif-teinte:var\(--socle-fam-garde\)/, 'une alerte de sécurité prend la teinte de La Garde');
   const ordre = [...html.matchAll(/data-ligne="([^"]+)"/g)].map((x) => x[1]);
-  assert.deepEqual(ordre, ['a1', 'a2', 'a3', 'a4', 'a5', 'h1', 'h2', 's1'], 'l’ordre n’est pas chronologique : non lues d’abord');
+  assert.deepEqual(ordre, ['a2', 'a3', 'a4', 'a5', 'h1', 'h2', 's1'], 'l’ordre n’est pas chronologique : non lues d’abord');
+  assert.equal(compter(html, /data-ligne="[^"]+" tabindex="0"/g), 1, 'un seul arrêt de tabulation dans le fil');
+  assert.equal(compter(html, /data-ligne="[^"]+" tabindex="-1"/g), 6);
   const css = sansCommentaires(lire(`${DOSSIER}/notifications.css`));
   assert.match(css, /\.sc-notif__ligne-nom \{[^}]*text-overflow:\s*ellipsis[^}]*white-space:\s*nowrap/);
   assert.match(css, /\.sc-notif__ligne-titre > \.sc-urgent \{[^}]*flex:\s*none/, 'le drapeau ne passe jamais à la ligne');
 });
 
-await dit('rendu : « Ouvrir » (seul bouton primaire de la liste) et « Reporter » n’existent que pour la ligne survolée ou focalisée', () => {
-  const sans = carteListe(vue());
-  assert.equal(compter(sans, /data-variante="primaire"/g), 0);
-  assert.doesNotMatch(sans, />Ouvrir</);
-  assert.doesNotMatch(sans, />Reporter</);
-  const avec = carteListe(vue({ ligneActiveInitiale: 'a1' }));
+await dit('rendu : « Ouvrir » et « Reporter » (secondaires) n’existent que pour la ligne survolée ou focalisée, à la place de l’heure', () => {
+  const sans = fil(vue());
+  assert.doesNotMatch(sans, />Ouvrir<\/span>/);
+  assert.equal(compter(sans, /class="sc-notif__actions"/g), 0);
+  const avec = fil(vue({ ligneActiveInitiale: 'a2' }));
+  assert.equal(compter(avec, /class="sc-notif__actions"/g), 1);
+  const actions = entre(avec, 'class="sc-notif__actions"', '</li>');
+  assert.equal(compter(actions, /data-variante="secondaire"/g), 2);
+  assert.equal(compter(actions, /data-variante="primaire"/g), 0, 'le survol ne pose pas un second bouton plein');
+  assert.match(actions, /aria-label="Ouvrir\u00a0: Titre a2"/);
+  assert.match(actions, /aria-haspopup="menu"/);
+  assert.match(avec, /data-masquee="true"[^>]*>09:48</, 'l’heure cède sa place');
   assert.equal(compter(avec, /data-variante="primaire"/g), 1);
-  assert.equal(compter(avec, /data-variante="secondaire"/g), 1);
-  assert.match(avec, /<button[^>]*data-variante="primaire"[^>]*>[\s\S]*?Ouvrir<\/span>/);
-  assert.match(avec, /aria-haspopup="menu"/);
-  assert.equal(compter(avec, />Reporter</g), 1);
-  assert.equal(compter(avec, /sc-notif__actions/g), 1);
 });
 
-await dit('rendu : la colonne droite — 15 interrupteurs aux valeurs de la maquette, heures calmes, résumé du matin', () => {
-  const html = vue();
-  const droite = entre(html, 'class="sc-notif__droite"', '</main>');
-  assert.equal(compter(droite, /role="switch"/g), 15 + 2);
-  assert.match(droite, />Que voulez-vous recevoir\u00a0\?</);
-  for (const colonne of ['App', 'Mail', 'Mobile']) assert.match(droite, new RegExp(`class="sc-notif__canal">${colonne}<`));
-  for (const ligne of ['Tickets urgents', 'Paiements', 'Sécurité', 'Mentions', 'Rendez-vous']) assert.match(droite, new RegExp(`<span>${ligne}</span>`));
-  const etats = [...droite.matchAll(/aria-checked="(true|false)" aria-label="([^"]+)"/g)].filter((x) => x[2].includes(', ')).map((x) => `${x[2]}=${x[1]}`);
+await dit('rendu : un paquet — cartes fantômes, compteur, « Déplier » en place (aria-expanded), lignes en retrait de 16 px', () => {
+  const liste = [...HUIT, N('h3', J(28, 9, 0), { type: 'paiement', famille: 'argent', lue: true })];
+  const html = fil(vue({ notifications: liste, compteurs: modele.compteurs(liste) }));
+  assert.equal(compter(html, /class="sc-notif__ligne sc-notif__ligne--paquet"/g), 1);
+  const paquet = entre(html, 'sc-notif__ligne--paquet', '</li>');
+  assert.match(paquet, /aria-expanded="false"/);
+  assert.equal(compter(paquet, /class="sc-notif__fantome"/g), 2);
+  assert.match(paquet, /<b class="sc-notif__pile-compteur sc-nombre">2<\/b>/);
+  assert.match(paquet, />2 nouvelles de L’argent</);
+  assert.match(paquet, />Titre h1, et 1 autre</);
+  assert.match(paquet, />Hier<\/time>/);
+  assert.doesNotMatch(html, /data-ligne="h3"/, 'replié : ses lignes ne sont pas montées');
+  const deplie = fil(vue({ notifications: liste, compteurs: modele.compteurs(liste), depliesInitiaux: ['paquet:plus-tot:famille:argent'] }));
+  assert.match(deplie, /aria-expanded="true"/);
+  assert.equal(compter(deplie, /data-retrait="true"/g), 2);
+  const css = sansCommentaires(lire(`${DOSSIER}/notifications.css`));
+  assert.match(css, /\.sc-notif__ligne\[data-retrait='true'\] > \.sc-notif__corps-ligne \{[^}]*padding-left:\s*32px/, 'retrait de 16 px');
+});
+
+await dit('rendu : le niveau de bruit — trois crans en radios, « L’essentiel » coché, barres, « Silence 1 h », heures calmes', () => {
+  const d = droite(vue());
+  assert.equal(compter(d, /role="radiogroup"/g), 1);
+  assert.equal(compter(d, /class="sc-notif__cran"/g), 3);
+  assert.match(d, /role="radio" aria-checked="true" tabindex="0" class="sc-notif__cran"[^>]*>[\s\S]*?L’essentiel/);
+  for (const t of ['Tout, en direct', 'chaque événement, tout de suite', 'urgences, paiements et mentions', 'Urgences seulement', 'le reste attend le résumé de 8:00']) assert.match(d, new RegExp(`>${t}<`));
+  assert.equal(compter(d, /data-allumee="true"/g), 3 + 2 + 1);
+  assert.match(d, /aria-pressed="false"[^>]*>[\s\S]*?lucide-moon[\s\S]*?Silence 1\u00a0h/);
+  assert.match(d, />Heures calmes</);
+  assert.match(d, /<span class="sc-mono">20:00 → 08:00<\/span> · urgences seules/);
+  assert.equal(compter(d, /role="switch"/g), 1, 'un seul interrupteur : les heures calmes');
+  const silence = droite(vue({ reglages: { ...reglagesDefaut, silenceJusqua: new Date(MAINTENANT.getTime() + 52 * 60_000).toISOString() } }));
+  assert.match(silence, /aria-pressed="true"[^>]*aria-label="Arrêter le silence, encore 52 minutes"[^>]*>[\s\S]*?Silence · 52\u00a0min/);
+  assert.match(droite(vue({ reglages: { ...reglagesDefaut, niveau: 'urgences' } })), /role="radio" aria-checked="true" tabindex="0" class="sc-notif__cran"[^>]*>[\s\S]*?Urgences seulement/);
+});
+
+await dit('rendu : « Par type » — 15 cases à cocher aux valeurs de la maquette, en-têtes App / Mail / Mobile', () => {
+  const d = droite(vue());
+  for (const colonne of ['App', 'Mail', 'Mobile']) assert.match(d, new RegExp(`class="sc-notif__canal">${colonne}<`));
+  for (const ligne of ['Tickets urgents', 'Paiements', 'Sécurité', 'Mentions', 'Rendez-vous']) assert.match(d, new RegExp(`<span>${ligne}</span>`));
+  const etats = [...d.matchAll(/role="checkbox" aria-checked="(true|false)" aria-label="([^"]+)"/g)].map((x) => `${x[2]}=${x[1]}`);
   assert.equal(etats.length, 15);
   assert.ok(etats.includes('Paiements, Mobile=false'));
   assert.ok(etats.includes('Mentions, Mail=false'));
   assert.ok(etats.includes('Rendez-vous, Mail=false'));
   assert.ok(etats.includes('Tickets urgents, App=true'));
-  assert.match(droite, /De 20:00 à 08:00, seules les urgences passent\./);
-  assert.match(droite, /Un seul message à 8\u00a0h avec l’essentiel\./);
-  assert.match(droite, />Heures calmes</);
-  assert.match(droite, />Résumé du matin</);
-  assert.ok(entre(html, 'class="sc-notif__droite"', '</main>').indexOf('Que voulez-vous') < entre(html, 'class="sc-notif__droite"', '</main>').indexOf('Heures calmes'));
+  assert.equal(compter(d, /lucide-check/g), 12, 'une coche par case cochée');
 });
 
 await dit('rendu : la dernière case de la sécurité est verrouillée, avec son info-bulle ; un métier sans module n’a pas la ligne', () => {
   const seul = JSON.parse(JSON.stringify(reglagesDefaut));
   seul.canaux.securite = { app: true, mail: false, mobile: false };
   const html = vue({ reglages: seul });
-  assert.match(html, /<span class="sc-notif__cellule" title="Les alertes de sécurité restent actives"><button[^>]*aria-checked="true"[^>]*disabled=""/);
+  assert.match(html, /<span class="sc-notif__cellule" title="Les alertes de sécurité restent actives"><button[^>]*role="checkbox" aria-checked="true"[^>]*aria-disabled="true"/);
   assert.equal(compter(html, /title="Les alertes de sécurité restent actives"/g), 1);
-  assert.equal(compter(vue({ lignesMatrice: ['urgent', 'securite'] }), /role="switch"/g), 6 + 2);
+  assert.equal(compter(vue({ lignesMatrice: ['urgent', 'securite'] }), /role="checkbox"/g), 6);
   assert.doesNotMatch(vue({ lignesMatrice: ['urgent', 'securite'] }), /<span>Paiements<\/span>/);
 });
 
 await dit('rendu : la suggestion « Moins de bruit » (seul second bouton blanc), sinon la carte « Astuce » — jamais un vide', () => {
-  const sugg = vue({ suggestion: { categorie: 'rendez-vous', jours: 14 } });
+  const sugg = droite(vue({ suggestion: { categorie: 'rendez-vous', jours: 14 } }));
   assert.match(sugg, /Suggestion d’Ajmani/);
   assert.match(sugg, />Moins de bruit</);
-  assert.match(sugg, /Vous ignorez les notifications de rendez-vous depuis 14 jours\. Je peux les passer en résumé du matin\./);
+  assert.match(sugg, /Vous laissez les rendez-vous de côté depuis 2 semaines\. Je les range dans le résumé du matin\u00a0\?/);
   assert.match(sugg, />Passer en résumé</);
   assert.match(sugg, />Garder</);
   assert.match(sugg, /<svg[^>]*class="sc-etincelle/);
-  const astuce = vue();
+  assert.equal(compter(sugg, /data-variante="primaire"/g), 1);
+  assert.match(droite(vue({ suggestion: { categorie: 'paiement', jours: 30 } })), /les paiements de côté depuis 4 semaines/);
+  const astuce = droite(vue());
   assert.match(astuce, /class="sc-notif__carte sc-notif__astuce"/);
   assert.match(astuce, /<kbd class="sc-kbd">⌘ ⇧ L<\/kbd> marque tout comme lu\./);
   assert.doesNotMatch(astuce, /Suggestion d’Ajmani/);
-  assert.doesNotMatch(vue({ suggestion: { categorie: 'paiement', jours: 20 } }), /rendez-vous depuis/);
+  assert.equal(compter(vue({ suggestion: { categorie: 'rendez-vous', jours: 14 } }), /data-variante="primaire"/g), 2, 'page : « Ouvrir le ticket » + la suggestion, rien d’autre');
 });
 
 await dit('rendu : le message d’échec d’enregistrement avec « Réessayer »', () => {
@@ -718,56 +968,60 @@ await dit('rendu : le message d’échec d’enregistrement avec « Réessayer �
   assert.doesNotMatch(vue(), /Le réglage n’a pas pu/);
 });
 
-await dit('états : vide (Boîte à zéro), onglet vide, chargement (6 squelettes, onglets sans compteur), erreur, hors ligne, un seul élément', () => {
-  const vide = carteListe(vue({ notifications: [], compteurs: modele.compteurs([]) }));
+await dit('états : vide, filtre vide, chargement (squelettes de 46 px, puces sans compteur, réglages tout de suite), erreur, hors ligne, un seul élément', () => {
+  const vide = fil(vue({ notifications: [], compteurs: modele.compteurs([]) }));
+  assert.match(vide, /class="sc-bloc-etat"/, 'modèle 1 de H43');
   assert.match(vide, /Rien de nouveau/);
   assert.match(vide, /Vous êtes à jour\. Les prochaines notifications apparaîtront ici\./);
   assert.match(vide, />Régler mes notifications</);
   assert.equal(compter(vide, /class="sc-notif__ligne"/g), 0);
 
   const sansMention = HUIT.filter((n: any) => n.type !== 'mention');
-  const ongletVide = carteListe(vue({ notifications: sansMention, compteurs: modele.compteurs(sansMention), ongletInitial: 'mentions' }));
-  assert.match(ongletVide, /Personne ne vous a mentionné pour l’instant\./);
-  assert.match(ongletVide, />Voir toutes les notifications</);
-  assert.match(carteListe(vue({ notifications: HUIT.filter((n: any) => n.lue), compteurs: modele.compteurs(HUIT.filter((n: any) => n.lue)), ongletInitial: 'urgent' })), /Rien d’urgent pour l’instant\./);
+  const filtreVide = fil(vue({ notifications: sansMention, compteurs: modele.compteurs(sansMention), filtreInitial: 'mentions' }));
+  assert.match(filtreVide, /Personne ne vous a mentionné pour l’instant\./);
+  assert.match(filtreVide, />Voir toutes les notifications</);
+  assert.match(fil(vue({ notifications: HUIT.filter((n: any) => n.lue), compteurs: modele.compteurs(HUIT.filter((n: any) => n.lue)), filtreInitial: 'urgent' })), /Rien d’urgent pour l’instant\./);
 
   const charge = vue({ statut: 'chargement', notifications: [] });
-  assert.equal(compter(charge, /class="sc-notif__squelette-ligne"/g), 6);
+  assert.equal(compter(charge, /class="sc-notif__squelette-ligne"/g), 9);
   assert.match(charge, /role="status"[^>]*aria-busy="true"[^>]*aria-label="Chargement de vos notifications"|aria-busy="true"[^>]*role="status"/);
-  assert.equal(compter(charge, /sc-onglet__compteur/g), 0, 'les onglets sont visibles, sans compteur');
-  assert.equal(compter(charge, /role="tab"/g), 4);
-  assert.equal(compter(charge, /role="switch"/g), 0, 'cartes de droite en squelette');
-  assert.equal(compter(charge, /sc-notif__squelette-carte/g), 3);
+  assert.equal(compter(charge, /sc-puce__compteur/g), 0, 'les puces sont visibles, sans compteur');
+  assert.equal(compter(charge, /role="radio"/g), 4 + 3);
+  assert.equal(compter(charge, /role="checkbox"/g), 15, 'les réglages s’affichent tout de suite (locaux)');
+  assert.match(gauche(charge), /data-chargement="true"/, 'l’anneau en squelette : la piste seule');
+  assert.match(gauche(charge), /role="img" aria-label="Chargement de vos notifications"/);
+  assert.equal(compter(gauche(charge), /class="sc-notif__rayon"/g), 0);
 
   const erreur = vue({ statut: 'erreur', notifications: [] });
-  assert.match(carteListe(erreur), /role="alert"[\s\S]*Les notifications n’ont pas pu être chargées\.[\s\S]*Réessayer/);
-  assert.equal(compter(erreur, /role="switch"/g), 17, 'la colonne droite reste utilisable');
+  assert.match(fil(erreur), /role="alert"[\s\S]*Les notifications n’ont pas pu être chargées\.[\s\S]*Réessayer/);
+  assert.equal(compter(erreur, /role="checkbox"/g), 15, 'les réglages restent utilisables');
 
   const hors = vue({ enLigne: false, enAttente: 3 });
   assert.match(hors, /role="status"[^>]*>[\s\S]*Hors ligne, modifications en attente[\s\S]*3 actions en attente d’envoi/);
   assert.match(vue({ enLigne: false, enAttente: 1 }), /1 action en attente d’envoi/);
   assert.doesNotMatch(vue({ enLigne: false }), /en attente d’envoi/);
   assert.doesNotMatch(vue(), /Hors ligne/);
-  assert.equal(compter(hors, /class="sc-notif__ligne"/g), 8, 'hors ligne : la liste reste en lecture');
+  assert.equal(compter(fil(hors), /class="sc-notif__ligne"/g), 7, 'hors ligne : le fil reste en lecture');
 
-  const un = vue({ notifications: [HUIT[0]], compteurs: modele.compteurs([HUIT[0]]) });
+  const un = vue({ notifications: [HUIT[1]], compteurs: modele.compteurs([HUIT[1]]) });
   assert.match(un, /C’est tout pour le moment\./);
-  assert.match(un, /class="sc-notif__lien[^"]*"[^>]*>Réglages</);
-  assert.equal(compter(carteListe(un), /class="sc-notif__ligne"/g), 1);
+  assert.match(un, /class="sc-notif__lien"[^>]*>Réglages</);
+  assert.equal(compter(fil(un), /class="sc-notif__ligne"/g), 1);
   assert.doesNotMatch(vue(), /C’est tout pour le moment/);
 });
 
-await dit('états : liste longue — 50 lignes, « Afficher les plus anciennes », compteurs = totaux ; la liste défile dans la carte', () => {
-  const beaucoup = Array.from({ length: 80 }, (_, i) => N(`n${String(i).padStart(3, '0')}`, new Date(2026, 9, 29, 10, 59 - (i % 59), 0).toISOString()));
+await dit('états : liste longue — 50 lignes, « Afficher les plus anciennes · 30 », compteurs = totaux ; le fil défile dans sa carte', () => {
+  const beaucoup = Array.from({ length: 80 }, (_, i) => N(`n${String(i).padStart(3, '0')}`, new Date(2026, 9, 29, 10, 59 - (i % 59), 0).toISOString(), { module: `m${i}` }));
   const html = vue({ notifications: beaucoup, compteurs: modele.compteurs(beaucoup) });
-  assert.equal(compter(carteListe(html), /class="sc-notif__ligne"/g), 50);
-  assert.match(html, />Afficher les plus anciennes</);
-  assert.match(html, /<b class="sc-onglet__compteur"[^>]*>80<\/b>/);
+  assert.equal(compter(fil(html), /class="sc-notif__ligne"/g), 50);
+  assert.match(html, />Afficher les plus anciennes · 30</);
+  assert.match(html, /<b class="sc-puce__compteur"[^>]*>80<\/b>/);
   assert.doesNotMatch(vue(), /Afficher les plus anciennes/);
+  assert.match(vue({ limiteInitiale: 6 }), />Afficher les plus anciennes · 2</);
   const css = sansCommentaires(lire(`${DOSSIER}/notifications.css`));
   assert.match(css, /\.sc-notif__defilement \{[^}]*overflow-y:\s*auto/);
   assert.match(css, /\.sc-notif__groupe-titre \{[^}]*position:\s*sticky/);
-  assert.match(css, /\.sc-notif__carte-liste \{[^}]*overflow:\s*hidden/);
+  assert.match(css, /\.sc-notif__fil \{[^}]*overflow:\s*hidden/);
 });
 
 await dit('textes : fr et en ont les mêmes clés et paramètres, aucun point d’exclamation, apostrophes typographiques, espaces insécables', () => {
@@ -783,10 +1037,11 @@ await dit('textes : fr et en ont les mêmes clés et paramètres, aucun point d�
       assert.ok(!texte.includes("'"), `${langue} ${cle} : apostrophe droite`);
     }
     assert.doesNotMatch(fr[cle], /[A-Za-zÀ-ÿ0-9][?:](\s|$)| [?:]/, `fr ${cle} : espace insécable avant « ? » et « : »`);
-    assert.doesNotMatch(fr[cle], /«\s|[^\u00a0]»/, `fr ${cle} : guillemets`);
+    assert.doesNotMatch(fr[cle], /«(?!\u00a0)|[^\u00a0]»/, `fr ${cle} : guillemets (espace insécable à l’intérieur)`);
   }
-  assert.equal(fr['matrice.titre'], `Que voulez-vous recevoir${NBSP}?`);
+  assert.equal(fr['matrice.titre'], 'Par type');
   assert.equal(fr['toast.reportee'], `Reportée${NBSP}: {quand}`);
+  assert.equal(fr['page.ajmani'], `Demandez à Ajmani, par exemple${NBSP}: «${NBSP}reporte tout ce qui n’est pas urgent à demain${NBSP}»`);
 });
 
 /* ═════════════════════════════ la feuille de style ═════════════════════════════ */
@@ -795,35 +1050,52 @@ const css = lire(`${DOSSIER}/notifications.css`);
 const cssNu = sansCommentaires(css);
 const px = (nom: string): number => { const m = new RegExp(`${nom}:\\s*(\\d+(?:\\.\\d+)?)px`).exec(cssNu); assert.ok(m, `${nom} introuvable`); return Number(m?.[1]); };
 
-await dit('feuille : les cotes de la fiche (rubrique 3) — 400, 20, 14, 61, 38, 8, 32, 304 / 136 / 156, 43, 62, 31', () => {
+await dit('feuille : les cotes de la fiche v3 (rubrique 3) — volets 300 / 476 / 300 (écart 16), 337 + 313, 275 + 206 + 156, bas à y = 758', () => {
   const attendu: Record<string, number> = {
-    '--sc-notif-droite': 400, '--sc-notif-ecart': 20, '--sc-notif-ecart-droite': 14, '--sc-notif-liste-hauteur': 630, '--sc-notif-ligne': 61, '--sc-notif-tuile': 38,
-    '--sc-notif-tuile-rayon': 11, '--sc-notif-point': 8, '--sc-notif-groupe': 32, '--sc-notif-carte-matrice': 304, '--sc-notif-carte-reglages': 136,
-    '--sc-notif-carte-suggestion': 156, '--sc-notif-rangee': 43, '--sc-notif-colonne-canal': 62, '--sc-notif-bouton': 31,
+    '--sc-notif-volet': 300, '--sc-notif-ecart': 16, '--sc-notif-ecart-volet': 14, '--sc-notif-entete': 70, '--sc-notif-corps': 664, '--sc-notif-journee': 337,
+    '--sc-notif-bruit': 275, '--sc-notif-matrice': 206, '--sc-notif-suggestion': 156, '--sc-notif-filtres': 46, '--sc-notif-groupe': 30, '--sc-notif-ligne': 46,
+    '--sc-notif-pied': 35, '--sc-notif-tuile': 32, '--sc-notif-tuile-carte': 34, '--sc-notif-point': 7, '--sc-notif-heure': 40, '--sc-notif-rangee': 31,
+    '--sc-notif-colonne-canal': 38, '--sc-notif-bouton': 31, '--sc-notif-cible': 34,
   };
   for (const [nom, valeur] of Object.entries(attendu)) assert.equal(px(nom), valeur, nom);
-  // Le contenu va de x = 40 à x = 1148 (1108 px) : la carte liste mesure 1108 − 400 − 20 = 688 à 1440 px de large.
+  // Le contenu va de x = 40 à x = 1148 (1108 px) : le fil mesure 1108 − 2 × 300 − 2 × 16 = 476.
   const contenu = 1440 - 252 - 2 * 40;
-  assert.equal(contenu, 1108);
-  assert.equal(contenu - px('--sc-notif-droite') - px('--sc-notif-ecart'), 688);
-  assert.equal(px('--sc-notif-droite') + px('--sc-notif-ecart') + 688, contenu);
-  // Les trois cartes de droite et leurs écarts finissent à y = 96 + 304 + 14 + 136 + 14 + 156 = 720 ; la suggestion grandit jusqu'à 726.
-  assert.equal(96 + px('--sc-notif-carte-matrice') + 14 + px('--sc-notif-carte-reglages') + 14 + px('--sc-notif-carte-suggestion'), 720);
-  assert.equal(96 + px('--sc-notif-liste-hauteur'), 726);
-  assert.match(cssNu, /grid-template-columns:\s*minmax\(0, 1fr\) var\(--sc-notif-droite\)/);
-  assert.match(cssNu, /\.sc-notif__droite > \.sc-suggestion,\s*\.sc-notif__astuce \{[^}]*flex:\s*1/);
+  assert.equal(contenu - 2 * px('--sc-notif-volet') - 2 * px('--sc-notif-ecart'), 476);
+  // Les volets vont de y = 94 (24 + 70) à y = 758 ; à gauche 337 + 14 + 313, à droite 275 + 14 + 206 + 14 + 155.
+  assert.equal(24 + px('--sc-notif-entete'), 94);
+  assert.equal(94 + px('--sc-notif-corps'), 758);
+  assert.equal(px('--sc-notif-corps') - px('--sc-notif-journee') - px('--sc-notif-ecart-volet'), 313);
+  assert.ok(px('--sc-notif-corps') - px('--sc-notif-bruit') - px('--sc-notif-matrice') - 2 * px('--sc-notif-ecart-volet') >= px('--sc-notif-suggestion') - 1);
+  assert.match(cssNu, /grid-template-columns:\s*var\(--sc-notif-volet\) minmax\(0, 1fr\) var\(--sc-notif-volet\)/);
+  assert.match(cssNu, /grid-template-rows:\s*minmax\(0, 1fr\)/, 'les volets ne dépassent jamais la hauteur de la zone');
+  assert.match(cssNu, /\.sc-notif__volet--droit > \.sc-suggestion,\s*\.sc-notif__volet--droit > \.sc-notif__astuce \{[^}]*flex:\s*1/, 'la suggestion s’étire jusqu’au bas du fil');
+  assert.match(cssNu, /\.sc-notif__point-ajmani \{[^}]*flex:\s*1/);
   assert.match(cssNu, /\.sc-notif__ligne \{[^}]*height:\s*var\(--sc-notif-ligne\)/);
-  assert.match(cssNu, /\.sc-notif__tuile \{[^}]*width:\s*var\(--sc-notif-tuile\)[^}]*height:\s*var\(--sc-notif-tuile\)[^}]*border-radius:\s*var\(--sc-notif-tuile-rayon\)[^}]*13%/);
+  assert.match(cssNu, /\.sc-notif__tuile \{[^}]*width:\s*var\(--sc-notif-tuile\)[^}]*height:\s*var\(--sc-notif-tuile\)[^}]*13%/);
   assert.match(cssNu, /\.sc-notif__point \{[^}]*width:\s*var\(--sc-notif-point\)/);
   assert.match(cssNu, /\.sc-notif__matrice \{[^}]*repeat\(3, var\(--sc-notif-colonne-canal\)\)/);
-  assert.match(cssNu, /\.sc-notif__groupe-titre \{[^}]*font-size:\s*11px[^}]*letter-spacing:\s*0\.08em[^}]*text-transform:\s*uppercase/);
+  assert.match(cssNu, /\.sc-notif__case-boite \{[^}]*width:\s*26px[^}]*height:\s*22px[^}]*dashed/);
+  assert.match(cssNu, /\.sc-notif__groupe-titre \{[^}]*height:\s*var\(--sc-notif-groupe\)[^}]*font-size:\s*11px[^}]*letter-spacing:\s*0\.08em/);
+  assert.match(cssNu, /\.sc-notif__groupe-nom \{[^}]*text-transform:\s*uppercase/);
   assert.match(cssNu, /\.sc-notif__titre \{[^}]*font-size:\s*28px[^}]*font-weight:\s*600/);
-  assert.match(cssNu, /\.sc-notif__ligne-nom \{[^}]*font-size:\s*13\.5px[^}]*font-weight:\s*600/);
-  assert.match(cssNu, /\.sc-notif__detail \{[^}]*font-size:\s*12\.5px/);
-  assert.match(cssNu, /\.sc-notif__heure \{[^}]*font-size:\s*12px[^}]*tabular-nums/);
-  assert.match(cssNu, /@container \(max-width: 948px\)/, 'sous 1280 px de fenêtre, la colonne passe sous la liste');
+  assert.match(cssNu, /\.sc-notif__ligne-nom \{[^}]*font-size:\s*13px/);
+  assert.match(cssNu, /\.sc-notif__detail \{[^}]*font-size:\s*12px/);
+  assert.match(cssNu, /\.sc-notif__heure \{[^}]*min-width:\s*var\(--sc-notif-heure\)[^}]*font-size:\s*12px/);
+  assert.match(cssNu, /\.sc-notif__anneau-nombre \{[^}]*font-size:\s*34px/);
+  assert.match(cssNu, /\.sc-notif__rayon\[data-retenue='true'\] \{[^}]*stroke-dasharray/);
+  assert.match(cssNu, /\.sc-notif__carte-action\[data-urgente='true'\] \{[^}]*border-color:\s*var\(--sc-notif-bord-urgent\)/);
+  assert.match(cssNu, /--sc-notif-bord-urgent:\s*color-mix\(in srgb, var\(--socle-etat-critique\) 32%, transparent\)/);
+  assert.match(cssNu, /\.sc-notif__cran\[aria-checked='true'\] \{[^}]*border-color:\s*var\(--socle-bord-carte-active\)[^}]*background:\s*var\(--socle-lateral-sous-actif\)/, 'cran actif : fond #1f1f21, bord #3a3a3e');
+  assert.match(cssNu, /@container \(max-width: 948px\)/, 'sous 1280 px de fenêtre, les volets passent au-dessus et au-dessous du fil');
   assert.match(cssNu, /prefers-reduced-motion: reduce/);
   assert.match(cssNu, /180ms/);
+});
+
+await dit('feuille : aucun chiffre tabulaire sur la racine de la page (C11), seulement sur les nombres', () => {
+  const racinePage = /\.sc-notif \{([^}]*)\}/.exec(cssNu)?.[1] ?? '';
+  assert.doesNotMatch(racinePage, /tabular-nums/);
+  assert.doesNotMatch(cssNu, /tabular-nums/, 'les nombres passent par `.sc-nombre` et `.sc-mono` (noir.css)');
+  for (const f of ['VueNotifications.tsx', 'LigneNotification.tsx', 'AnneauJournee.tsx', 'PointAjmani.tsx']) assert.match(lire(`${DOSSIER}/${f}`), /sc-nombre|sc-mono/, f);
 });
 
 await dit('feuille : aucune couleur hexadécimale en dur, aucun jeton inconnu, aucune encre « discret » en texte, rien sous 10,5 px', () => {
@@ -831,16 +1103,16 @@ await dit('feuille : aucune couleur hexadécimale en dur, aucun jeton inconnu, a
   const noir = lire('src/socle/noir.css');
   const jetonsNoir = new Set([...noir.matchAll(/(--[\w-]+):/g)].map((m) => m[1]));
   const locaux = new Set([...cssNu.matchAll(/(--sc-notif-[\w-]+):/g)].map((m) => m[1]));
-  const locauxAutres = new Set(['--sc-notif-teinte']);
+  const locauxAutres = new Set(['--sc-notif-teinte', '--sc-v-c']);
   const connus = new Set([...jetonsNoir, ...locaux, ...locauxAutres]);
   for (const [, nom] of cssNu.matchAll(/var\((--[\w-]+)/g)) assert.ok(connus.has(nom), `jeton inconnu : ${nom}`);
   const j = jetons(noir);
   assert.ok(j.size > 50);
   for (const regle of cssNu.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const corps = regle[2];
-    assert.doesNotMatch(corps.replace(/border[\w-]*:[^;]*;|background[\w-]*:[^;]*;|outline[\w-]*:[^;]*;/g, ''), /(^|[;\s])color:\s*[^;]*(trait-discret|trait-tres-discret|77777c|5f5f64)/, `encre « discret » en texte : ${regle[1].trim()}`);
+    assert.doesNotMatch(corps.replace(/border[\w-]*:[^;]*;|background[\w-]*:[^;]*;|outline[\w-]*:[^;]*;|stroke[\w-]*:[^;]*;/g, ''), /(^|[;\s])color:\s*[^;]*(trait-discret|trait-tres-discret|77777c|5f5f64)/, `encre « discret » en texte : ${regle[1].trim()}`);
   }
-  assert.doesNotMatch(cssNu, /color:\s*var\(--socle-trait/);
+  assert.doesNotMatch(cssNu, /(^|[;\s{])color:\s*var\(--socle-trait/);
   for (const f of fichiersDuDossier.filter((x) => /\.tsx?$/.test(x))) assert.doesNotMatch(sansCommentaires(lire(f)), /trait-discret|trait-tres-discret|#77777c|#5f5f64|#777777|#5f5f5f/i, `${f} : encre « discret »`);
   for (const [, taille] of cssNu.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)) assert.ok(Number(taille) >= 10.5, `texte de ${taille} px`);
   for (const f of fichiersDuDossier.filter((x) => /\.tsx$/.test(x))) assert.doesNotMatch(sansCommentaires(lire(f)), /#[0-9a-fA-F]{6}\b|style=\{\{[^}]*(?:color|background):\s*['"]#/, `${f} : couleur en dur`);

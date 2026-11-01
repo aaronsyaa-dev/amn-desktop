@@ -55,6 +55,11 @@ export interface NotificationSource {
   icone: IconeNotification;
   /** Le module d'origine (clé de `src/data/spaces.ts`), ou `null` : toujours ouvert (sécurité). */
   module: string | null;
+  /**
+   * ISO. L'heure à laquelle la chose arrive, quand la notification en porte une (le début d'un rendez-vous) : c'est
+   * ce qui la fait passer dans « Maintenant » dans l'heure qui précède (rubrique 6). Absente : aucune échéance.
+   */
+  echeance?: string;
 }
 
 export interface NotificationBrute extends NotificationSource {
@@ -68,13 +73,23 @@ export interface Notification extends NotificationBrute {
 export type Onglet = 'tout' | 'non-lues' | 'mentions' | 'urgent';
 export const ONGLETS: readonly Onglet[] = ['tout', 'non-lues', 'mentions', 'urgent'];
 
-export type CleGroupe = 'aujourdhui' | 'hier' | 'semaine' | 'plus-tot';
-export const ORDRE_GROUPES: readonly CleGroupe[] = ['aujourdhui', 'hier', 'semaine', 'plus-tot'];
+/**
+ * Les trois groupes du fil (v3, rubrique 6) : « Maintenant » (ce qui se traite tout de suite : urgentes non lues, et
+ * ce qui arrive dans l'heure), « Aujourd'hui » (le reste du jour), « Plus tôt » (avant aujourd'hui, rangé en paquets).
+ */
+export type CleGroupe = 'maintenant' | 'aujourdhui' | 'plus-tot';
+export const ORDRE_GROUPES: readonly CleGroupe[] = ['maintenant', 'aujourdhui', 'plus-tot'];
+
+/** Le jour d'une date, vu d'aujourd'hui : il décide de l'heure affichée (« 10:12 », « Hier », « Mar. », « 25 oct. »). */
+export type CleJour = 'aujourdhui' | 'hier' | 'semaine' | 'plus-tot';
 
 export interface Groupe {
   cle: CleGroupe;
   notifications: Notification[];
 }
+
+/** « Maintenant » prend ce qui arrive dans l'heure (un rendez-vous à 11:00 dès 10:00). */
+export const FENETRE_MAINTENANT_MIN = 60;
 
 /** « Tout » garde les 30 derniers jours (rubrique 6), puis les notifications s'archivent. */
 export const RETENTION_JOURS = 30;
@@ -140,8 +155,8 @@ function lundiDeLaSemaine(d: Date): number {
   return numeroDeJour(d) - jour;
 }
 
-/** Dans quel groupe tombe une date : aujourd'hui, hier, plus tôt dans la semaine, ou avant. */
-export function groupeDe(iso: string, maintenant: Date): CleGroupe {
+/** Dans quel jour tombe une date : aujourd'hui, hier, plus tôt dans la semaine, ou avant. */
+export function jourDe(iso: string, maintenant: Date): CleJour {
   const quand = new Date(iso);
   const ecart = numeroDeJour(maintenant) - numeroDeJour(quand);
   if (ecart <= 0) return 'aujourdhui'; // le futur proche (horloge décalée) reste « aujourd'hui »
@@ -152,15 +167,27 @@ export function groupeDe(iso: string, maintenant: Date): CleGroupe {
 const MAJUSCULE = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /**
- * L'heure affichée à droite d'une ligne : « 10:12 » aujourd'hui et hier, l'abréviation du jour (« Mar. ») plus tôt
- * dans la semaine, le jour et le mois (« 12 oct. ») au-delà. Toujours formatée par `Intl`, jamais à la main.
+ * L'heure affichée à droite d'une ligne (v3) : « 10:12 » aujourd'hui, « Hier » la veille, l'abréviation du jour
+ * (« Mar. ») plus tôt dans la semaine, le jour et le mois (« 12 oct. ») au-delà. Toujours formatée par `Intl`, jamais
+ * à la main ; « Hier » vient des mots de la page (`hier`).
  */
-export function heureAffichee(iso: string, maintenant: Date, locale = 'fr-FR'): string {
+export function heureAffichee(iso: string, maintenant: Date, locale = 'fr-FR', hier = 'Hier'): string {
   const quand = new Date(iso);
-  const groupe = groupeDe(iso, maintenant);
-  if (groupe === 'aujourdhui' || groupe === 'hier') return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(quand);
-  if (groupe === 'semaine') return MAJUSCULE(new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(quand));
+  const jour = jourDe(iso, maintenant);
+  if (jour === 'aujourdhui') return heureHorloge(quand, locale);
+  if (jour === 'hier') return hier;
+  if (jour === 'semaine') return MAJUSCULE(new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(quand));
   return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(quand);
+}
+
+/** « 10:42 », « 08:02 » : l'heure à deux chiffres (anneau, cartes, point d'Ajmani). */
+export function heureHorloge(d: Date, locale = 'fr-FR'): string {
+  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
+}
+
+/** Vrai quand la date tombe le jour civil de `maintenant`. */
+export function estDuJour(iso: string, maintenant: Date): boolean {
+  return numeroDeJour(new Date(iso)) === numeroDeJour(maintenant);
 }
 
 /** Une heure sans zéro devant l'heure ronde de la matinée : « 9:00 », « 18:00 ». */
@@ -192,11 +219,29 @@ export function trier(notifications: readonly Notification[]): Notification[] {
   return [...notifications].sort(comparerNotifications);
 }
 
-/** Les groupes non vides, dans l'ordre Aujourd'hui, Hier, Cette semaine, Plus tôt, chacun trié. */
+/**
+ * « Maintenant » (rubrique 6) : les urgentes non traitées (non lues), et ce qui porte une échéance dans l'heure (de
+ * maintenant à + 60 min : le rendez-vous de 11:00 dès 10:00), lu ou non — il se traite tout de suite. Lue, une
+ * urgente rejoint son jour ; un rendez-vous commencé aussi.
+ */
+export function estMaintenant(n: Notification, maintenant: Date): boolean {
+  if (n.urgente && !n.lue) return true;
+  if (!n.echeance) return false;
+  const ecart = Date.parse(n.echeance) - maintenant.getTime();
+  return Number.isFinite(ecart) && ecart >= 0 && ecart <= FENETRE_MAINTENANT_MIN * 60_000;
+}
+
+/** Le groupe d'une notification : Maintenant, Aujourd'hui (le reste du jour), Plus tôt (avant aujourd'hui). */
+export function groupeDe(n: Notification, maintenant: Date): CleGroupe {
+  if (estMaintenant(n, maintenant)) return 'maintenant';
+  return jourDe(n.date, maintenant) === 'aujourdhui' ? 'aujourdhui' : 'plus-tot';
+}
+
+/** Les groupes non vides, dans l'ordre Maintenant, Aujourd'hui, Plus tôt, chacun trié (non lues d'abord). */
 export function grouper(notifications: readonly Notification[], maintenant: Date): Groupe[] {
   const parGroupe = new Map<CleGroupe, Notification[]>();
   for (const n of notifications) {
-    const cle = groupeDe(n.date, maintenant);
+    const cle = groupeDe(n, maintenant);
     const liste = parGroupe.get(cle);
     if (liste) liste.push(n);
     else parGroupe.set(cle, [n]);
@@ -205,6 +250,90 @@ export function grouper(notifications: readonly Notification[], maintenant: Date
     const liste = parGroupe.get(cle);
     return liste ? [{ cle, notifications: trier(liste) }] : [];
   });
+}
+
+/* ── Les paquets ─────────────────────────────────────────────────────────── */
+
+/** Une ligne du fil : une notification seule, ou un paquet (au moins deux de la même clé, en une ligne). */
+export type ElementFil =
+  | { genre: 'seule'; id: string; notification: Notification }
+  | {
+      genre: 'paquet';
+      id: string;
+      /** `famille` : le paquet de « Plus tôt » réunit une famille ; `type` : celui d'« Aujourd'hui » réunit une source et un type. */
+      par: 'famille' | 'type';
+      /** Triées comme le fil : la première est la plus récente des non lues, ou la plus récente. */
+      notifications: Notification[];
+      lue: boolean;
+      famille: Famille;
+      type: TypeNotification;
+      icone: IconeNotification;
+    };
+
+export interface GroupeFil {
+  cle: CleGroupe;
+  elements: ElementFil[];
+  /** Combien de notifications du groupe ne sont pas lues (le compteur de « Aujourd'hui »). */
+  nonLues: number;
+}
+
+/**
+ * La clé de regroupement d'une notification dans son groupe (rubrique 6, proposition) : rien dans « Maintenant »
+ * (chaque geste reste visible) ; la source et le type dans « Aujourd'hui » ; la famille dans « Plus tôt ».
+ */
+export function cleDePaquet(n: Notification, groupe: CleGroupe): string | null {
+  if (groupe === 'maintenant') return null;
+  if (groupe === 'plus-tot') return `famille:${n.famille}`;
+  return `type:${n.module ?? n.famille}:${n.type}`;
+}
+
+/** Le rang d'un élément : 0 urgente non lue, 1 non lue, 2 lue (un paquet prend celui de sa meilleure notification). */
+function rangElement(e: ElementFil): number {
+  return e.genre === 'seule' ? rang(e.notification) : Math.min(...e.notifications.map(rang));
+}
+
+function dateElement(e: ElementFil): number {
+  return e.genre === 'seule' ? Date.parse(e.notification.date) : Math.max(...e.notifications.map((n) => Date.parse(n.date)));
+}
+
+/**
+ * Range un groupe en lignes : au moins deux notifications de même clé font un paquet ; le tri reste celui du fil
+ * (non lues d'abord, puis l'heure décroissante), un paquet prenant la place de sa meilleure notification.
+ */
+export function enPaquets(groupe: Groupe): GroupeFil {
+  const parCle = new Map<string, Notification[]>();
+  for (const n of groupe.notifications) {
+    const cle = cleDePaquet(n, groupe.cle);
+    if (cle === null) continue;
+    const liste = parCle.get(cle);
+    if (liste) liste.push(n);
+    else parCle.set(cle, [n]);
+  }
+  const elements: ElementFil[] = [];
+  const faits = new Set<string>();
+  for (const n of groupe.notifications) {
+    const cle = cleDePaquet(n, groupe.cle);
+    const liste = cle === null ? undefined : parCle.get(cle);
+    if (!cle || !liste || liste.length < 2) {
+      elements.push({ genre: 'seule', id: n.id, notification: n });
+      continue;
+    }
+    if (faits.has(cle)) continue;
+    faits.add(cle);
+    const notifications = trier(liste);
+    elements.push({
+      genre: 'paquet',
+      id: `paquet:${groupe.cle}:${cle}`,
+      par: groupe.cle === 'plus-tot' ? 'famille' : 'type',
+      notifications,
+      lue: notifications.every((x) => x.lue),
+      famille: n.famille,
+      type: n.type,
+      icone: n.icone,
+    });
+  }
+  elements.sort((a, b) => rangElement(a) - rangElement(b) || dateElement(b) - dateElement(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return { cle: groupe.cle, elements, nonLues: groupe.notifications.filter((x) => !x.lue).length };
 }
 
 /** Garde les `max` premières lignes (dans l'ordre d'affichage) et dit combien restent. */
@@ -268,10 +397,79 @@ export function pastilleCloche(nonLues: number): string | null {
   return nonLues > 99 ? '99+' : String(nonLues);
 }
 
-/** Le sous-titre de la page : la clé de mots et son paramètre (les pluriels français vivent dans `i18n.ts`). */
-export function sousTitre(nonLues: number): { cle: 'sous.zero' | 'sous.un' | 'sous.n'; params: { n: number } } {
-  if (nonLues <= 0) return { cle: 'sous.zero', params: { n: 0 } };
-  return { cle: nonLues === 1 ? 'sous.un' : 'sous.n', params: { n: nonLues } };
+/** Le sous-titre de la page : la clé de mots et ses paramètres (les pluriels français vivent dans `i18n.ts`). */
+export type CleSousTitre = 'sous.zero' | 'sous.un' | 'sous.n' | 'sous.un.urgente' | 'sous.n.urgente' | 'sous.n.urgentes';
+
+/**
+ * « {non lues} nouvelles, dont {urgentes} urgente(s) · l'important d'abord, le reste attend » (rubrique 6) ;
+ * sans urgence, la seconde moitié seulement ; à zéro, « Boîte à zéro ».
+ */
+export function sousTitre(nonLues: number, urgentes = 0): { cle: CleSousTitre; params: { n: number; u: number } } {
+  const u = Math.max(0, Math.min(urgentes, nonLues));
+  if (nonLues <= 0) return { cle: 'sous.zero', params: { n: 0, u: 0 } };
+  if (u === 0) return { cle: nonLues === 1 ? 'sous.un' : 'sous.n', params: { n: nonLues, u } };
+  if (nonLues === 1) return { cle: 'sous.un.urgente', params: { n: 1, u: 1 } };
+  return { cle: u === 1 ? 'sous.n.urgente' : 'sous.n.urgentes', params: { n: nonLues, u } };
+}
+
+/* ── La journée (l'anneau de 24 h) et le point d'Ajmani ──────────────────── */
+
+/** Les minutes depuis minuit (heure locale) d'une date. */
+export function minutesDuJour(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+export interface Journee {
+  /** Les notifications du jour, dans l'ordre des heures (un rayon chacune). */
+  notifications: Notification[];
+  /** « 4 à voir » : les non lues du jour. */
+  aVoir: number;
+  /** « sur 9 aujourd'hui » : toutes celles du jour, lues comprises. */
+  total: number;
+}
+
+/** Ce que l'anneau dit de la journée : un rayon par notification du jour, « à voir » sur le total du jour. */
+export function journee(notifications: readonly Notification[], maintenant: Date): Journee {
+  const duJour = notifications.filter((n) => estDuJour(n.date, maintenant)).sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  return { notifications: duJour, aVoir: duJour.filter((n) => !n.lue).length, total: duJour.length };
+}
+
+/** L'importance d'un rayon : sa longueur (24 pour l'urgente, 15 pour une non lue, 11 pour une lue). */
+export function importanceDe(n: Notification): 'urgente' | 'non-lue' | 'lue' {
+  if (n.urgente && !n.lue) return 'urgente';
+  return n.lue ? 'lue' : 'non-lue';
+}
+
+/** Les quatre catégories que le point d'Ajmani résume, dans l'ordre où il les dit (la cinquième, si place). */
+export const CATEGORIES_DU_POINT = ['urgent', 'paiement', 'securite', 'rendez-vous', 'mention'] as const;
+export type CategorieDuPoint = (typeof CATEGORIES_DU_POINT)[number];
+export const LIGNES_DU_POINT = 4;
+
+export interface LignePoint {
+  categorie: CategorieDuPoint;
+  /** Combien de notifications du jour la ligne résume. */
+  nombre: number;
+  /** Le titre de la plus récente : le fait, tel que le module l'a écrit (jamais réécrit, jamais inventé). */
+  titre: string;
+  famille: Famille;
+}
+
+/**
+ * « Le point d'Ajmani » (rubrique 6) : au plus quatre phrases, une par catégorie importante du jour, faites des titres
+ * que les modules ont écrits. « 1 urgence » compte les urgentes non lues ; les autres lignes comptent les notifications
+ * du jour de leur catégorie (une urgente non lue n'est dite qu'une fois). Rien d'important : aucune ligne.
+ */
+export function pointDuJour(notifications: readonly Notification[], maintenant: Date): LignePoint[] {
+  const duJour = notifications.filter((n) => estDuJour(n.date, maintenant));
+  const lignes: LignePoint[] = [];
+  for (const categorie of CATEGORIES_DU_POINT) {
+    if (lignes.length >= LIGNES_DU_POINT) break;
+    const propres = duJour.filter((n) => (categorie === 'urgent' ? n.urgente && !n.lue : !(n.urgente && !n.lue) && categorieDe(n.type) === categorie));
+    if (propres.length === 0) continue;
+    const plusRecente = [...propres].sort((a, b) => Date.parse(b.date) - Date.parse(a.date))[0];
+    lignes.push({ categorie, nombre: propres.length, titre: plusRecente.titre, famille: plusRecente.famille });
+  }
+  return lignes;
 }
 
 /* ── Report ──────────────────────────────────────────────────────────────── */

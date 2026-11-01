@@ -16,7 +16,34 @@ import { creerChargementDiffere, type ChargementDiffere, type EtatChargementDiff
  * affiché, et après 10 s la légende avoue que c'est long et propose « Réessayer ». Le squelette est `aria-hidden` ;
  * c'est la région `role="status"` (la légende) que les lecteurs d'écran annoncent, une seule fois.
  */
-export function SqueletteLignes({ lignes = 4 }: { lignes?: number }) {
+/** Les longueurs des barres d'une ligne compacte (v3) : elles varient d'une ligne à l'autre, comme un vrai contenu. */
+const BARRES_COMPACTES: ReadonlyArray<readonly [number, number]> = [
+  [177, 104],
+  [141, 86],
+  [159, 122],
+];
+
+export function SqueletteLignes({ lignes = 4, compact = false }: { lignes?: number; compact?: boolean }) {
+  if (compact) {
+    // v3 (H43 en situation) : lignes de 31 px séparées d'un filet — carré 22, deux barres, pastille 54 × 9.
+    return (
+      <div aria-hidden className="sc-squelette-lignes" data-compact="true">
+        {Array.from({ length: lignes }, (_, i) => {
+          const [longue, courte] = BARRES_COMPACTES[i % BARRES_COMPACTES.length];
+          return (
+            <div key={i} className="sc-squelette-lignes__ligne">
+              <Squelette largeur={22} hauteur={22} rayon={7} />
+              <span className="sc-squelette-lignes__textes">
+                <Squelette largeur={longue} hauteur={8} rayon="99px" ligne />
+                <Squelette largeur={courte} hauteur={7} rayon="99px" ligne />
+              </span>
+              <Squelette largeur={54} hauteur={9} rayon="99px" ligne />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div aria-hidden className="sc-squelette-lignes">
       {Array.from({ length: lignes }, (_, i) => (

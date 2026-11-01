@@ -24,7 +24,7 @@
 import type { AttentionKind, AttentionSeverity } from '../../../lib/attention';
 import type { Famille } from '../../../socle/familles';
 import type { Moment } from '../../../socle/moments';
-import { iconeDe, heureCourte, type NotificationBrute, type NotificationSource, type TypeNotification } from './modele';
+import { iconeDe, heureHorloge, type NotificationBrute, type NotificationSource, type TypeNotification } from './modele';
 import type { Traduire } from './i18n';
 
 /** Une empreinte courte et stable (FNV-1a, 32 bits) : de quoi nommer sans révéler. */
@@ -210,13 +210,16 @@ export function rendezVousVersNotifications(rdvs: readonly RendezVousLu[], maint
         : minutes === 1
           ? t(nom ? 'rdv.dans.un' : 'rdv.sansNom.dans.un', { nom })
           : t(nom ? 'rdv.dans' : 'rdv.sansNom.dans', { nom, n: minutes });
-    const jour = MAJUSCULE(new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(debut));
+    // « 11:00, salle clients » (v3) ; le jour n'est dit que si le rendez-vous tombe demain (juste après minuit).
+    const memeJour = debut.toDateString() === maintenant.toDateString();
+    const jour = memeJour ? '' : `${MAJUSCULE(new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(debut))} `;
     const lieu = r.location.trim();
     out.push({
       id: `rdv:${r.id}`,
       type: 'rendez-vous',
       titre,
-      detail: `${jour} ${heureCourte(debut)}${lieu ? `, ${lieu}` : ''}`,
+      detail: `${jour}${heureHorloge(debut, locale)}${lieu ? `, ${lieu}` : ''}`,
+      echeance: debut.toISOString(),
       vers: { route: '/agenda' },
       urgente: false,
       famille: 'jour',
@@ -271,6 +274,7 @@ export function momentVersNotification(moment: Pick<Moment, 'type' | 'quand'> & 
         titre: minutes === 1 ? t('evt.rdv.titre.un') : t('evt.rdv.titre', { n: minutes }),
         detail: t('evt.rdv.detail'),
         vers: { route: '/agenda' },
+        echeance: new Date(moment.quand + minutes * 60_000).toISOString(),
         urgente: false,
       };
     }

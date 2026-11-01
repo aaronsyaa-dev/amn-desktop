@@ -13,15 +13,17 @@
  *     compte) mais rien ne les lit : il n'existe aucun émetteur d'e-mail ni de notification mobile branché sur
  *     ces choix. `NotificationPrefs` (`src/shared/api.ts`), l'ancien réglage de l'application, est un booléen par
  *     type SANS canal : il n'est ni lu ni modifié ici.
- *   · Les heures calmes et le résumé du matin sont enregistrés, sans effet : rien n'envoie de résumé à 8 h, et la
- *     liste de la page garde toutes ses lignes à toute heure (elle est un registre, pas un canal d'envoi).
+ *   · Les heures calmes, le NIVEAU DE BRUIT (trois crans, v3), « Silence 1 h » et le résumé du matin sont
+ *     enregistrés ; leur seul effet est de dire quelles notifications sont RETENUES (`estRetenue`) : l'anneau de la
+ *     journée les dessine en pointillé. Rien n'envoie de résumé à 8 h, et la liste de la page garde toutes ses
+ *     lignes à toute heure (elle est un registre, pas un canal d'envoi).
  *   · La sécurité garde au moins un canal actif (la dernière case ne se désactive pas) ; en plus, la liste de la page
  *     n'est jamais filtrée pour elle — tant que Mail et Mobile ne partent pas, masquer « App » rendrait l'alerte muette.
  *
  * Stockage : local (`amn.notifications.reglages.<adresse>`) et, en essai, la préférence distante du compte
  * (`bridge().remote.prefs`, clé `notifications`). Aucun secret.
  */
-import { CATEGORIES_MATRICE, type CategorieMatrice, type CategorieReglage } from './modele';
+import { CATEGORIES_MATRICE, categorieDe, minutesDuJour, type CategorieMatrice, type CategorieReglage, type Notification } from './modele';
 
 export type Canal = 'app' | 'mail' | 'mobile';
 export const CANAUX: readonly Canal[] = ['app', 'mail', 'mobile'];
@@ -30,8 +32,20 @@ export const VERSION_REGLAGES = 1;
 export const CLE_DISTANTE = 'notifications';
 export const cleLocaleReglages = (email: string): string => `amn.notifications.reglages.${email || 'anonyme'}`;
 
+/**
+ * Le niveau de bruit (v3, rubrique 6) : « Tout, en direct » ; « L'essentiel » (urgences, paiements et mentions en
+ * direct, le reste retenu) ; « Urgences seulement » (tout le reste retenu pour le résumé du matin).
+ */
+export type NiveauBruit = 'tout' | 'essentiel' | 'urgences';
+export const NIVEAUX_BRUIT: readonly NiveauBruit[] = ['tout', 'essentiel', 'urgences'];
+/** « Silence 1 h » coupe tout sauf les urgences pendant une heure. */
+export const SILENCE_MS = 3_600_000;
+
 export interface ReglagesNotifications {
   v: typeof VERSION_REGLAGES;
+  niveau: NiveauBruit;
+  /** ISO : la fin d'un « Silence 1 h » en cours, ou `null`. */
+  silenceJusqua: string | null;
   canaux: Record<CategorieMatrice, Record<Canal, boolean>>;
   heuresCalmes: { actif: boolean; de: string; a: string };
   resume: { actif: boolean; heure: string };
@@ -43,6 +57,8 @@ export interface ReglagesNotifications {
 export function reglagesParDefaut(): ReglagesNotifications {
   return {
     v: VERSION_REGLAGES,
+    niveau: 'essentiel',
+    silenceJusqua: null,
     canaux: {
       urgent: { app: true, mail: true, mobile: true },
       paiement: { app: true, mail: true, mobile: false },
@@ -93,6 +109,8 @@ export function normaliserReglages(brut: unknown): ReglagesNotifications {
   const resume = (r.resume ?? {}) as Record<string, unknown>;
   return garantirSecurite({
     v: VERSION_REGLAGES,
+    niveau: (NIVEAUX_BRUIT as readonly unknown[]).includes(r.niveau) ? (r.niveau as NiveauBruit) : d.niveau,
+    silenceJusqua: typeof r.silenceJusqua === 'string' && !Number.isNaN(Date.parse(r.silenceJusqua)) ? r.silenceJusqua : null,
     canaux,
     heuresCalmes: { actif: bool(calmes.actif, d.heuresCalmes.actif), de: estHeure(calmes.de) ? calmes.de : d.heuresCalmes.de, a: estHeure(calmes.a) ? calmes.a : d.heuresCalmes.a },
     resume: { actif: bool(resume.actif, d.resume.actif), heure: estHeure(resume.heure) ? resume.heure : d.resume.heure },
@@ -109,6 +127,9 @@ export type CheminReglage =
   | 'heuresCalmes.de'
   | 'heuresCalmes.a'
   | 'resume.actif'
+  | 'niveau'
+  /** La fin du silence (ISO), ou `''` pour l'arrêter. */
+  | 'silence'
   | `enResume.${CategorieMatrice}`;
 
 export interface ChangementReglage {
@@ -125,6 +146,10 @@ export function lireReglage(r: ReglagesNotifications, chemin: CheminReglage): bo
       return r.heuresCalmes[a as 'actif' | 'de' | 'a'];
     case 'resume':
       return r.resume.actif;
+    case 'niveau':
+      return r.niveau;
+    case 'silence':
+      return r.silenceJusqua ?? '';
     default:
       return r.enResume.includes(a as CategorieMatrice);
   }
@@ -142,6 +167,10 @@ export function appliquerChangement(r: ReglagesNotifications, ch: ChangementRegl
       return { ...r, heuresCalmes: { ...r.heuresCalmes, [a]: ch.valeur } };
     case 'resume':
       return { ...r, resume: { ...r.resume, actif: ch.valeur === true } };
+    case 'niveau':
+      return (NIVEAUX_BRUIT as readonly unknown[]).includes(ch.valeur) ? { ...r, niveau: ch.valeur as NiveauBruit } : r;
+    case 'silence':
+      return { ...r, silenceJusqua: typeof ch.valeur === 'string' && ch.valeur && !Number.isNaN(Date.parse(ch.valeur)) ? ch.valeur : null };
     default: {
       const categorie = a as CategorieMatrice;
       const sans = r.enResume.filter((c) => c !== categorie);
@@ -180,6 +209,52 @@ export function changementsPasserEnResume(categorie: CategorieMatrice): Changeme
 /** Le canal « App » de cette ligne est-il actif ? « Activité de l'équipe » n'a pas de ligne : App seulement, toujours actif. */
 export function appActif(r: ReglagesNotifications, categorie: CategorieReglage): boolean {
   return categorie === 'activite' ? true : r.canaux[categorie].app;
+}
+
+/* ── Ce qui est retenu (l'anneau de la journée, rubrique 6) ───────────────── */
+
+const enMinutes = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/** La minute `m` (depuis minuit) tombe-t-elle dans les heures calmes ? La plage peut passer minuit (20:00 → 08:00). */
+export function dansHeuresCalmes(m: number, de: string, a: string): boolean {
+  const debut = enMinutes(de);
+  const fin = enMinutes(a);
+  if (debut === fin) return false;
+  return debut < fin ? m >= debut && m < fin : m >= debut || m < fin;
+}
+
+/** Le silence en cours : sa fin, ou `null` (aucun, ou déjà fini). */
+export function silenceEnCours(r: ReglagesNotifications, maintenant: Date): Date | null {
+  if (!r.silenceJusqua) return null;
+  const fin = new Date(r.silenceJusqua);
+  return fin.getTime() > maintenant.getTime() ? fin : null;
+}
+
+/** Les catégories qui passent toujours : les urgences (tickets urgents, sécurité) ne sont jamais retenues. */
+const PASSE_TOUJOURS: readonly CategorieReglage[] = ['urgent', 'securite'];
+/** « L'essentiel » laisse passer en plus les paiements et les mentions. */
+const PASSE_ESSENTIEL: readonly CategorieReglage[] = ['paiement', 'mention'];
+
+/**
+ * La notification a-t-elle été RETENUE (elle attend le résumé du matin au lieu de passer en direct) ? Par les heures
+ * calmes à l'heure où elle est arrivée, par un « Silence 1 h » qui la couvrait, ou par le niveau de bruit. Les
+ * urgences passent toujours. Calculé avec les réglages d'aujourd'hui (on ne garde pas l'historique des réglages).
+ */
+export function estRetenue(n: Notification, r: ReglagesNotifications): boolean {
+  const categorie = categorieDe(n.type);
+  if (n.urgente || PASSE_TOUJOURS.includes(categorie)) return false;
+  const quand = new Date(n.date);
+  if (r.silenceJusqua) {
+    const fin = Date.parse(r.silenceJusqua);
+    if (quand.getTime() <= fin && quand.getTime() >= fin - SILENCE_MS) return true;
+  }
+  if (r.heuresCalmes.actif && dansHeuresCalmes(minutesDuJour(quand), r.heuresCalmes.de, r.heuresCalmes.a)) return true;
+  if (r.niveau === 'urgences') return true;
+  if (r.niveau === 'essentiel') return !PASSE_ESSENTIEL.includes(categorie);
+  return false;
 }
 
 /* ── Les types affichés selon les modules ouverts ────────────────────────── */

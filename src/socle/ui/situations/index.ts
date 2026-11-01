@@ -4,6 +4,11 @@
  * Mode d'emploi : docs/refonte-socle.md.
  *
  *   import { EtatVideInvitation, EtatChargement, DialogueConfirmation, FournisseurToasts, useToastsSocle } from '../socle/ui';
+ *
+ * Les pièces « en situation » de la v3 (`EnSituation.tsx` : bandeau hors ligne, élément en attente, bandeau de
+ * collaboration, curseur d'une autre personne, pied de fusion, dernière valeur connue, porte Ajmani, chiffres en
+ * squelette) ne sont PAS encore réexportées ici : tout composant exporté par l'index du socle doit figurer sur
+ * /dev/socle (`check:systeme-demo`). On les importe par leur chemin, `…/socle/ui/situations/EnSituation`.
  */
 export {
   BlocEtat,
@@ -13,6 +18,7 @@ export {
   EtatAucunResultat,
   EtatErreurChargement,
   type BlocEtatProps,
+  type TailleEtat,
   type TonEtat,
   type EtatVideInvitationProps,
   type EtatHorsConnexionProps,
