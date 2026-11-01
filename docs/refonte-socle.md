@@ -216,3 +216,7 @@ la logique du réglage. `check:calques` vérifie la pile qu'utilise la Modale.
 ## Mise à jour — LOT-00 Système et démarrage
 
 Nouveaux groupes de briques dans `src/socle/ui/` (tous réexportés par `index.ts`) : `controles/`, `situations/`, `graphiques/`, `archetypes/`. Les mots fr/en vivent par écran (`definirMots`, `src/socle/mots.ts`). La page de démonstration interne `/dev/socle` (développement seulement) montre chaque brique. Écrans système : `src/refonte/systeme/`. Liste et chemins : section « LOT-00 » de [`refonte/STATUT.md`](refonte/STATUT.md).
+
+## Mise à jour — v3 (2026-11-01)
+
+Couche de mouvement commune (`src/socle/mouvement.css`, attribut `data-mvt`), police monospace (`--socle-police-mono`, `.sc-mono`), composants vivants (`src/socle/ui/vivant/` : `LiveDot`, `Caret`, `Severity`, `FilterChips`, `Gauge`, `HeatCell`, `FlowLine`, `InlineSuggestion`), coquille v3 (`usePageCoquille`). Aperçus de capture : `scripts/apercu/`. Détail et chemins : section « LOT-00 v3 » de [`refonte/STATUT.md`](refonte/STATUT.md).
