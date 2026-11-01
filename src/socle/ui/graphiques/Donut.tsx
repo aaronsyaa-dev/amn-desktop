@@ -18,8 +18,9 @@ import { couleurTon, type TonGraphique } from './tons';
  *   un seul segment non nul        → l'anneau entier, sans écart ;
  *   valeur négative ou non finie   → comptée pour zéro (rien à dessiner, la légende la dit).
  *
- * L'entrée est un tracé de 400 ms, supprimé par `prefers-reduced-motion` et
- * par Mouvement « aucun ».
+ * L'entrée vient de la couche de mouvement commune (§0.2) : chaque segment se trace
+ * depuis 0, comme un anneau (1,1 s, départ à 250 ms) ; supprimée par `prefers-reduced-motion`,
+ * « réduit » et « aucun ».
  */
 export interface SegmentDonut {
   libelle: string;
@@ -70,7 +71,7 @@ export function Donut({ segments, libelle, taille = 116, epaisseur = 14, formate
           height={taille}
           focusable="false"
           className="sc-g__svg"
-          style={{ '--sc-g-tour': tour } as React.CSSProperties}
+          style={{ '--sc-mvt-tour': tour } as React.CSSProperties}
         >
           {vide && <circle className="sc-g__piste" cx={c} cy={c} r={rayon} strokeWidth={epaisseur} />}
           {!vide &&
@@ -79,6 +80,7 @@ export function Donut({ segments, libelle, taille = 116, epaisseur = 14, formate
                 <circle
                   key={i}
                   className="sc-g__segment"
+                  data-mvt="arc"
                   data-ton={s.ton}
                   cx={c}
                   cy={c}

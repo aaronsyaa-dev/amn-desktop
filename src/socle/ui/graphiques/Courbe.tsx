@@ -35,8 +35,9 @@ import { couleurTon, type TonGraphique } from './tons';
  * que `interactif` n'est pas coupé. La couleur ne porte jamais seule : une
  * seconde série a sa légende (trait plein / pointillé + nom).
  *
- * Animation d'entrée : 400 ms, en CSS (`graphiques.css`) ; `prefers-reduced-motion`
- * et le réglage Mouvement « aucun » la suppriment.
+ * Animation d'entrée : la couche de mouvement commune (`src/socle/mouvement.css`, §0.2) — tracé
+ * de la ligne en 1,3 s, puis l'aire en fondu, le point final en fondu à 1,2 s. `prefers-reduced-motion`
+ * et le réglage Mouvement « aucun » la suppriment ; « réduit » n'en garde que les fondus courts.
  */
 export interface PointGraphique {
   /** L'abscisse, dite telle quelle : « mars », « 12 oct. »… */
@@ -181,10 +182,10 @@ export function Courbe({
               {lignes[i].etiquette}
             </text>
           ))}
-          {aire && <path className="sc-g__aire" d={aire} fill={`url(#${idDegrade})`} />}
-          {aSeconde && <path className="sc-g__ligne2" d={cheminLigne(points2)} />}
-          {n > 1 && <path className="sc-g__ligne" d={cheminLigne(points)} pathLength={1} />}
-          <circle className="sc-g__fin" cx={points[n - 1][0]} cy={points[n - 1][1]} r={RAYON_FIN} />
+          {aire && <path className="sc-g__aire" d={aire} fill={`url(#${idDegrade})`} data-mvt="aire" />}
+          {aSeconde && <path className="sc-g__ligne2" d={cheminLigne(points2)} data-mvt="aire" />}
+          {n > 1 && <path className="sc-g__ligne" d={cheminLigne(points)} pathLength={1} data-mvt="trace" />}
+          <circle className="sc-g__fin" cx={points[n - 1][0]} cy={points[n - 1][1]} r={RAYON_FIN} data-mvt="point-final" />
           {iActif !== null && (
             <g className="sc-g__actif">
               <line className="sc-g__repere" x1={xs[iActif]} x2={xs[iActif]} y1={MARGE_HAUT} y2={yBas} />

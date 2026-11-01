@@ -110,20 +110,20 @@ const GROUPES: Record<string, string[]> = {
 };
 
 await dit('une section par groupe du socle, chacune avec titre, description et liste des états ; l’ordre est celui du sommaire', () => {
-  assert.equal(R.SECTIONS.length, 15);
+  assert.equal(R.SECTIONS.length, 16);
   const trouvees = [...html.matchAll(/<section id="sd-([a-z]+)" data-section="([a-z]+)" aria-labelledby="sd-([a-z]+)-titre" class="sd-section">/g)];
   assert.deepEqual(trouvees.map((m) => m[1]), [...R.SECTIONS], 'sections absentes ou dans le désordre');
   for (const m of trouvees) assert.ok(m[1] === m[2] && m[2] === m[3], `identifiants incohérents pour ${m[1]}`);
-  assert.equal(compter(html, /<h2 id="sd-[a-z]+-titre" class="sd-section__titre">[^<]+<\/h2>/g), 15, 'un titre par section');
-  assert.equal(compter(html, /<p class="sd-section__desc">[^<]{20,}<\/p>/g), 15, 'une description par section');
-  assert.equal(compter(html, /<p class="sd-section__etats"><span class="sd-section__etats-etiquette">ÉTATS<\/span> [^<]{10,}<\/p>/g), 15, 'une liste d’états par section');
+  assert.equal(compter(html, /<h2 id="sd-[a-z]+-titre" class="sd-section__titre">[^<]+<\/h2>/g), 16, 'un titre par section');
+  assert.equal(compter(html, /<p class="sd-section__desc">[^<]{20,}<\/p>/g), 16, 'une description par section');
+  assert.equal(compter(html, /<p class="sd-section__etats"><span class="sd-section__etats-etiquette">ÉTATS<\/span> [^<]{10,}<\/p>/g), 16, 'une liste d’états par section');
   for (const [groupe, sections] of Object.entries(GROUPES)) for (const s of sections) assert.ok(R.SECTIONS.includes(s), `le groupe « ${groupe} » vise la section « ${s} », qui n’existe pas`);
   assert.ok(R.SECTIONS.includes('mouvement') && R.SECTIONS.includes('jetons'));
 });
 
 await dit('le sommaire est fait de boutons qui font scrollIntoView : aucun href="#…" (HashRouter), aucune ancre', () => {
   const nav = /<nav aria-label="[^"]+">([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? '';
-  assert.equal(compter(nav, /<button type="button"[^>]*class="sd-sommaire__lien sc-focus"/g), 15, 'quinze boutons');
+  assert.equal(compter(nav, /<button type="button"[^>]*class="sd-sommaire__lien sc-focus"/g), 16, 'seize boutons');
   assert.equal(compter(nav, /<a[\s>]/g), 0, 'aucune ancre dans le sommaire');
   assert.ok(!/href="#/.test(html), 'un href="#…" dans le rendu');
   assert.ok(!/href="#/.test(pageSansCommentaires) && !/href=\{`#/.test(pageSansCommentaires), 'un href="#…" dans la source');

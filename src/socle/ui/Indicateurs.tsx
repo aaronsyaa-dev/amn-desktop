@@ -34,9 +34,11 @@ export interface BarreProgressionProps {
   texte?: string;
   className?: string;
   style?: React.CSSProperties;
+  /** Remplissage depuis 0 à l'apparition (couche de mouvement §0.2 : 900 ms, départ à 200 ms). Défaut : oui. */
+  anime?: boolean;
 }
 
-export function BarreProgression({ valeur, ton = 'neutre', hauteur = 5, reperes = false, libelle, texte, className = '', style }: BarreProgressionProps) {
+export function BarreProgression({ valeur, ton = 'neutre', hauteur = 5, reperes = false, libelle, texte, className = '', style, anime = true }: BarreProgressionProps) {
   const v = borne(valeur);
   return (
     <span
@@ -51,7 +53,7 @@ export function BarreProgression({ valeur, ton = 'neutre', hauteur = 5, reperes 
       className={`sc-barre ${className}`}
       style={style}
     >
-      <span style={{ width: `${Math.round(v * 100)}%` }} />
+      <span data-mvt={anime ? 'remplit' : undefined} style={{ width: `${Math.round(v * 100)}%` }} />
       {reperes && [25, 50, 75].map((r) => <i key={r} aria-hidden style={{ left: `${r}%` }} />)}
     </span>
   );
@@ -69,9 +71,11 @@ export interface AnneauProgressionProps {
   piste?: 'defaut' | 'anneau';
   /** Au centre : un chiffre court (« 3/7 », « 42 % »). */
   children?: React.ReactNode;
+  /** Tracé depuis 0 à l'apparition (couche de mouvement §0.2 : 1,1 s, départ à 250 ms). Défaut : oui. */
+  anime?: boolean;
 }
 
-export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisseur = 4, ton = 'neutre', piste = 'defaut', children }: AnneauProgressionProps) {
+export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisseur = 4, ton = 'neutre', piste = 'defaut', children, anime = true }: AnneauProgressionProps) {
   const v = borne(valeur);
   // Défauts : pas de style en ligne, la feuille (`.sc-anneau__trait`, `__piste`) décide comme avant.
   const styleTrait = ton === 'neutre' ? undefined : { stroke: couleurTon(ton) };
@@ -87,7 +91,7 @@ export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisse
       aria-valuenow={Math.round(v * 100)}
       aria-valuetext={texte}
       className="sc-anneau"
-      style={{ width: taille, height: taille }}
+      style={{ width: taille, height: taille, ...(anime ? ({ '--sc-mvt-tour': tour } as React.CSSProperties) : null) }}
     >
       <svg width={taille} height={taille} viewBox={`0 0 ${taille} ${taille}`} aria-hidden>
         <circle className="sc-anneau__piste" cx={taille / 2} cy={taille / 2} r={r} strokeWidth={epaisseur} style={stylePiste} />
@@ -98,6 +102,7 @@ export function AnneauProgression({ valeur, libelle, texte, taille = 44, epaisse
           r={r}
           strokeWidth={epaisseur}
           strokeDasharray={tour}
+          data-mvt={anime ? 'anneau' : undefined}
           strokeDashoffset={tour * (1 - v)}
           style={styleTrait}
         />

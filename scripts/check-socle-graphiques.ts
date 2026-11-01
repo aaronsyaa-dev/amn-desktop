@@ -15,8 +15,8 @@
  *      limites (0, 1, 2 points, égaux, négatifs, zéro), points au clavier et
  *      désactivables, légendes, anneau sans régression.
  *   5. LES SOURCES : aucune couleur écrite en dur, aucune encre « discret »,
- *      aucun texte sous 10,5 px, jetons existants, animation 400 ms coupée par
- *      `prefers-reduced-motion`, imports limités au socle, mots fr/en.
+ *      aucun texte sous 10,5 px, jetons existants, animation d'entrée confiée à la couche de
+ *      mouvement commune (§0.2) et coupée par `prefers-reduced-motion`, imports limités au socle, mots fr/en.
  *
  *   npm run check:socle-graphiques
  */
@@ -660,10 +660,21 @@ await dit('chaque var(--socle-…) employée existe dans noir.css, chaque var(--
   }
 });
 
-await dit('animation d’entrée de 400 ms, coupée par prefers-reduced-motion (et par Mouvement « aucun », déjà géré dans src/index.css)', () => {
-  assert.match(css, /--sc-g-trace:\s*400ms/);
-  assert.equal(compter(css, /animation:[^;]*var\(--sc-g-trace\)/g) >= 5, true);
+await dit('animation d’entrée : la couche de mouvement commune (§0.2) — data-mvt posé, aucune animation propre, coupée par prefers-reduced-motion', () => {
+  // v3 : les cotes ne sont plus 400 ms partout mais celles du §0.2, tenues par src/socle/mouvement.css (check:socle-vivant).
+  assert.ok(!/animation(?:-name)?\s*:(?!\s*none\b)|@keyframes/.test(css), 'graphiques.css ne déclare plus d’animation : la couche commune s’en charge');
+  const courbe = rend(M.Courbe, { donnees: points([1, 3, 2, 4]), secondeSerie: [2, 2, 3, 3], libelle: 'x' });
+  for (const nom of ['trace', 'aire', 'point-final']) assert.match(courbe, new RegExp(`data-mvt="${nom}"`), `courbe : data-mvt="${nom}"`);
+  assert.match(rend(M.MiniCourbe, { valeurs: [1, 3, 2], libelle: 'x' }), /pathLength="1" data-mvt="trace"/);
+  const barres = rend(M.Barres, { donnees: points([1, 2, 3]), libelle: 'x' });
+  assert.equal(compter(barres, /data-mvt="pousse" style="--sc-mvt-rang:\d+"/g), 3, 'une colonne, un rang');
+  assert.match(barres, /--sc-mvt-barre-decalage:(2[2-9]|3\d|40)ms/);
+  assert.match(rend(M.Donut, { segments: [{ libelle: 'A', valeur: 1, ton: 'info' }, { libelle: 'B', valeur: 2, ton: 'argent' }], libelle: 'x' }), /data-mvt="arc"/);
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x' }), /data-mvt="anneau"/);
+  assert.doesNotMatch(rend(M.Anneau, { valeur: 0.5, libelle: 'x', anime: false }), /data-mvt/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.sc-g \*\s*\{[^}]*animation:\s*none/);
+  const couche = sansCommentaires(lire('src/socle/mouvement.css'));
+  assert.match(couche, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\[data-mvt\][^{]*\{\s*animation:\s*none/);
   assert.match(sansCommentaires(lire('src/index.css')), /:root\[data-mouvement='aucun'\] \*[\s\S]*?animation-duration:\s*0\.01ms !important/);
 });
 

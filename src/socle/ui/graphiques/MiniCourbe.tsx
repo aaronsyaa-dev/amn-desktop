@@ -13,6 +13,8 @@ import { couleurTon, type TonGraphique } from './tons';
  * un résumé (« Tendance, 12 points, de X à Y, dernier : Z ») et la liste des
  * valeurs en `<desc>`. Moins de deux points : un trait de repos (« pas encore de
  * données »), ou le point seul.
+ *
+ * Entrée : la couche de mouvement commune (§0.2), comme la grande courbe — tracé 1,3 s, point final à 1,2 s.
  */
 export interface MiniCourbeProps {
   valeurs: readonly number[];
@@ -60,8 +62,8 @@ export function MiniCourbe({ valeurs, libelle, ton = 'neutre', largeur = 70, hau
     >
       <desc id={idDesc}>{vues.map((v) => formater(v)).join(' ; ')}</desc>
       {n === 0 && <line className="sc-g__repos" x1={MARGE} x2={largeur - MARGE} y1={hauteur / 2} y2={hauteur / 2} />}
-      {n > 1 && <path className="sc-g__mini-ligne" d={cheminLigne(points)} />}
-      {n > 0 && <circle className="sc-g__mini-fin" cx={points[n - 1][0]} cy={points[n - 1][1]} r={RAYON} />}
+      {n > 1 && <path className="sc-g__mini-ligne" d={cheminLigne(points)} pathLength={1} data-mvt="trace" />}
+      {n > 0 && <circle className="sc-g__mini-fin" cx={points[n - 1][0]} cy={points[n - 1][1]} r={RAYON} data-mvt="point-final" />}
     </svg>
   );
 }

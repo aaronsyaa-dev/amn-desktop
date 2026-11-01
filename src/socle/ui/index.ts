@@ -16,3 +16,4 @@ export * from './situations';
 export * from './graphiques';
 export * from './archetypes';
 export * from './controles';
+export * from './vivant';

@@ -3,6 +3,7 @@ import { EN_SITUATIONS, FR_SITUATIONS } from './mots/situations';
 import { EN_GRAPHIQUES, FR_GRAPHIQUES } from './mots/graphiques';
 import { EN_ARCHETYPES, FR_ARCHETYPES } from './mots/archetypes';
 import { EN_CONTROLES, FR_CONTROLES } from './mots/controles';
+import { EN_VIVANT, FR_VIVANT } from './mots/vivant';
 
 /**
  * LES MOTS DU SOCLE — fr et en, à part des dictionnaires communs.
@@ -20,6 +21,7 @@ const EN = {
   ...EN_GRAPHIQUES,
   ...EN_ARCHETYPES,
   ...EN_CONTROLES,
+  ...EN_VIVANT,
   'famille.jour': 'My day',
   'famille.contacts': 'People and clients',
   'famille.ecrire': 'Write and remember',
@@ -107,6 +109,7 @@ const FR: Record<CleSocle, string> = {
   ...FR_GRAPHIQUES,
   ...FR_ARCHETYPES,
   ...FR_CONTROLES,
+  ...FR_VIVANT,
   'famille.jour': 'Ma journée',
   'famille.contacts': 'Mes contacts et clients',
   'famille.ecrire': 'Écrire et retenir',

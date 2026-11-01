@@ -28,6 +28,7 @@ import {
   BoiteRecherche,
   Bouton,
   BoutonIcone,
+  Caret,
   Carte,
   CarteAnneau,
   CarteCases,
@@ -61,14 +62,20 @@ import {
   EtapeFranchie,
   Etiquette,
   EtatVide,
+  FilterChips,
+  FlowLine,
+  Gauge,
   GrilleCartes,
+  HeatCell,
   IconeEtincelle,
+  InlineSuggestion,
   Interrupteur,
   Kanban,
   LigneActivite,
   LigneTache,
   LigneTemps,
   ListeScindee,
+  LiveDot,
   MiniCourbe,
   Modale,
   Onglets,
@@ -85,6 +92,7 @@ import {
   Segmente,
   Selecteur,
   Semaine,
+  Severity,
   SousCarte,
   Squelette,
   SqueletteLignes,
@@ -105,7 +113,10 @@ import {
   type TonBarre,
   type TonEtat,
   type TonVariation,
+  type NiveauSeverite,
+  type TonVivant,
 } from '../../../socle/ui';
+import { arriveeLigne } from '../../../socle/couche-mouvement';
 import {
   BARRES,
   COLONNES_KANBAN,
@@ -175,6 +186,7 @@ export const SECTIONS = [
   'gabarit',
   'etats',
   'mouvement',
+  'vivant',
 ] as const;
 export type IdSection = (typeof SECTIONS)[number];
 
@@ -1683,6 +1695,233 @@ function SectionMouvement() {
   );
 }
 
+/* ─────────────────────────────  16. Vivant (v3)  ───────────────────────────── */
+
+const TONS_VOYANT: TonVivant[] = ['ok', 'attention', 'critique', 'info'];
+const NIVEAUX: NiveauSeverite[] = ['critique', 'moyen', 'faible', 'info', 'ok'];
+/** Une semaine de cinq jours sur six créneaux : des intensités de 0 à 1, fictives. */
+const CHALEUR: number[][] = [
+  [0, 0.1, 0.3, 0.2, 0, 0.1],
+  [0.2, 0.5, 0.9, 0.6, 0.3, 0.1],
+  [0.1, 0.3, 0.6, 1, 0.7, 0.2],
+  [0, 0.2, 0.4, 0.5, 0.2, 0],
+  [0.1, 0, 0.2, 0.3, 0.1, 0],
+];
+const HEURES_CHALEUR = [8, 10, 12, 14, 16, 18];
+
+function SectionVivant() {
+  const { tm, langue } = useMotsDemo();
+  const [filtre, setFiltre] = useState('tout');
+  const [suggestion, setSuggestion] = useState<'aucune' | 'oui' | 'non'>('aucune');
+  const [ouverte, setOuverte] = useState('');
+  const [tour, setTour] = useState(0);
+  const jours = nomsDesJours(langue === 'fr' ? 'fr-FR' : 'en-GB').slice(0, 5);
+  const puces = [
+    { cle: 'tout', libelle: tm('vivant.puces.tout'), compteur: 12 },
+    { cle: 'critique', libelle: tm('vivant.puces.critiques'), compteur: 2 },
+    { cle: 'moyen', libelle: tm('vivant.puces.moyens'), compteur: 4 },
+    { cle: 'faible', libelle: tm('vivant.puces.faibles'), compteur: 6 },
+  ];
+  return (
+    <Section id="vivant">
+      <Bloc titre={tm('vivant.voyant')}>
+        <div className="sd-rangee">
+          {TONS_VOYANT.map((t) => (
+            <Cas key={t} legende={t}>
+              <LiveDot ton={t} libelle={tm(`vivant.voyant.${t}`)} afficherLibelle />
+            </Cas>
+          ))}
+          <Cas legende={tm('vivant.voyant.sansOnde')}>
+            <LiveDot libelle={tm('vivant.voyant.ok')} afficherLibelle onde={false} />
+          </Cas>
+          <Cas legende={tm('vivant.voyant.petit')}>
+            <LiveDot libelle={tm('vivant.voyant.enLigne')} afficherLibelle taille={6} halo={false} onde={false} />
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('vivant.curseur')}>
+        <div className="sd-etroit">
+          <p className="sd-saisie">
+            <Caret />
+            <span>{tm('vivant.curseur.texte')}</span>
+          </p>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('vivant.niveaux')}>
+        <div className="sd-rangee">
+          {NIVEAUX.map((n) => (
+            <Cas key={n} legende={n}>
+              <Severity niveau={n} />
+            </Cas>
+          ))}
+        </div>
+        <div className="sd-rangee">
+          <Cas legende={tm('vivant.mono')}>
+            <p className="sd-journal sc-mono">
+              <span>10:42:07</span> <Severity niveau="info" /> <span>{tm('vivant.mono.journal')}</span>
+            </p>
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('vivant.puces')}>
+        <FilterChips libelle={tm('vivant.puces.libelle')} puces={puces} valeur={filtre} onChange={setFiltre} />
+        <p role="status" className="sd-note">
+          {tm('vivant.puces.choisi', { filtre: puces.find((p) => p.cle === filtre)?.libelle ?? '' })}
+        </p>
+      </Bloc>
+      <Bloc titre={tm('vivant.jauge')}>
+        <div className="sd-rangee">
+          {[
+            { v: 0, ton: 'neutre' as const },
+            { v: 42, ton: 'critique' as const },
+            { v: 64, ton: 'attention' as const },
+            { v: 86, ton: 'ok' as const },
+            { v: 100, ton: 'info' as const },
+          ].map(({ v, ton }) => (
+            <Cas key={v} legende={`${v} · ${ton}`}>
+              <Gauge valeur={v} ton={ton} libelle={tm('vivant.jauge.libelle')} />
+            </Cas>
+          ))}
+        </div>
+      </Bloc>
+      <Bloc titre={tm('vivant.chaleur')}>
+        <div className="sd-chaleur" role="group" aria-label={tm('vivant.chaleur')}>
+          <span aria-hidden />
+          {HEURES_CHALEUR.map((h) => (
+            <span key={h} aria-hidden className="sd-chaleur__axe">
+              {h}
+            </span>
+          ))}
+          {CHALEUR.map((ligne, j) => (
+            <React.Fragment key={j}>
+              <span aria-hidden className="sd-chaleur__axe">
+                {jours[j].nom}
+              </span>
+              {ligne.map((v, i) => (
+                <HeatCell key={i} intensite={v} libelle={tm('vivant.chaleur.case', { jour: jours[j].nom, heure: HEURES_CHALEUR[i], n: Math.round(v * 10) })} />
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="sd-rangee">
+          {[0, 0.5, 1].map((v) => (
+            <Cas key={v} legende={tm('vivant.chaleur.cliquable')}>
+              <HeatCell
+                intensite={v}
+                ton="info"
+                libelle={tm('vivant.chaleur.case', { jour: jours[4].nom, heure: 10, n: Math.round(v * 10) })}
+                onClick={() => setOuverte(tm('vivant.chaleur.case', { jour: jours[4].nom, heure: 10, n: Math.round(v * 10) }))}
+              >
+                {Math.round(v * 10)}
+              </HeatCell>
+            </Cas>
+          ))}
+        </div>
+        <p role="status" className="sd-note">
+          {ouverte ? tm('vivant.chaleur.ouverte', { libelle: ouverte }) : ''}
+        </p>
+      </Bloc>
+      <Bloc titre={tm('vivant.flux')}>
+        <svg className="sd-flux" viewBox="0 0 520 120" width="520" height="120" role="group" aria-label={tm('vivant.flux')}>
+          <FlowLine de={[110, 30]} a={[250, 60]} ton="info" libelle={tm('vivant.flux.actif')} />
+          <FlowLine de={[110, 90]} a={[250, 60]} duree={2200} />
+          <FlowLine de={[330, 60]} a={[430, 60]} actif={false} ton="attention" libelle={tm('vivant.flux.arret')} />
+          {[
+            { x: 20, y: 16, cle: 'a' },
+            { x: 20, y: 76, cle: 'b' },
+            { x: 250, y: 46, cle: 'c' },
+            { x: 430, y: 46, cle: 'd' },
+          ].map((n) => (
+            <g key={n.cle} className="sd-flux__noeud" data-mvt-survol="noeud">
+              <rect x={n.x} y={n.y} width={n.cle === 'c' ? 80 : 90} height={28} rx={8} />
+              <text x={n.x + (n.cle === 'c' ? 40 : 45)} y={n.y + 18} textAnchor="middle">
+                {tm(`vivant.flux.noeud.${n.cle as 'a' | 'b' | 'c' | 'd'}`)}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </Bloc>
+      <Bloc titre={tm('vivant.suggestion')}>
+        <div className="sd-etroit">
+          <InlineSuggestion texte={tm('vivant.suggestion.texte')} onOui={() => setSuggestion('oui')} onNon={() => setSuggestion('non')} />
+          <p role="status" className="sd-note">
+            {suggestion === 'aucune' ? '' : tm(suggestion === 'oui' ? 'vivant.suggestion.reponse.oui' : 'vivant.suggestion.reponse.non')}
+          </p>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('vivant.couche')}>
+        <p className="sd-note">{tm('vivant.couche.note')}</p>
+        <div className="sd-rangee">
+          <Bouton variante="secondaire" icone={<RotateCcw />} onClick={() => setTour((t) => t + 1)}>
+            {tm('vivant.couche.rejouer')}
+          </Bouton>
+        </div>
+        <div key={tour}>
+          <Bloc titre={tm('vivant.couche.entree')}>
+            <div className="sd-grille" style={{ '--sd-min': '150px' } as React.CSSProperties}>
+              {[1, 2, 3, 4, 5, 6].map((n, i) => (
+                <Carte key={n} compacte rang={i} titre={tm('vivant.couche.carte', { n })} niveauTitre={4}>
+                  <BarreProgression valeur={n / 6} libelle={tm('vivant.couche.carte', { n })} />
+                </Carte>
+              ))}
+            </div>
+          </Bloc>
+          <Bloc titre={tm('vivant.couche.cascade')}>
+            <div className="sd-grille" data-mvt="cascade" style={{ '--sd-min': '150px' } as React.CSSProperties}>
+              {[7, 8, 9, 10].map((n) => (
+                <SousCarte key={n}>{tm('vivant.couche.carte', { n })}</SousCarte>
+              ))}
+            </div>
+          </Bloc>
+          <Bloc titre={tm('vivant.couche.mesures')}>
+            <div className="sd-rangee">
+              <Anneau valeur={0.64} libelle={tm('vivant.jauge.libelle')} ton="succes" />
+              <Gauge valeur={72} libelle={tm('vivant.jauge.libelle')} ton="info" />
+              <div className="sd-etroit">
+                <Barres donnees={BARRES} libelle={tm('graphiques.libelle')} hauteur={120} interactif={false} />
+              </div>
+              <MiniCourbe valeurs={TENDANCE} libelle={tm('graphiques.libelle')} ton="argent" />
+            </div>
+          </Bloc>
+          <Bloc titre={tm('vivant.couche.arrivee')}>
+            <ul className="sd-journal-liste">
+              <li {...arriveeLigne()} data-mvt-survol="ligne" className="sc-mono">
+                <span>10:42:07</span> <span>{tm('vivant.couche.ligne')}</span>
+              </li>
+            </ul>
+          </Bloc>
+        </div>
+        <Bloc titre={tm('vivant.couche.boucles')}>
+          <div className="sd-rangee">
+            <Cas legende={tm('vivant.couche.balayage')}>
+              <span className="sd-radar">
+                <span className="sd-radar__balai" data-mvt="balayage" />
+              </span>
+            </Cas>
+          </div>
+        </Bloc>
+        <Bloc titre={tm('vivant.couche.survols')}>
+          <div className="sd-rangee">
+            <Cas legende={tm('vivant.survol.carte')}>
+              <div className="sd-survol-carte" data-mvt-survol="carte">
+                {tm('vivant.couche.carte', { n: 1 })}
+              </div>
+            </Cas>
+            <Cas legende={tm('vivant.survol.bouton')}>
+              <Bouton variante="secondaire">{tm('bouton.libelle')}</Bouton>
+            </Cas>
+            <Cas legende={tm('vivant.survol.ligne')}>
+              <div className="sd-survol-ligne" data-mvt-survol="ligne">
+                {tm('vivant.couche.ligne')}
+              </div>
+            </Cas>
+          </div>
+        </Bloc>
+      </Bloc>
+    </Section>
+  );
+}
+
 /* ─────────────────────────────  La page  ───────────────────────────── */
 
 /** Remet le réglage Mouvement dans l'état où la page l'a trouvé quand elle se démonte. */
@@ -1763,6 +2002,7 @@ export function PageDemoSocle() {
         <SectionGabarit />
         <SectionEtats />
         <SectionMouvement />
+        <SectionVivant />
       </div>
     </div>
   );

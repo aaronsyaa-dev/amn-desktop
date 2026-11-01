@@ -29,16 +29,18 @@ export interface AnneauProps {
   ton?: TonVariation;
   /** Au centre, à la place du pour cent (« 3/7 »…). */
   children?: React.ReactNode;
+  /** Tracé depuis 0 à l'apparition (couche de mouvement §0.2). Défaut : oui. */
+  anime?: boolean;
 }
 
 /** Épaisseur du trait de l'anneau (spec : 8). */
 export const EPAISSEUR_ANNEAU = 8;
 
-export function Anneau({ valeur, libelle, texte, taille = 72, ton = 'neutre', children }: AnneauProps) {
+export function Anneau({ valeur, libelle, texte, taille = 72, ton = 'neutre', children, anime = true }: AnneauProps) {
   const pourcent = formaterPourcent(Math.round(Math.min(1, Math.max(0, Number.isFinite(valeur) ? valeur : 0)) * 100));
   return (
     <span className="sc-g-anneau" data-socle="anneau">
-      <AnneauProgression valeur={valeur} libelle={libelle} texte={texte ?? pourcent} taille={taille} epaisseur={EPAISSEUR_ANNEAU} piste="anneau" ton={ton}>
+      <AnneauProgression valeur={valeur} libelle={libelle} texte={texte ?? pourcent} taille={taille} epaisseur={EPAISSEUR_ANNEAU} piste="anneau" ton={ton} anime={anime}>
         {children ?? pourcent}
       </AnneauProgression>
     </span>

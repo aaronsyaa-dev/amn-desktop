@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, useReducedMotionConfig } from 'framer-motion';
 import type { Famille } from '../familles';
+import { entreeCarte } from '../couche-mouvement';
 
 /**
  * LA CARTE DU SOCLE — une surface graphite, éventuellement d'une famille.
@@ -35,13 +36,19 @@ export interface CarteProps {
   onClick?: () => void;
   /** Nom accessible d'une carte cliquable, si le titre ne suffit pas. */
   'aria-label'?: string;
+  /**
+   * Entrée au chargement de l'écran (couche de mouvement §0.2) : le rang de la carte, de 0 à 13
+   * (500 ms, montée de 6 px, 45 ms × rang). Absent : la carte ne s'anime pas, comme avant.
+   */
+  rang?: number;
   className?: string;
   children?: React.ReactNode;
 }
 
 const SURFACE = 'relative overflow-hidden rounded-xl border border-socle-bord bg-socle-surface text-socle-texte';
 
-export function Carte({ famille, surtitre, titre, actions, as = 'section', niveauTitre = 2, sansMarge = false, compacte = false, active = false, onClick, className = '', children, ...aria }: CarteProps) {
+export function Carte({ famille, surtitre, titre, actions, as = 'section', niveauTitre = 2, sansMarge = false, compacte = false, active = false, onClick, rang, className = '', children, ...aria }: CarteProps) {
+  const entree = rang === undefined ? undefined : entreeCarte(rang);
   const reduit = useReducedMotionConfig();
   const cliquable = Boolean(onClick);
   // Dans un bouton, tout reste du texte courant (voir l'en-tête).
@@ -78,6 +85,8 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
         data-active={active || undefined}
         onClick={onClick}
         aria-label={aria['aria-label']}
+        data-mvt={entree?.['data-mvt']}
+        style={entree?.style}
         whileHover={reduit ? undefined : { y: -2 }}
         transition={{ type: 'spring', stiffness: 420, damping: 30 }}
         className={`${SURFACE} block w-full p-4 text-left transition-colors hover:border-socle-bord-fort hover:bg-socle-eleve focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-socle-focus ${className}`}
@@ -89,7 +98,7 @@ export function Carte({ famille, surtitre, titre, actions, as = 'section', nivea
 
   const Balise = as;
   return (
-    <Balise data-socle="carte" data-famille={famille} data-compacte={compacte || undefined} data-active={active || undefined} data-sans-marge={sansMarge || undefined} aria-label={aria['aria-label']} className={`${SURFACE} ${sansMarge ? '' : 'p-4'} ${className}`}>
+    <Balise data-socle="carte" data-famille={famille} data-compacte={compacte || undefined} data-active={active || undefined} data-sans-marge={sansMarge || undefined} data-mvt={entree?.['data-mvt']} style={entree?.style} aria-label={aria['aria-label']} className={`${SURFACE} ${sansMarge ? '' : 'p-4'} ${className}`}>
       {contenu}
     </Balise>
   );

@@ -1,0 +1,217 @@
+/*
+  LE GROUPE « VIVANT » DU SOCLE — v3 (01-SOCLE-DESIGN §0.4).
+  ═══════════════════════════════════════════════════════════
+
+  Voyant vivant, curseur, niveaux, puces de filtre, demi-jauge, case de chaleur, lien qui avance,
+  suggestion en ligne. Chargé par `Ambiance.tsx`, édition interne seulement.
+
+  Couleurs : jetons --socle-* de noir.css, rien d'autre (aucune valeur hexadécimale ici). Les tons
+  arrivent par `data-ton` (jamais par une couleur en ligne) et se traduisent en `--sc-v-c`.
+  Tailles : celles de la spec ; celles qu'elle ne donne pas sont les jetons --sc-v-* ci-dessous,
+  chacun avec sa raison. Le MOUVEMENT n'est pas ici : il vient de `src/socle/mouvement.css`
+  (`data-mvt`), qui le coupe en mouvement réduit.
+*/
+:root[data-ambiance='noir'] {
+  /* Voyant : point de 8 px (6 px pour une présence), halo fixe de 4 px à 14 % (pastille de La Garde, §3). */
+  --sc-v-voyant: 8px;
+  --sc-v-voyant-petit: 6px;
+  --sc-v-halo: 4px;
+  /* Curseur : la spec ne donne pas de cote ; une barre de 2 px, haute comme la ligne de texte. */
+  --sc-v-curseur: 2px;
+  /* Puces : 12 px (§0.4) ; pastille visible de 26 px dans une cible de 34 px (§7.6). */
+  --sc-v-puce-texte: 12px;
+  --sc-v-puce: 26px;
+  --sc-v-cible: 34px;
+  /* Niveaux : 11 px / 600, capitales monospace (§0.4). */
+  --sc-v-severite: 11px;
+  /* Jauge : la valeur sous l'arc ; la spec ne donne pas de taille, on prend la plus grande du monospace (18 px). */
+  --sc-v-jauge-valeur: 18px;
+  /* Case de chaleur : plus petit côté visible, et plus petit texte autorisé (§2). */
+  --sc-v-chaleur-min: 14px;
+  --sc-v-chaleur-texte: 10.5px;
+  /* La spec ne donne pas de rayon : 4 px, pour qu'une case de 14 à 22 px reste un carré lisible. */
+  --sc-v-chaleur-rayon: 4px;
+  /* Lien qui avance : pointillé de 4 sur 6 (période 10 px, que la couche fait avancer). */
+  --sc-mvt-flux-pas: 10px;
+}
+
+/* ── Les tons (sur les seuls composants du groupe : `data-ton` sert aussi ailleurs) ── */
+:is(.sc-voyant, .sc-jauge, .sc-chaleur, .sc-flux)[data-ton='ok'] { --sc-v-c: var(--socle-etat-succes); }
+:is(.sc-voyant, .sc-jauge, .sc-chaleur, .sc-flux)[data-ton='attention'] { --sc-v-c: var(--socle-etat-attention); }
+:is(.sc-voyant, .sc-jauge, .sc-chaleur, .sc-flux)[data-ton='critique'] { --sc-v-c: var(--socle-etat-critique); }
+:is(.sc-voyant, .sc-jauge, .sc-chaleur, .sc-flux)[data-ton='info'] { --sc-v-c: var(--socle-etat-info); }
+
+/* ── Voyant vivant (LiveDot) ── */
+.sc-voyant { display: inline-flex; flex: none; align-items: center; gap: 8px; vertical-align: middle; }
+.sc-voyant__point {
+  flex: none;
+  width: var(--sc-v-voyant);
+  height: var(--sc-v-voyant);
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--sc-v-c, var(--socle-etat-succes));
+  /* L'onde (`data-mvt="onde"`) prend la couleur du point. */
+  color: var(--sc-v-c, var(--socle-etat-succes));
+  box-shadow: 0 0 0 var(--sc-v-halo) color-mix(in srgb, var(--sc-v-c, var(--socle-etat-succes)) 14%, transparent);
+}
+.sc-voyant[data-taille='6'] .sc-voyant__point { width: var(--sc-v-voyant-petit); height: var(--sc-v-voyant-petit); }
+.sc-voyant__point[data-halo='non'] { box-shadow: none; }
+.sc-voyant__libelle { color: var(--socle-texte-courant); font-size: 12px; line-height: 1.35; }
+
+/* ── Curseur (Caret) ── */
+.sc-curseur {
+  display: inline-block;
+  flex: none;
+  width: var(--sc-v-curseur);
+  height: 1.15em;
+  margin: 0 1px;
+  border-radius: 1px;
+  background: var(--socle-texte-1);
+  vertical-align: -0.2em;
+}
+
+/* ── Niveaux (Severity) ── */
+.sc-severite {
+  --sc-v-c: var(--socle-etat-info);
+  display: inline-block;
+  color: var(--sc-v-c);
+  font-family: var(--socle-police-mono);
+  font-size: var(--sc-v-severite);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sc-severite[data-niveau='critique'] { --sc-v-c: var(--socle-etat-critique); }
+.sc-severite[data-niveau='moyen'] { --sc-v-c: var(--socle-etat-attention); }
+.sc-severite[data-niveau='faible'],
+.sc-severite[data-niveau='info'] { --sc-v-c: var(--socle-etat-info); }
+.sc-severite[data-niveau='ok'] { --sc-v-c: var(--socle-etat-succes); }
+
+/* ── Puces de filtre (FilterChips) : 12 px, active fond #242427 ── */
+.sc-puces { display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
+.sc-puce {
+  display: inline-flex;
+  min-height: var(--sc-v-cible);
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sc-puce:focus { outline: none; }
+.sc-puce__corps {
+  display: inline-flex;
+  height: var(--sc-v-puce);
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--socle-bord-pilule);
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--socle-pilule);
+  color: var(--socle-texte-2);
+  font-size: var(--sc-v-puce-texte);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out;
+}
+.sc-puce:hover .sc-puce__corps { background: var(--socle-survol); color: var(--socle-texte-courant); }
+.sc-puce[aria-checked='true'] .sc-puce__corps { border-color: var(--socle-bord-bouton); background: var(--socle-segment-actif); color: var(--socle-texte-1); font-weight: 600; }
+.sc-puce:focus-visible .sc-puce__corps { outline: 2px solid var(--socle-texte-1); outline-offset: 2px; }
+.sc-puce__compteur { color: var(--socle-texte-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ── Demi-jauge (Gauge) ── */
+.sc-jauge { --sc-v-c: var(--socle-texte-1); position: relative; display: inline-flex; flex: none; flex-direction: column; align-items: center; }
+.sc-jauge__svg { display: block; overflow: visible; }
+.sc-jauge__piste,
+.sc-jauge__arc { fill: none; stroke-linecap: round; }
+.sc-jauge__piste { stroke: var(--socle-anneau-fond); }
+.sc-jauge__arc { stroke: var(--sc-v-c); }
+.sc-jauge__valeur {
+  margin-top: -0.7em;
+  color: var(--socle-texte-1);
+  font-size: var(--sc-v-jauge-valeur);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+/* ── Case de chaleur (HeatCell) : la couleur d'état, de .18 à .90 d'opacité ── */
+.sc-chaleur {
+  --sc-v-c: var(--socle-etat-critique);
+  position: relative;
+  display: inline-flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: var(--sc-v-chaleur-min);
+  min-height: var(--sc-v-chaleur-min);
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sc-v-chaleur-rayon);
+  background: transparent;
+  color: var(--socle-texte-1);
+  font: inherit;
+  font-size: var(--sc-v-chaleur-texte);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sc-chaleur::before { content: ''; position: absolute; inset: 0; background: var(--sc-v-c); opacity: var(--sc-v-opacite, 0.18); }
+button.sc-chaleur { min-width: var(--sc-v-cible); min-height: var(--sc-v-cible); cursor: pointer; }
+.sc-chaleur__valeur { position: relative; }
+
+/* ── Lien qui avance (FlowLine) ── */
+.sc-flux {
+  --sc-v-c: var(--socle-texte-2);
+  fill: none;
+  stroke: var(--sc-v-c);
+  stroke-dasharray: 4 6;
+  stroke-linecap: round;
+}
+.sc-flux[data-actif='non'] { opacity: 0.6; }
+
+/* ── Suggestion en ligne (InlineSuggestion) : étincelle verte, texte, Oui / Non ── */
+.sc-suggestion-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--socle-bord-suggestion);
+  border-radius: var(--socle-rayon-sous-carte);
+  background: linear-gradient(180deg, var(--socle-suggestion-haut), var(--socle-suggestion-bas));
+}
+.sc-suggestion-ligne__texte { flex: 1 1 220px; min-width: 0; margin: 0; color: var(--socle-texte-courant); font-size: 12.5px; line-height: 1.45; }
+.sc-suggestion-ligne__actions { display: flex; flex: none; gap: 6px; }
+.sc-suggestion-ligne__bouton {
+  display: inline-flex;
+  min-width: var(--sc-v-cible);
+  min-height: var(--sc-v-cible);
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  border: 1px solid var(--socle-bord-bouton);
+  border-radius: var(--socle-rayon-controle);
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+.sc-suggestion-ligne__bouton:hover { background: var(--socle-survol); color: var(--socle-texte-1); }
+.sc-suggestion-ligne__bouton[data-reponse='oui'] { color: var(--socle-texte-1); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-puce__corps,
+  .sc-suggestion-ligne__bouton { transition: none; }
+}

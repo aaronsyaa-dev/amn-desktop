@@ -5,6 +5,7 @@ import { PointsInteractifs, TableauAlternatif, useActif, useLargeur, type ZoneGr
 import { formaterNombre } from './format';
 import type { PointGraphique } from './Courbe';
 import { couleurTon, type TonGraphique } from './tons';
+import { decalageBarres, styleRang } from '../../couche-mouvement';
 
 /**
  * LES BARRES — des colonnes grises, une seule mise en valeur en bleu d'information,
@@ -20,8 +21,9 @@ import { couleurTon, type TonGraphique } from './tons';
  *
  * Accessibilité : `role="img"` avec un résumé (« Barres, 7 colonnes, de X à Y »),
  * un tableau `sr-only` avec toutes les valeurs, des boutons par colonne tant
- * que `interactif` n'est pas coupé. L'entrée est une croissance de 400 ms depuis
- * la ligne de base, supprimée par `prefers-reduced-motion` et par Mouvement « aucun ».
+ * que `interactif` n'est pas coupé. L'entrée vient de la couche de mouvement commune
+ * (§0.2) : chaque colonne pousse depuis la ligne de base en 700 ms, avec un décalage de
+ * 22 à 40 ms selon leur nombre ; supprimée par `prefers-reduced-motion`, « réduit » et « aucun ».
  */
 export interface BarresProps {
   donnees: readonly PointGraphique[];
@@ -104,10 +106,13 @@ export function Barres({ donnees, libelle, nom, ton = 'info', miseEnValeur, haut
     );
   };
 
+  // Le décalage entre deux colonnes (22 à 40 ms selon leur nombre), lu par la couche de mouvement.
+  const styleDessin = { '--sc-mvt-barre-decalage': `${decalageBarres(n)}ms` } as React.CSSProperties;
+
   return (
     <div ref={ref} className={`sc-g sc-g--barres ${className}`} style={style} data-socle="barres">
       <div className="sc-g__scene">
-        <svg role="img" aria-label={resume} viewBox={`0 0 ${largeur} ${hauteur}`} preserveAspectRatio="xMidYMid meet" focusable="false" className="sc-g__svg">
+        <svg role="img" aria-label={resume} viewBox={`0 0 ${largeur} ${hauteur}`} preserveAspectRatio="xMidYMid meet" focusable="false" className="sc-g__svg" style={styleDessin}>
           <line className="sc-g__grille" x1={MARGE_COTES} x2={largeur - MARGE_COTES} y1={y0} y2={y0} />
           {colonnes.map((c, i) => {
             const bas = c.v < 0;
@@ -116,6 +121,8 @@ export function Barres({ donnees, libelle, nom, ton = 'info', miseEnValeur, haut
               <rect
                 key={i}
                 className="sc-g__colonne"
+                data-mvt="pousse"
+                style={styleRang(i)}
                 x={centre(i) - epaisseur / 2}
                 y={bas ? y0 : y0 - haut}
                 width={epaisseur}

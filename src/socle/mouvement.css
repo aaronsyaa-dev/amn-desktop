@@ -1,0 +1,223 @@
+/*
+  LA COUCHE DE MOUVEMENT COMMUNE — v3 (01-SOCLE-DESIGN §0.2).
+  ═════════════════════════════════════════════════════════════
+
+  Une seule feuille pour tout ce qui bouge dans l'édition interne : l'entrée des cartes, les
+  progressions, les anneaux et jauges, les barres, les courbes, le voyant vivant, les flux, le
+  balayage, le curseur, l'arrivée d'une ligne et les survols. Chargée par `Ambiance.tsx`, comme les
+  autres feuilles du socle : l'édition cliente ne la voit pas.
+
+  ## Comment s'en servir
+
+  Un attribut, pas une classe : `data-mvt="<nom>"` sur l'élément qui bouge, `data-mvt-survol="<nom>"`
+  sur celui qui réagit au survol. Les briques du socle le posent elles-mêmes (BarreProgression,
+  AnneauProgression, Anneau, Courbe, MiniCourbe, Barres, Donut, et les composants « vivant ») ; un
+  écran le pose sur ses propres éléments, ou passe par `src/socle/couche-mouvement.ts`
+  (`entreeCarte(rang)`, `rangMouvement`, `decalageBarres`…).
+
+    entree       une carte apparaît et monte de 6 px : 500 ms, décalage --sc-mvt-rang × 45 ms (14 cartes au plus)
+    cascade      sur un conteneur : chacun de ses enfants entre comme une carte, dans l'ordre (rang posé ici)
+    arrivee      une ligne glisse de 8 px depuis la gauche : 450 ms
+    fondu        un fondu court (200 ms)
+    remplit      une progression se remplit depuis 0 : 900 ms, départ à 200 ms
+    anneau       un anneau se trace depuis 0 (stroke-dashoffset depuis --sc-mvt-tour) : 1,1 s, départ à 250 ms
+    arc          un arc se trace depuis 0 (stroke-dasharray depuis « 0 --sc-mvt-tour ») : jauge, donut ; mêmes réglages
+    pousse       une barre pousse depuis sa base : 700 ms, décalage --sc-mvt-rang × --sc-mvt-barre-decalage (22 à 40 ms)
+    trace        le tracé d'une ligne (pathLength = 1, stroke-dasharray = 1) : 1,3 s
+    aire         ce qui suit le tracé, en fondu (aire d'une courbe, série en pointillé) : fini à 1,3 s
+    point-final  le point final d'une courbe, en fondu à 1,2 s
+    onde         une onde s'élargit autour d'un point d'état : 2,2 s en boucle
+    flux         des pointillés avancent le long d'un lien : --sc-mvt-flux-duree (1,2 à 2,2 s) en boucle,
+                 --sc-mvt-flux-pas = la période du pointillé
+    balayage     un secteur conique très léger tourne (radar, OSINT) : 6,5 s en boucle
+    curseur      une barre de saisie clignote : 1,1 s (550 ms allumée, 550 ms éteinte)
+
+    survol : carte (bordure #303033) · bouton (fond #1c1c1e) · ligne (fond rgba(255,255,255,.03)) · noeud (monte de 2 px),
+             150 à 200 ms (160 ms ici).
+
+  ## La règle de l'état final
+
+  Chaque animation part d'un état « avant » (`from`) et revient au style normal de l'élément : sans
+  animation, on voit l'état final, celui que montrent les maquettes et les captures (faites en
+  mouvement réduit). Le remplissage est `backwards` : l'état « avant » ne tient que pendant le départ
+  différé, jamais après — un survol ou une nouvelle valeur reprennent la main.
+
+  ## Ce qui coupe
+
+    · `prefers-reduced-motion: reduce` (le système) : plus rien ne bouge, ni entrée, ni boucle, ni montée au survol ;
+    · le réglage Mouvement « aucun » (`data-mouvement="aucun"` sur <html>, posé par `RacineSocle`) : pareil ;
+    · le réglage « réduit » : seuls restent les fondus courts (200 ms, sans décalage) — l'entrée des cartes et
+      l'arrivée des lignes deviennent des fondus, l'aire et le point final aussi ; tout le reste est coupé.
+  Au plus 2 ou 3 animations continues par écran (onde, flux, balayage, curseur) : c'est à l'écran d'y veiller.
+
+  Couleurs : jetons --socle-* seulement. Durées et distances : les jetons --sc-mvt-* ci-dessous, chacun avec la
+  cote du §0.2 ; `couche-mouvement.ts` en garde la copie pour framer-motion (`check:socle-vivant` les compare).
+*/
+:root[data-ambiance='noir'] {
+  --sc-mvt-courbe: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* Entrée des cartes : 500 ms, montée de 6 px, 45 ms par carte. */
+  --sc-mvt-entree: 500ms;
+  --sc-mvt-entree-montee: 6px;
+  --sc-mvt-entree-decalage: 45ms;
+  /* Progressions : 900 ms, départ à 200 ms. */
+  --sc-mvt-progression: 900ms;
+  --sc-mvt-progression-depart: 200ms;
+  /* Anneaux et jauges : 1,1 s, départ à 250 ms. */
+  --sc-mvt-anneau: 1100ms;
+  --sc-mvt-anneau-depart: 250ms;
+  /* Barres : 700 ms ; décalage de 22 à 40 ms par barre (30 par défaut, `decalageBarres(n)` l'ajuste). */
+  --sc-mvt-barre: 700ms;
+  --sc-mvt-barre-decalage: 30ms;
+  /* Courbes : tracé 1,3 s ; l'aire en fondu à sa suite (de 650 ms à 1,3 s) ; le point final en fondu à 1,2 s. */
+  --sc-mvt-trace: 1300ms;
+  --sc-mvt-aire: 650ms;
+  --sc-mvt-aire-depart: 650ms;
+  --sc-mvt-point-final: 1200ms;
+  --sc-mvt-point-final-fondu: 300ms;
+  /* Voyant vivant : 2,2 s en boucle. */
+  --sc-mvt-voyant: 2200ms;
+  /* Flux : 1,2 à 2,2 s en boucle (1,6 s par défaut). */
+  --sc-mvt-flux: 1600ms;
+  /* Balayage : 6 à 7 s en boucle. */
+  --sc-mvt-balayage: 6500ms;
+  --sc-mvt-balayage-couleur: color-mix(in srgb, var(--socle-texte-1) 7%, transparent);
+  /* Curseur : 1,1 s. */
+  --sc-mvt-curseur: 1100ms;
+  /* Arrivée d'une ligne : 8 px depuis la gauche, 450 ms. */
+  --sc-mvt-arrivee: 450ms;
+  --sc-mvt-arrivee-glisse: 8px;
+  /* Survols : 150 à 200 ms. */
+  --sc-mvt-survol: 160ms;
+  /* Le seul mouvement qui reste en « réduit ». */
+  --sc-mvt-fondu-court: 200ms;
+}
+
+/* ═══ Les entrées ═══ */
+:root[data-ambiance='noir'] [data-mvt='entree'],
+:root[data-ambiance='noir'] [data-mvt='cascade'] > * {
+  animation: sc-mvt-entree var(--sc-mvt-entree) var(--sc-mvt-courbe) backwards;
+  animation-delay: calc(min(var(--sc-mvt-rang, 0), 13) * var(--sc-mvt-entree-decalage));
+}
+/* Le rang de chaque enfant d'une cascade : 0 à 13, puis tous au rang 13 (14 cartes au plus). */
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(2) { --sc-mvt-rang: 1; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(3) { --sc-mvt-rang: 2; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(4) { --sc-mvt-rang: 3; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(5) { --sc-mvt-rang: 4; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(6) { --sc-mvt-rang: 5; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(7) { --sc-mvt-rang: 6; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(8) { --sc-mvt-rang: 7; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(9) { --sc-mvt-rang: 8; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(10) { --sc-mvt-rang: 9; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(11) { --sc-mvt-rang: 10; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(12) { --sc-mvt-rang: 11; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(13) { --sc-mvt-rang: 12; }
+:root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(n + 14) { --sc-mvt-rang: 13; }
+
+:root[data-ambiance='noir'] [data-mvt='arrivee'] { animation: sc-mvt-arrivee var(--sc-mvt-arrivee) var(--sc-mvt-courbe) backwards; }
+:root[data-ambiance='noir'] [data-mvt='fondu'] { animation: sc-mvt-fondu var(--sc-mvt-fondu-court) ease-out backwards; }
+
+/* ═══ Les mesures qui se remplissent ═══ */
+:root[data-ambiance='noir'] [data-mvt='remplit'] {
+  animation: sc-mvt-remplit var(--sc-mvt-progression) var(--sc-mvt-courbe) var(--sc-mvt-progression-depart) backwards;
+}
+:root[data-ambiance='noir'] [data-mvt='anneau'] {
+  animation: sc-mvt-anneau var(--sc-mvt-anneau) var(--sc-mvt-courbe) var(--sc-mvt-anneau-depart) backwards;
+}
+:root[data-ambiance='noir'] [data-mvt='arc'] {
+  animation: sc-mvt-arc var(--sc-mvt-anneau) var(--sc-mvt-courbe) var(--sc-mvt-anneau-depart) backwards;
+}
+:root[data-ambiance='noir'] [data-mvt='pousse'] {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: sc-mvt-pousse var(--sc-mvt-barre) var(--sc-mvt-courbe) backwards;
+  animation-delay: calc(var(--sc-mvt-rang, 0) * var(--sc-mvt-barre-decalage));
+}
+:root[data-ambiance='noir'] [data-mvt='trace'] {
+  stroke-dasharray: 1;
+  animation: sc-mvt-trace var(--sc-mvt-trace) var(--sc-mvt-courbe) backwards;
+}
+:root[data-ambiance='noir'] [data-mvt='aire'] { animation: sc-mvt-fondu var(--sc-mvt-aire) ease-out var(--sc-mvt-aire-depart) backwards; }
+:root[data-ambiance='noir'] [data-mvt='point-final'] { animation: sc-mvt-fondu var(--sc-mvt-point-final-fondu) ease-out var(--sc-mvt-point-final) backwards; }
+
+/* ═══ Les boucles (2 ou 3 par écran au plus) ═══ */
+:root[data-ambiance='noir'] [data-mvt='onde'] { position: relative; }
+:root[data-ambiance='noir'] [data-mvt='onde']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  animation: sc-mvt-onde var(--sc-mvt-voyant) ease-out infinite;
+}
+:root[data-ambiance='noir'] [data-mvt='flux'] { animation: sc-mvt-flux var(--sc-mvt-flux-duree, var(--sc-mvt-flux)) linear infinite; }
+:root[data-ambiance='noir'] [data-mvt='balayage'] {
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg 300deg, var(--sc-mvt-balayage-couleur) 360deg);
+  pointer-events: none;
+  animation: sc-mvt-balayage var(--sc-mvt-balayage) linear infinite;
+}
+:root[data-ambiance='noir'] [data-mvt='curseur'] { animation: sc-mvt-clignote var(--sc-mvt-curseur) steps(1, end) infinite; }
+
+/* ═══ Les survols ═══ */
+:root[data-ambiance='noir'] [data-mvt-survol] { transition-duration: var(--sc-mvt-survol); transition-timing-function: ease-out; }
+:root[data-ambiance='noir'] [data-mvt-survol='carte'] { transition-property: border-color; }
+:root[data-ambiance='noir'] [data-mvt-survol='carte']:hover { border-color: var(--socle-bord-survol); }
+:root[data-ambiance='noir'] [data-mvt-survol='bouton'] { transition-property: background-color, border-color, color; }
+:root[data-ambiance='noir'] [data-mvt-survol='bouton']:hover { background-color: var(--socle-survol); }
+:root[data-ambiance='noir'] [data-mvt-survol='ligne'] { transition-property: background-color; }
+:root[data-ambiance='noir'] [data-mvt-survol='ligne']:hover { background-color: var(--socle-ligne-survol); }
+:root[data-ambiance='noir'] [data-mvt-survol='noeud'] { transition-property: transform, border-color; }
+:root[data-ambiance='noir'] [data-mvt-survol='noeud']:hover { transform: translateY(-2px); }
+
+@keyframes sc-mvt-entree { from { opacity: 0; transform: translateY(var(--sc-mvt-entree-montee)); } }
+@keyframes sc-mvt-arrivee { from { opacity: 0; transform: translateX(calc(-1 * var(--sc-mvt-arrivee-glisse))); } }
+@keyframes sc-mvt-fondu { from { opacity: 0; } }
+@keyframes sc-mvt-remplit { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes sc-mvt-anneau { from { stroke-dashoffset: var(--sc-mvt-tour); } }
+@keyframes sc-mvt-arc { from { stroke-dasharray: 0 var(--sc-mvt-tour); } }
+@keyframes sc-mvt-pousse { from { transform: scaleY(0); } }
+@keyframes sc-mvt-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sc-mvt-onde { from { opacity: 0.55; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+@keyframes sc-mvt-flux { to { stroke-dashoffset: calc(-1 * var(--sc-mvt-flux-pas, 10px)); } }
+@keyframes sc-mvt-balayage { to { transform: rotate(360deg); } }
+@keyframes sc-mvt-clignote { 50% { opacity: 0; } }
+
+/* ═══ Mouvement « réduit » : les fondus courts seulement ═══ */
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='entree'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='cascade'] > *,
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='arrivee'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='aire'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='point-final'] {
+  animation: sc-mvt-fondu var(--sc-mvt-fondu-court) ease-out backwards;
+}
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='remplit'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='anneau'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='arc'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='pousse'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='trace'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='flux'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='balayage'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='curseur'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='onde']::after { animation: none; }
+:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt-survol='noeud']:hover { transform: none; }
+
+/* ═══ Mouvement « aucun » : plus rien ne bouge ═══ */
+:root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt],
+:root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt='cascade'] > *,
+:root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt='onde']::after { animation: none; }
+:root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt-survol] { transition: none; }
+:root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt-survol='noeud']:hover { transform: none; }
+
+/* ═══ Le système demande moins d'animations : plus rien ne bouge, quel que soit le réglage ═══ */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ambiance='noir'] [data-mvt],
+  :root[data-ambiance='noir'][data-mouvement] [data-mvt],
+  :root[data-ambiance='noir'] [data-mvt='cascade'] > *,
+  :root[data-ambiance='noir'][data-mouvement] [data-mvt='cascade'] > *,
+  :root[data-ambiance='noir'] [data-mvt='onde']::after,
+  :root[data-ambiance='noir'][data-mouvement] [data-mvt='onde']::after { animation: none; }
+  :root[data-ambiance='noir'] [data-mvt-survol] { transition: none; }
+  :root[data-ambiance='noir'] [data-mvt-survol='noeud']:hover { transform: none; }
+}

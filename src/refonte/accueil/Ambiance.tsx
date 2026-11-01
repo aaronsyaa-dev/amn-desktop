@@ -10,6 +10,8 @@ import '../../socle/ui/situations/situations.css';
 import '../../socle/ui/graphiques/graphiques.css';
 import '../../socle/ui/archetypes/archetypes.css';
 import '../../socle/coquille/coquille.css';
+import '../../socle/ui/vivant/vivant.css';
+import '../../socle/mouvement.css';
 
 /**
  * Allume le fond noir et gris dans l'édition interne (jetons : `src/socle/noir.css`,

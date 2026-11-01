@@ -121,6 +121,8 @@ jobs:
         run: npm run check:socle-archetypes
       - name: LOT-00 — coquille du socle
         run: npm run check:socle-coquille
+      - name: v3 — vivant et couche de mouvement du socle
+        run: npm run check:socle-vivant
       - name: LOT-00 — tous les modules
         run: npm run check:systeme-modules
       - name: LOT-00 — notifications
