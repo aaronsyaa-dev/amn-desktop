@@ -87,7 +87,8 @@ const Z = await chargerAvecCss<Record<string, any>>(
     "export * from '../src/refonte/systeme/demarrage/memoire';",
     "export * from '../src/refonte/systeme/demarrage/chemins';",
     "export { MOTS_FR, MOTS_EN, traduire } from '../src/refonte/systeme/demarrage/i18n';",
-    "export { VueDemarrage, SqueletteDemarrage, LienMobile } from '../src/refonte/systeme/demarrage/VueDemarrage';",
+    "export { VueDemarrage, SqueletteDemarrage, LienMobile, PapierBrouillon } from '../src/refonte/systeme/demarrage/VueDemarrage';",
+    "export { presentationDemarrage, MODULES_DANS_LA_BARRE } from '../src/refonte/systeme/demarrage/presentation';",
     "export { VueMetier, SqueletteMetier } from '../src/refonte/systeme/demarrage/VueMetier';",
     'export { h };',
     'export const rendre = (el) => renderToStaticMarkup(h(MemoryRouter, null, el));',
@@ -191,10 +192,13 @@ await dit('étapes 2, 3 et 5 de chaque métier : textes fr et en, destination qu
     assert.ok(connues.has(m.etapes.devis.mesure as string), `${m.id} : mesure inconnue`);
   }
   const d = R.ETAPES_PAR_DEFAUT;
-  assert.equal(d.client.titre.fr, 'Ajouter votre premier client');
+  assert.equal(d.client.titre.fr, 'Ajouter vos clients');
   assert.equal(d.devis.titre.fr, 'Créer votre premier devis');
   assert.equal(d.devis.sous.fr, 'Ajmani vous guide, 2 minutes');
-  assert.equal(d.devis.action.fr, 'Créer un devis');
+  assert.equal(d.devis.action.fr, 'Créer le devis');
+  assert.equal(d.devis.texte.fr, 'Je prépare un devis type pour votre métier, vous n’avez qu’à relire et ajuster. Comptez deux minutes.');
+  assert.equal(d.paiement.titre.fr, 'Connecter vos encaissements');
+  assert.deepEqual([d.client.duree, d.devis.duree, d.paiement.duree], [2, 2, 3]);
   assert.equal(d.paiement.action.fr, 'Connecter');
   assert.equal(MODELES.find((m) => m.id === 'association')?.etapes.client.titre.fr, 'Ajouter votre premier membre');
   assert.equal(MODELES.find((m) => m.id === 'association')?.etapes.devis.titre.fr, 'Annoncer votre première activité');
@@ -316,21 +320,69 @@ await dit('détection par les données : un métier, un client, un devis, deux p
   for (const id of ['paiement', 'mobile']) assert.equal(calc({ donnees: { clients: 9, quotes: 9, tasks: 9, appointments: 9, membres: 9 } }).etapes.find((e: any) => e.id === id).manuelle, true, `${id} se marque à la main`);
 });
 
-await dit('le texte suit le compte : « Plus que N étapes… » au pluriel, « Plus qu’une étape… » au singulier, « Votre espace est prêt » à N sur N', () => {
+await dit('le compte, les durées et l’étape suivante : « 2 sur 6 prêtes », « environ 7 min pour le reste », « maintenant », « ensuite » ; 6 sur 6 : plus aucune conseillée', () => {
   const faites = { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 };
   const base = { donnees: faites, memoire: { faites: ['paiement'], retirees: [] } };
-  const quatre = calc({ donnees: { ...DV, clients: 1 } });
-  assert.deepEqual([quatre.n, quatre.restantes, quatre.texte], [2, 4, 'plusieurs']);
-  assert.equal(R.traduire('fr', `texte.${quatre.texte}`, { n: quatre.restantes }), 'Plus que 4 étapes pour que tout soit prêt. Vous pouvez les faire dans l’ordre que vous voulez.');
+  const deux = calc({ donnees: { ...DV, clients: 1 } });
+  assert.deepEqual([deux.n, deux.total, deux.restantes, deux.conseillee, deux.suivante], [2, 6, 4, 'devis', 'equipe']);
+  assert.deepEqual(deux.etapes.map((e: any) => e.duree), [1, 2, 2, 1, 3, 1], 'les durées fixes du modèle (2, 3, 5) et des étapes communes');
+  assert.deepEqual(deux.etapes.map((e: any) => e.rang), [1, 2, 3, 4, 5, 6]);
+  assert.equal(deux.minutesRestantes, 7, '2 + 1 + 3 + 1 : la somme des étapes encore à faire');
+  assert.equal(R.traduire('fr', 'resume.pretes', { n: 2, total: 6 }), '2 sur 6 prêtes');
+  assert.equal(R.traduire('fr', 'resume.duree', { n: 7 }), 'environ 7 min');
+  assert.equal(R.traduire('fr', 'statut.maintenant', { n: 2 }), 'maintenant · 2 min');
+  assert.equal(R.traduire('fr', 'statut.ensuite', { n: 1 }), 'ensuite · 1 min');
   const une = calc(base);
-  assert.deepEqual([une.n, une.restantes, une.texte, une.conseillee], [5, 1, 'une', 'mobile']);
-  assert.equal(R.traduire('fr', 'texte.une'), 'Plus qu’une étape pour que tout soit prêt.');
+  assert.deepEqual([une.n, une.restantes, une.texte, une.conseillee, une.suivante, une.minutesRestantes], [5, 1, 'une', 'mobile', null, 1]);
   const tout = calc({ ...base, memoire: { faites: ['paiement', 'mobile'], retirees: [] } });
-  assert.deepEqual([tout.n, tout.total, tout.tout, tout.ratio, tout.conseillee, tout.texte], [6, 6, true, 1, null, 'tout']);
-  assert.equal(tout.etapes.some((e: any) => e.conseillee), false, 'à 6/6, plus aucun bouton primaire dans la liste');
+  assert.deepEqual([tout.n, tout.total, tout.tout, tout.ratio, tout.conseillee, tout.suivante, tout.minutesRestantes, tout.texte], [6, 6, true, 1, null, null, 0, 'tout']);
+  assert.equal(tout.etapes.some((e: any) => e.conseillee), false, 'à 6/6, plus aucune étape conseillée');
   assert.equal(R.traduire('fr', 'texte.tout'), 'Tout est en place. Vous pouvez compter sur Ajmani pour la suite.');
   assert.equal(R.traduire('fr', 'pret', { prenom: 'Camille' }), 'Votre espace est prêt, Camille');
-  assert.equal(R.traduire('fr', 'bienvenue', { prenom: 'Camille' }), 'Bienvenue, Camille');
+  assert.equal(R.traduire('fr', 'sous.prenom', { prenom: 'Camille' }), 'Bienvenue Camille, votre espace se prépare avec vous, sans pression');
+  const retire = calc({ donnees: { ...DV, clients: 1 }, memoire: { faites: [], retirees: ['equipe'] } });
+  assert.deepEqual([retire.total, retire.suivante, retire.etapes.map((e: any) => e.rang).join('')], [5, 'paiement', '12345'], 'une étape retirée sort du rang et du total');
+});
+
+await dit('« Plus tard » dans la carte : l’étape à faire suivante, en revenant au début ; « Annuler » ne remet que l’étape retirée', () => {
+  const r = calc({ donnees: { ...DV, clients: 1 } });
+  assert.equal(R.etapeApres(r.etapes, 'devis'), 'equipe');
+  assert.equal(R.etapeApres(r.etapes, 'mobile'), 'devis', 'après la dernière, on revient à la première à faire');
+  assert.equal(R.etapeApres(calc({ donnees: { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 }, memoire: { faites: ['paiement'], retirees: [] } }).etapes, 'mobile'), null);
+  const m = { faites: [], retirees: ['equipe', 'mobile'] };
+  assert.deepEqual(R.remettreEtape(m, 'mobile'), { faites: [], retirees: ['equipe'] });
+  assert.equal(R.remettreEtape(R.MEMOIRE_VIDE, 'mobile'), R.MEMOIRE_VIDE);
+});
+
+await dit('ce que la page montre vient des vraies données, ligne par ligne : métier, nombre de clients, premier client, lignes types SANS prix, « Déjà prêt » vrai ou absent', () => {
+  const conseil = R.modeleParId('conseil');
+  const metier = { modele: 'conseil', taille: '2-5', modules: conseil.modules.slice(0, 9), passe: false, le: '' };
+  const calcul = R.calculerEtapes({ metier: { modele: conseil, taille: '2-5', passe: false }, donnees: { ...DV, clients: 4 }, memoire: R.MEMOIRE_VIDE });
+  const v = R.presentationDemarrage({ calcul, metier, modele: conseil, effectifs: { clients: 4, membres: 1 }, premierClient: 'Client exemple', langue: 'fr' });
+  assert.deepEqual(v.resumes, { metier: 'Conseil et services', client: '4 enregistrés' });
+  assert.deepEqual(v.rempli.devis, [
+    { terme: 'Client', suite: 'Client exemple, ajouté à l’étape 2' },
+    { terme: 'Lignes types', suite: 'celles de votre métier, modifiables' },
+  ]);
+  assert.equal(v.brouillon.client, 'Client exemple');
+  assert.equal(v.brouillon.lignes.length, conseil.devisType.length);
+  assert.ok(v.brouillon.lignes.every((l: any) => l.montant === undefined), 'aucun prix inventé');
+  assert.equal(v.brouillon.numero, undefined, 'un brouillon n’a pas de numéro');
+  assert.equal(v.brouillon.totaux, undefined);
+  assert.deepEqual(v.pret.map((l: any) => [l.id, l.titre, l.sous]), [
+    ['modules', '9 modules activés', 'Conseil et services, 6 dans la barre'],
+    ['clients', '4 clients ajoutés', 'dans vos contacts'],
+    ['garde', 'La Garde veille sur vos accès', 'chaque connexion est notée'],
+  ]);
+  assert.ok(!v.pret.some((l: any) => l.id === 'sauvegarde'), 'aucune ligne sur la sauvegarde : le poste n’en sait rien');
+  const vide = R.presentationDemarrage({ calcul: calc({ metier: null }), metier: null, modele: null, effectifs: { clients: 0, membres: 1 }, premierClient: null, langue: 'fr' });
+  assert.deepEqual([vide.resumes, vide.rempli, vide.brouillon, vide.pret.map((l: any) => l.id)], [{}, {}, null, ['garde']]);
+  const passe = R.presentationDemarrage({ calcul: calc({ metier: { modele: null, taille: '2-5', passe: true } }), metier: { modele: null, taille: '2-5', modules: ['home'], passe: true, le: '' }, modele: null, effectifs: { clients: 0, membres: 1 }, premierClient: null, langue: 'fr' });
+  assert.ok(!passe.pret.some((l: any) => l.id === 'modules'), 'qui passe n’a pas de modules « activés pour son métier »');
+  const startup = R.modeleParId('startup');
+  const sansDevis = R.presentationDemarrage({ calcul: R.calculerEtapes({ metier: { modele: startup, taille: '2-5', passe: false }, donnees: DV, memoire: R.MEMOIRE_VIDE }), metier: { ...metier, modele: 'startup' }, modele: startup, effectifs: { clients: 1, membres: 1 }, premierClient: 'X', langue: 'fr' });
+  assert.equal(sansDevis.brouillon, null, 'l’étape 3 d’une start-up n’est pas un devis : pas de papier');
+  for (const m of MODELES) for (const l of (m as any).devisType ?? []) for (const t of [l.libelle, l.quantite]) assert.doesNotMatch(`${t.fr} ${t.en}`, /€|\$|\d\s?\d{3}|\d+,\d/, `${m.id} : un prix dans une ligne type`);
 });
 
 await dit('une étape faite ne redevient JAMAIS « à faire » : la mémoire la garde même si le client est supprimé ensuite', () => {
@@ -378,7 +430,7 @@ await dit('« Passer » à l’étape 1 : l’étape est « passée », comptée
   const e = passe.etapes.find((x: any) => x.id === 'metier');
   assert.deepEqual([e.faite, e.passee], [true, true]);
   assert.equal(passe.n, 1);
-  assert.equal(passe.etapes.find((x: any) => x.id === 'client').libelle.titre.fr, 'Ajouter votre premier client', 'jeu général : les textes de la maquette');
+  assert.equal(passe.etapes.find((x: any) => x.id === 'client').libelle.titre.fr, 'Ajouter vos clients', 'jeu général : les textes de la maquette');
   assert.equal(calc({ metier: null }).etapes[0].faite, false);
 });
 
@@ -434,14 +486,22 @@ await dit('français et anglais disent les mêmes clés ; les textes de la fiche
   const fr = R.MOTS_FR as Record<string, string>;
   const attendu: Record<string, string> = {
     'titre': 'Démarrage', 'sous': 'Votre espace se prépare avec vous, sans pression', 'plusTard': 'Plus tard', 'reprendreVisite': 'Reprendre la visite',
-    'allerAccueil': 'Aller à l’accueil', 'visite.titre': 'Visite guidée, 2 minutes', 'visite.texte': 'Le tour de ce que vous pouvez faire ici.', 'savoir.titre': 'Bon à savoir',
-    'savoir.chercher': 'Chercher n’importe quoi', 'savoir.ajmani': 'Parler à Ajmani', 'savoir.raccourcis': 'Voir tous les raccourcis',
-    'aide.ajmani.titre': 'Demander à Ajmani', 'aide.ajmani.texte': 'Il vous guide pas à pas', 'aide.appel.titre': 'Un appel de 15 minutes', 'aide.appel.texte': 'Avec quelqu’un de l’équipe',
-    'aide.donnees.titre': 'Reprendre vos données', 'aide.donnees.texte': 'Depuis Excel ou un autre outil', 'aide.ajmani.demande': 'Guide-moi pas à pas pour finir la configuration',
+    'sous.prenom': 'Bienvenue {prenom}, votre espace se prépare avec vous, sans pression', 'allerAccueil': 'Aller à l’accueil',
+    'resume.pretes': '{n} sur {total} prêtes', 'resume.duree': 'environ {n} min', 'resume.reste': 'pour le reste',
+    'statut.maintenant': 'maintenant · {n} min', 'statut.ensuite': 'ensuite · {n} min', 'statut.duree': '{n} min',
+    'panneau.etape': 'Étape {n} sur {total}', 'panneau.conseillee': '· conseillée maintenant', 'panneau.rempli': 'Déjà rempli pour vous', 'panneau.plusTard': 'Plus tard',
+    'panneau.pasPourMoi': 'Pas pour moi', 'panneau.ajmani': 'Rien ne part chez {client} sans votre accord.', 'panneau.retiree': 'Étape retirée', 'panneau.annuler': 'Annuler',
+    'rempli.client.terme': 'Client', 'rempli.client.suite': '{client}, ajouté à l’étape {n}', 'rempli.lignes.terme': 'Lignes types', 'rempli.lignes.suite': 'celles de votre métier, modifiables',
+    'ensuite.titre': 'Ensuite : {etape}', 'ensuite.inviter': 'Ensuite : inviter {noms}', 'savoir.titre': 'Bon à savoir', 'savoir.chercher': 'chercher', 'savoir.ajmani': 'Ajmani',
+    'papier.statut': 'Brouillon', 'papier.titre': 'Devis', 'papier.pour': 'Pour', 'papier.note': 'Prérempli par Ajmani, à relire',
+    'dejaPret.titre': 'Déjà prêt', 'dejaPret.sous': 'sans rien faire', 'dejaPret.modules.titre': '{n} modules activés', 'dejaPret.modules.sous': '{metier}, {n} dans la barre',
+    'dejaPret.garde.titre': 'La Garde veille sur vos accès', 'dejaPret.garde.sous': 'chaque connexion est notée',
+    'aide.referent.titre': '{nom} vous accompagne', 'aide.referent.sous': 'de l’équipe AMN · répond sous {n} min', 'aide.equipe.titre': 'L’équipe AMN vous répond',
+    'aide.texte': 'Un appel de 15 minutes pour faire le tour ensemble, ou une question par écrit. Comme vous préférez.', 'aide.creneaux': 'Créneaux libres aujourd’hui',
+    'aide.reserver': 'Réserver {heure}', 'aide.ecrire': 'Lui écrire', 'aide.reserve': 'Rendez-vous avec {nom} à {heure}',
     'etape.metier.titre': 'Choisir votre métier', 'etape.metier.sous': 'Pour activer les bons modules', 'etape.equipe.titre': 'Inviter votre équipe', 'etape.equipe.sous': 'Chacun garde ses accès',
     'etape.mobile.titre': 'Installer l’application mobile', 'etape.mobile.sous': 'Vos tâches dans la poche', 'etape.mobile.action': 'Obtenir le lien', 'etape.equipe.action': 'Inviter',
     'erreur': 'Votre progression n’a pas pu être chargée.', 'erreur.reessayer': 'Réessayer', 'horsLigne': 'Disponible au retour du réseau', 'etape.admin': 'Réservé aux administrateurs',
-    'etape.libre': 'Besoin d’aide ? Ajmani peut faire ces étapes avec vous.',
     'metier.titre': 'Quel est votre métier ?', 'metier.sous': 'On active les bons modules, vous n’avez rien d’autre à régler', 'metier.passer': 'Passer', 'metier.continuer': 'Continuer',
     'metier.continuer.info': 'Choisissez un métier ou utilisez Passer', 'taille.titre': 'Combien êtes-vous ?', 'taille.aide': 'Pour régler les accès et les rôles', 'taille.seul': 'Seul', 'taille.2-5': '2 à 5',
     'taille.6-20': '6 à 20', 'taille.plus': 'Plus', 'apercu.titre': 'Votre première journée, en aperçu', 'apercu.aide': 'Ce que vous verrez dès demain matin',
@@ -451,7 +511,7 @@ await dit('français et anglais disent les mêmes clés ; les textes de la fiche
     'vide.texte': 'Les modules à activer apparaîtront ici.', 'vide.action': 'Décrire mon activité', 'erreur.enregistrement': 'Votre choix n’a pas pu être enregistré.',
   };
   for (const [k, v] of Object.entries(attendu)) assert.equal(fr[k], v, k);
-  const aAjmani = new Set(['aide.ajmani.demande', 'decrire.consigne']);
+  const aAjmani = new Set(['decrire.consigne']);
   for (const [k, t] of [...Object.entries(R.MOTS_FR), ...Object.entries(R.MOTS_EN)] as [string, string][]) {
     assert.doesNotMatch(t, /!/, `${k} : point d’exclamation`);
     assert.doesNotMatch(t, /en retard|\blate\b|overdue|urgent|dépêch|compte à rebours|countdown|expire/i, `${k} : ça presse`);
@@ -465,141 +525,194 @@ await dit('français et anglais disent les mêmes clés ; les textes de la fiche
 const noop = () => undefined;
 const propsDem = (surcharge: Record<string, unknown> = {}) => ({
   etat: 'pret', calcul: calc({ donnees: { ...DV, clients: 2 } }), prenom: 'Camille', horsLigne: false, peutAdministrer: true, mac: true,
+  resumes: { client: '2 enregistrés' }, rempli: {}, brouillon: null, client: null, pret: [], aInviter: [], referent: null, lienMobile: null,
   onPlusTard: noop, onAccueil: noop, onReprendreVisite: noop, onReessayer: noop, onAgir: noop, onOuvrir: noop, onMarquer: noop, onRetirer: noop, onRemettre: noop,
-  onRaccourci: noop, onAjmani: noop, onAppel: noop, onDonnees: noop, ...surcharge,
+  onRaccourci: noop, onReserver: noop, onEcrire: noop, ...surcharge,
 });
 const vueDem = (s: Record<string, unknown> = {}): string => rendre(h(R.VueDemarrage, propsDem(s)));
-const lignes = (html: string): string[] => html.split('<li class="dem-etape"').slice(1).map((x) => x.split('</li>')[0]);
+const noeuds = (html: string): string[] => html.split('<li class="dem-route__etape"').slice(1).map((x) => x.split('</li>')[0]);
+const entete = (html: string): string => html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+const carteEtape = (html: string): string => html.slice(html.indexOf('dem-carte-etape'), html.indexOf('class="dem-droite"'));
+const REFERENT = { nom: 'Sacha', delai: 10, enLigne: true, creneaux: ['14:30', '16:00', 'Lun. 9:30'] };
 
-await dit('H42 · 2 sur 6 : un h1, l’anneau de 80 px à 33 %, « 2/6 », le titre, le texte, six étapes dont deux faites et une seule conseillée', () => {
+await dit('H42 · 2 sur 6 : un h1, l’anneau de 74 px à 33 % (« 2 » et « /6 »), « 2 sur 6 prêtes · environ 7 min », six nœuds dont deux faits et un seul conseillé', () => {
   const html = vueDem();
   assert.equal(compter(html, /<h1[ >]/g), 1);
   assert.match(html, />Démarrage<\/h1>/);
+  assert.match(html, />Bienvenue Camille, votre espace se prépare avec vous, sans pression</);
+  assert.match(vueDem({ prenom: '' }), />Votre espace se prépare avec vous, sans pression</);
   assert.match(html, /role="progressbar"[^>]*aria-valuenow="33"/);
-  assert.match(html, /width:80px;height:80px/);
-  assert.match(html, />2\/6</);
-  assert.match(html, />Bienvenue, Camille<\/h2>/);
-  assert.match(html, /Plus que 4 étapes pour que tout soit prêt\. Vous pouvez les faire dans l’ordre que vous voulez\./);
-  const l = lignes(html);
-  assert.equal(l.length, 6);
-  assert.equal(compter(html, /role="checkbox"/g), 6);
-  assert.equal(compter(html, /role="checkbox"[^>]*aria-checked="true"/g), 2);
-  assert.equal(compter(html, /data-conseillee="true"/g), 1);
-  assert.match(l[2], /data-conseillee/);
-  assert.match(l[2], /data-variante="primaire"[^>]*>(<span[^>]*>)?Créer un devis/);
-  assert.equal(primaires(html), 1, 'un seul bouton primaire : celui de l’étape conseillée');
-  assert.match(html, /Inviter<\/span>/);
-  assert.match(html, />Connecter</);
-  assert.match(html, />Obtenir le lien</);
-  assert.equal(compter(html, /data-variante="secondaire"/g), 2 + 3, 'en-tête (2) + trois boutons secondaires d’étapes');
+  assert.match(html, /width:74px;height:74px/);
+  assert.match(html, /class="dem-anneau__n">2<\/span><span class="dem-anneau__total">\/6</);
+  assert.match(html, />2 sur 6 prêtes</);
+  assert.match(html, />environ 7 min</);
+  assert.match(html, />pour le reste</);
+  const n = noeuds(html);
+  assert.equal(n.length, 6);
+  assert.deepEqual(n.map((x) => /data-forme="(\w+)"/.exec(x)?.[1]), ['faite', 'faite', 'conseillee', 'afaire', 'afaire', 'afaire'], 'la conseillée suit les données');
+  assert.match(n[0], /data-lien="plein"/, 'entre deux étapes faites, un trait plein');
+  assert.equal(compter(noeuds(vueDem({ calcul: calc({ metier: null, donnees: { ...DV, clients: 2 } }) }))[0], /data-forme="conseillee"/g), 1, 'sans métier gardé, l’étape 1 est la conseillée');
+  assert.equal(compter(html, /aria-current="step"/g), 1);
+  assert.match(n[1], />2 enregistrés</, 'le nœud fait dit sa valeur');
+  assert.match(n[2], />maintenant · 2 min</);
+  assert.match(n[3], />ensuite · 1 min</);
+  assert.match(n[4], />3 min</);
+  assert.match(n[1], /aria-label="Ajouter vos clients, faite : la revoir"/);
+  assert.match(n[3], /aria-label="Inviter votre équipe, à faire : l’afficher"/);
+  assert.match(n[1], /data-lien="flux"/, 'la liaison qui s’écoule mène à l’étape conseillée');
+  assert.match(n[2], /data-lien="attente"/);
+  assert.equal(compter(html, /data-mvt="flux"/g), 1);
+  assert.equal(compter(html, /data-mvt="onde"/g), 1, 'le halo du seul nœud conseillé');
+  assert.equal(primaires(html), 1, 'un seul primaire sans créneau réservable : celui de l’étape');
 });
 
-await dit('H42 · étapes faites : titre et sous-titre T4, SANS barré, sans bouton, titre ouvrable ; étapes à faire : T1', () => {
-  const l = lignes(vueDem());
-  for (const i of [0, 1]) {
-    assert.match(l[i], /data-faite="true"/);
-    assert.doesNotMatch(l[i], /line-through|<s>|<del>|text-decoration/);
-    assert.doesNotMatch(l[i], /<button[^>]*data-socle="bouton"/, 'une étape faite n’a pas de bouton d’action');
-    assert.match(l[i], /class="dem-etape__ouvrir sc-focus"/);
-  }
-  for (const i of [2, 3, 4, 5]) assert.doesNotMatch(l[i], /data-faite/);
-  const css = sansCommentaires(lireSource('demarrage.css'));
-  assert.doesNotMatch(css, /line-through/);
-  assert.match(css, /\.dem-etape\[data-faite='true'\] \.dem-etape__titre \{[^}]*color: var\(--socle-texte-3\)[^}]*text-decoration: none/);
-  assert.match(css, /\.dem-etape__titre \{[^}]*color: var\(--socle-texte-1\)/);
-  assert.match(css, /\.dem-etape__sous \{[^}]*color: var\(--socle-texte-3\)/);
-  assert.doesNotMatch(sansCommentaires(lireSource('VueDemarrage.tsx')), /LigneTache/, 'la ligne de tâche barre le texte coché : on ne s’en sert pas ici');
-  assert.match(l[0], /aria-checked="true"/);
+await dit('H42 · en-tête : « Plus tard » et « Reprendre la visite » en secondaires au gabarit de H40 (31 px, pas le petit bouton), aucun primaire (C13)', () => {
+  const e = entete(vueDem());
+  assert.equal(compter(e, /data-variante="secondaire"/g), 2);
+  assert.equal(compter(e, /data-taille="moyen"/g), 2);
+  assert.doesNotMatch(e, /data-taille="petit"|data-variante="primaire"/);
+  assert.match(e, />Plus tard</);
+  assert.match(e, />Reprendre la visite</);
+  assert.doesNotMatch(sansCommentaires(lireSource('VueDemarrage.tsx')), /taille="petit"/);
 });
 
-await dit('H42 · 6 sur 6 : « Votre espace est prêt », anneau plein, liste visible, « Aller à l’accueil » devient le seul bouton primaire, « Plus tard » disparaît', () => {
-  const tout = calc({ donnees: { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 }, memoire: { faites: ['paiement', 'mobile'], retirees: [] } });
+await dit('H42 · la carte de l’étape : « Étape 3 sur 6 · conseillée maintenant », le titre, le texte, « Déjà rempli pour vous », « Créer le devis » primaire, « Plus tard », « Pas pour moi », la ligne d’Ajmani, « Ensuite », « Bon à savoir »', () => {
+  const rempli = { devis: [{ terme: 'Client', suite: 'Client exemple, ajouté à l’étape 2' }, { terme: 'Lignes types', suite: 'celles de votre métier, modifiables' }] };
+  const html = carteEtape(vueDem({ rempli, client: 'Client exemple' }));
+  assert.match(html, />Étape 3 sur 6</);
+  assert.match(html, />· conseillée maintenant</);
+  assert.match(html, /<h2 class="dem-etape__titre">Créer votre premier devis<\/h2>/);
+  assert.match(html, /Je prépare un devis type pour votre métier, vous n’avez qu’à relire et ajuster\. Comptez deux minutes\./);
+  assert.match(html, />Déjà rempli pour vous</);
+  assert.equal(compter(html, /class="dem-rempli__ligne"/g), 2);
+  assert.match(html, /<span class="dem-rempli__terme">Client<\/span> · Client exemple, ajouté à l’étape 2/);
+  assert.match(bouton(html, 'Créer le devis').attrs, /data-variante="primaire"/);
+  assert.match(bouton(html, 'Plus tard').attrs, /data-variante="secondaire"/);
+  assert.match(bouton(html, 'Pas pour moi').attrs, /class="dem-lien dem-lien--action sc-focus"/);
+  assert.doesNotMatch(html, /C’est déjà fait/, 'un devis se détecte : pas de marquage à la main');
+  assert.match(html, />Rien ne part chez Client exemple sans votre accord\.</);
+  assert.match(carteEtape(vueDem()), />Rien ne part sans votre accord\.</);
+  assert.match(html, />Ensuite : inviter votre équipe</);
+  assert.match(html, />chacun garde ses accès · 1 min</);
+  assert.match(carteEtape(vueDem({ aInviter: ['Camille', 'Sacha'] })), />Ensuite : inviter Camille et Sacha</);
+  assert.match(html, />Bon à savoir</);
+  assert.equal(compter(html, /class="dem-savoir__ligne/g), 3);
+  for (const k of ['⌘K', '⌘J', '\\?']) assert.match(html, new RegExp(`<kbd[^>]*>${k}</kbd>`));
+  assert.match(carteEtape(vueDem({ mac: false })), /<kbd[^>]*>Ctrl K<\/kbd>/);
+  assert.doesNotMatch(html, /créer, partout|Créer, partout/i, '« N » n’existe pas');
+  assert.doesNotMatch(vueDem({ rempli: {} }), /Déjà rempli pour vous/, 'rien de connu : pas de liste');
+});
+
+await dit('H42 · le papier : un aperçu (« Brouillon », « Devis », « Pour … », lignes) ; les montants, le numéro et les totaux n’apparaissent que s’ils sont donnés ; l’étape 6 montre le code', () => {
+  const brouillon = { client: 'Client exemple', lignes: [{ libelle: 'Ligne A', quantite: '1 jour' }, { libelle: 'Ligne B', quantite: 'offerte' }] };
+  const html = carteEtape(vueDem({ brouillon }));
+  assert.match(html, /<figure class="dem-papier"[^>]*aria-label="Aperçu du brouillon"/);
+  assert.match(html, /data-avec-papier="true"/);
+  assert.match(html, />Brouillon</);
+  assert.match(html, /class="dem-papier__titre">Devis</);
+  assert.match(html, />Pour <span class="dem-papier__client">Client exemple<\/span></);
+  assert.equal(compter(html, /class="dem-papier__ligne"/g), 2);
+  assert.doesNotMatch(html, /€|dem-papier__totaux/);
+  assert.match(html, />Prérempli par Ajmani, à relire</);
+  const complet = rendre(h(R.PapierBrouillon, { b: { ...brouillon, numero: 'N-1', totaux: [{ libelle: 'Total', valeur: '1 €' }] } }));
+  assert.match(complet, />N-1</);
+  assert.match(complet, /data-fort="true"/);
+  assert.doesNotMatch(carteEtape(vueDem()), /dem-papier/, 'sans brouillon, pas de papier');
+  const mobile = calc({ donnees: { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 }, memoire: { faites: ['metier', 'paiement'], retirees: [] } });
+  assert.equal(mobile.conseillee, 'mobile');
+  const m = carteEtape(vueDem({ calcul: mobile, lienMobile: 'https://exemple.test/app' }));
+  assert.match(m, /<svg[^>]*role="img"[^>]*aria-label="Code à scanner avec votre téléphone"/);
+  assert.match(m, />C’est déjà fait</, 'l’étape 6 se marque à la main');
+});
+
+await dit('H42 · « Déjà prêt » (titre T1, « sans rien faire », coches vertes) et l’accompagnement : sans référent, « L’équipe AMN vous répond » sans créneau ni primaire ; avec, trois créneaux et « Réserver »', () => {
+  const pret = [{ id: 'garde', icone: 'garde', titre: 'La Garde veille sur vos accès', sous: 'chaque connexion est notée' }];
+  const html = vueDem({ pret });
+  assert.match(html, /<h2 class="dem-carte__titre">Déjà prêt<\/h2><span class="dem-pret__sans">sans rien faire<\/span>/);
+  assert.equal(compter(html, /class="dem-pret__ligne"/g), 1);
+  assert.doesNotMatch(vueDem(), /Déjà prêt/, 'rien de vrai : pas de carte');
+  assert.match(html, /<h2 class="dem-carte__titre">L’équipe AMN vous répond<\/h2>/);
+  assert.doesNotMatch(html, /role="radiogroup"|Réserver/);
+  assert.match(bouton(html, 'Écrire à l’équipe').attrs, /data-variante="secondaire"/);
+  const avec = vueDem({ pret, referent: REFERENT });
+  assert.match(avec, /<h2 class="dem-carte__titre">Sacha vous accompagne<\/h2>/);
+  assert.match(avec, />de l’équipe AMN · répond sous 10 min</);
+  assert.match(avec, /role="radiogroup" aria-labelledby="dem-aide-creneaux"/);
+  assert.equal(compter(avec, /class="dem-creneau sc-focus sc-nombre"/g), 3);
+  assert.match(bouton(avec, '14:30').attrs, /aria-checked="true"/);
+  assert.match(bouton(avec, 'Réserver 14:30').attrs, /data-variante="primaire"/);
+  assert.match(bouton(avec, 'Lui écrire').attrs, /data-variante="secondaire"/);
+  assert.equal(primaires(avec), 2, 'fiche rubrique 12 : un primaire dans la carte de l’étape, un dans l’accompagnement');
+});
+
+await dit('H42 · 6 sur 6 : anneau plein, nœuds tous faits, « Votre espace est prêt », « Aller à l’accueil » seul primaire, « Plus tard » disparaît', () => {
+  const tout = calc({ donnees: { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 }, memoire: { faites: ['metier', 'paiement', 'mobile'], retirees: [] } });
   const html = vueDem({ calcul: tout });
+  assert.match(html, /aria-valuenow="100"/);
+  assert.match(html, /class="dem-anneau__n">6<\/span><span class="dem-anneau__total">\/6</);
+  assert.equal(compter(html, /data-forme="faite"/g), 6);
   assert.match(html, />Votre espace est prêt, Camille<\/h2>/);
   assert.match(html, /Tout est en place\. Vous pouvez compter sur Ajmani pour la suite\./);
-  assert.match(html, /aria-valuenow="100"/);
-  assert.match(html, />6\/6</);
-  assert.equal(compter(html, /role="checkbox"[^>]*aria-checked="true"/g), 6);
-  assert.match(html, /Aller à l’accueil/);
-  assert.doesNotMatch(html, />Plus tard</);
+  assert.match(bouton(html, 'Aller à l’accueil').attrs, /data-variante="primaire"/);
   assert.equal(primaires(html), 1);
-  assert.match(html, /data-variante="primaire"[^>]*>(<span[^>]*>)?Aller à l’accueil/);
-  assert.equal(compter(html, /data-conseillee/g), 0);
+  assert.doesNotMatch(html, />Plus tard</);
+  assert.match(html, />plus rien à faire</);
   assert.match(vueDem({ calcul: tout, prenom: '' }), />Votre espace est prêt<\/h2>/);
 });
 
-await dit('H42 · « Seul » : cinq étapes, « 2/5 » ; une étape retirée : « Les remettre » ; une liste courte garde sa place avec « Besoin d’aide ? »', () => {
+await dit('H42 · « Seul » : cinq nœuds, « 2/5 » ; une étape retirée : « 1 étape retirée · Les remettre »', () => {
   const seul = calc({ metier: { ...artisan, taille: 'seul' }, donnees: { ...DV, clients: 1 } });
   const html = vueDem({ calcul: seul });
-  assert.equal(lignes(html).length, 5);
-  assert.match(html, />2\/5</);
+  assert.equal(noeuds(html).length, 5);
+  assert.match(html, /class="dem-anneau__total">\/5</);
   assert.doesNotMatch(html, />Inviter votre équipe</);
-  assert.match(html, /Besoin d’aide \? Ajmani peut faire ces étapes avec vous\./);
-  const retiree = calc({ memoire: R.retirerEtape(R.MEMOIRE_VIDE, 'mobile') });
-  const h2 = vueDem({ calcul: retiree });
-  assert.match(h2, /1 étape sortie de la liste/);
-  assert.match(h2, />Les remettre</);
+  assert.match(html, />Étape 3 sur 5</);
+  const retiree = vueDem({ calcul: calc({ memoire: R.retirerEtape(R.MEMOIRE_VIDE, 'mobile') }) });
+  assert.match(retiree, /1 étape retirée/);
+  assert.match(retiree, />Les remettre</);
   assert.doesNotMatch(vueDem(), />Les remettre</);
-  assert.doesNotMatch(vueDem(), /Besoin d’aide/, 'six lignes : pas de place à combler');
 });
 
-await dit('H42 · colonne de droite : visite guidée (bouton de lecture, aucun lecteur externe), « Bon à savoir » à trois raccourcis, bandeau à trois tuiles', () => {
-  const html = vueDem();
-  assert.match(html, /class="dem-poster__lire sc-focus"[^>]*aria-label="Lancer la visite guidée \(2 minutes\)"/);
-  assert.doesNotMatch(html, /<video|<iframe|<audio|youtube|vimeo/i);
-  assert.match(html, />Visite guidée, 2 minutes</);
-  assert.equal(compter(html, /class="dem-savoir__ligne/g), 3);
-  assert.match(html, /<kbd[^>]*>⌘K<\/kbd>/);
-  assert.match(html, /<kbd[^>]*>⌘J<\/kbd>/);
-  assert.match(html, /<kbd[^>]*>\?<\/kbd>/);
-  assert.doesNotMatch(html, /Créer, partout/);
-  assert.match(vueDem({ mac: false }), /<kbd[^>]*>Ctrl K<\/kbd>/);
-  assert.match(vueDem({ mac: false }), /data-large="true"/);
-  assert.equal(compter(html, /class="dem-tuile sc-focus"/g), 3);
-  for (const t of ['Demander à Ajmani', 'Un appel de 15 minutes', 'Reprendre vos données', 'Il vous guide pas à pas', 'Avec quelqu’un de l’équipe', 'Depuis Excel ou un autre outil']) assert.match(html, new RegExp(t));
-  assert.equal(compter(html, /<svg[^>]*aria-hidden="true"/g) >= 5 ? 1 : 0, 1, 'les icônes sont décoratives');
-});
-
-await dit('H42 · chargement : squelettes (anneau, six lignes, cartes de droite), région annoncée, aucun bouton primaire, la page garde son h1', () => {
+await dit('H42 · chargement : squelettes du parcours (six ronds), de la carte et des deux cartes de droite, région annoncée, aucun primaire, la page garde son h1', () => {
   const html = vueDem({ etat: 'chargement' });
   assert.match(html, /role="status"[^>]*aria-busy="true"[^>]*aria-label="Chargement de votre progression"|aria-busy="true"[^>]*role="status"/);
-  assert.equal(compter(html, /class="dem-squelette-ligne"/g), 6);
+  assert.equal(compter(html, /class="dem-route__etape dem-squelette-noeud"/g), 6);
+  assert.match(html, /height:233px/);
+  assert.match(html, /height:239px/);
   assert.equal(compter(html, /<h1[ >]/g), 1);
   assert.equal(primaires(html), 0);
-  assert.doesNotMatch(html, /role="checkbox"/);
-  assert.match(rendre(h(R.SqueletteDemarrage)), /dem-grille/);
+  assert.doesNotMatch(html, /class="dem-noeud/);
+  assert.match(rendre(h(R.SqueletteDemarrage)), /dem-surface/);
 });
 
-await dit('H42 · erreur : le bandeau « Votre progression n’a pas pu être chargée. » et « Réessayer », les étapes et leurs boutons restent là', () => {
+await dit('H42 · erreur : le bandeau « Votre progression n’a pas pu être chargée. » et « Réessayer » dans la carte de l’étape ; le parcours et les boutons restent', () => {
   const html = vueDem({ etat: 'erreur' });
-  assert.match(html, /role="alert"/);
+  assert.match(carteEtape(html), /role="alert"/);
   assert.match(html, /Votre progression n’a pas pu être chargée\./);
   assert.match(html, />Réessayer</);
-  assert.equal(lignes(html).length, 6);
+  assert.equal(noeuds(html).length, 6);
   assert.equal(primaires(html), 1);
 });
 
-await dit('H42 · hors ligne : « Connecter », « Obtenir le lien » et « Un appel de 15 minutes » sont grisés avec « Disponible au retour du réseau » ; « Plus tard » reste actif', () => {
-  const calcul = calc({ donnees: { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 } });
+await dit('H42 · hors ligne : « Connecter » et « Réserver » grisés avec « Disponible au retour du réseau » ; « Plus tard » reste actif', () => {
+  const calcul = calc({ donnees: { clients: 1, quotes: 1, tasks: 0, appointments: 0, membres: 2 }, memoire: { faites: ['metier'], retirees: [] } });
   assert.equal(calcul.conseillee, 'paiement');
-  const html = vueDem({ calcul, horsLigne: true });
-  assert.match(html, /<span class="dem-etape__bouton" title="Disponible au retour du réseau"><button[^>]*data-variante="primaire"[^>]*disabled=""/);
-  assert.match(html, /<span class="dem-etape__bouton" title="Disponible au retour du réseau"><button[^>]*data-variante="secondaire"[^>]*disabled=""[^>]*>(<span[^>]*>)?Obtenir le lien/);
-  assert.match(html, /<button[^>]*class="dem-tuile sc-focus"[^>]*disabled=""[^>]*title="Disponible au retour du réseau"[\s\S]*?Un appel de 15 minutes/);
-  assert.doesNotMatch(html, /<button[^>]*disabled=""[^>]*>(<span[^>]*>)?Plus tard/);
-  assert.equal(primaires(html), 1);
-  assert.doesNotMatch(vueDem({ calcul }), /disabled=""/);
+  const html = vueDem({ calcul, horsLigne: true, referent: REFERENT });
+  assert.match(html, /<span title="Disponible au retour du réseau"><button[^>]*data-variante="primaire"[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Connecter/);
+  assert.match(html, /<span title="Disponible au retour du réseau"><button[^>]*data-variante="primaire"[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*Réserver 14:30/);
+  assert.doesNotMatch(bouton(html, 'Plus tard').attrs, /disabled=""/);
+  assert.match(carteEtape(html), />C’est déjà fait</, 'les encaissements se marquent à la main');
+  assert.doesNotMatch(vueDem({ calcul, referent: REFERENT }), /disabled=""/);
 });
 
-await dit('H42 · droits : sans droit d’administration, « Inviter » et « Connecter » deviennent « Réservé aux administrateurs »', () => {
-  const calcul = calc({ donnees: { ...DV, clients: 1, quotes: 1 } });
+await dit('H42 · droits : sans droit d’administration, « Inviter » et « Connecter » deviennent « Réservé aux administrateurs », jamais un second primaire', () => {
+  const calcul = calc({ donnees: { ...DV, clients: 1, quotes: 1 }, memoire: { faites: ['metier'], retirees: [] } });
+  assert.equal(calcul.conseillee, 'equipe');
   const html = vueDem({ calcul, peutAdministrer: false });
-  assert.equal(compter(html, /Réservé aux administrateurs/g), 2);
-  assert.doesNotMatch(html, />Inviter</);
-  assert.doesNotMatch(html, />Connecter</);
-  assert.match(html, />Obtenir le lien</, 'l’application mobile reste à tout le monde');
+  assert.match(carteEtape(html), />Réservé aux administrateurs</);
+  assert.doesNotMatch(carteEtape(html), />Inviter</);
+  assert.equal(primaires(html), 0);
   assert.equal(compter(vueDem({ calcul }), /Réservé aux administrateurs/g), 0);
-  assert.equal(primaires(html), 0, 'la conseillée est « Inviter » : remplacée, plus de primaire — jamais un second');
 });
 
 await dit('H42 · la fenêtre du lien : un code à scanner (pas une image tierce) et l’adresse en toutes lettres ; sans adresse publique, l’explication — jamais un faux lien', () => {
@@ -731,18 +844,22 @@ await dit('les deux routes sont deux constantes, hors registre et hors catalogue
 
 /* ═════════════════════════ Les pages branchées (lues dans les sources) ═════════════════════════ */
 
-await dit('PageDemarrage : visite pas à pas (aucun lecteur externe), assistant, destinations qui existent, lien générique sans jeton', () => {
+await dit('PageDemarrage : visite pas à pas (aucun lecteur externe), données par `presentationDemarrage`, aucune personne ni créneau inventés, destinations qui existent, lien générique sans jeton', () => {
   const src = sansCommentaires(lireSource('PageDemarrage.tsx'));
   assert.match(src, /lancer\(parcoursGeneral\(/);
-  assert.match(src, /assistant\.open\('chat'\);\s*assistant\.sendMessage\(/);
+  assert.match(src, /presentationDemarrage\(\{/);
+  assert.match(src, /referent=\{null\}/, 'le poste n’a ni référent ni agenda de l’équipe AMN');
+  assert.match(src, /aInviter=\{\[\]\}/);
   assert.match(src, /canBuildPublicLink\(\) \? publicOrigin\(\) : null/);
   assert.doesNotMatch(src, /token|jeton|window\.location|\?\w+=/i);
   for (const [, route] of src.matchAll(/navigate\('(\/[^']*)'\)/g)) assert.ok(route === '/' || routesDuRegistre.has(route), `route inconnue : ${route}`);
-  assert.match(src, /navigate\('\/assistance'\)/);
-  assert.match(src, /navigate\('\/outils\/donnees'\)/);
+  assert.match(src, /onEcrire=\{\(\) => navigate\('\/assistance'\)\}/);
   assert.match(src, /ROUTE_METIER/);
+  assert.match(src, /usePageCoquille\(\{ famille: 'jour', sousPage: 'home'/);
   assert.match(src, /new KeyboardEvent\('keydown', evenementDeTouche\(/);
   assert.doesNotMatch(src, /dangerouslySetInnerHTML|<iframe|<video/);
+  const pres = sansCommentaires(lireSource('presentation.ts'));
+  assert.doesNotMatch(pres, /sauvegarde|2:00|30 jours|Excel/i, 'aucune ligne que le poste ne peut pas prouver');
 });
 
 await dit('PageMetier : « Continuer » garde le choix puis allège (jamais plus), « Passer » n’allège rien, « Composer » passe par l’assistant sans rien modifier', () => {
@@ -765,28 +882,45 @@ const regle = (sel: string): string => {
   return css.slice(i, css.indexOf('}', i) + 1);
 };
 
-await dit('cotes de H42 : 728 × 510, colonne droite 360 (229 + 225, écart 14), bandeau 1108 × 92 avec tuiles de 62, étapes de 63, poster 326 × 152 et bouton de 54, touche de 36', () => {
-  assert.match(regle('.dem-grille'), /grid-template-columns: 728px 360px[^}]*gap: 20px/);
-  assert.match(regle(":root[data-ambiance='noir'] .dem-principale"), /width: 728px[^}]*min-height: 510px/);
-  assert.match(regle(':root[data-ambiance=\'noir\'] .dem-principale'), /padding: 20px 22px/);
-  assert.match(regle('.dem-accueil'), /height: 80px/);
-  assert.match(regle('.dem-droite'), /gap: 14px/);
-  assert.match(regle(":root[data-ambiance='noir'] .dem-visite"), /height: 229px/);
-  assert.match(regle('.dem-poster'), /height: 152px[^}]*border-radius: 14px/);
-  assert.match(regle('.dem-poster__lire'), /width: 54px[^}]*height: 54px/);
-  assert.match(regle(":root[data-ambiance='noir'] .dem-savoir"), /height: 225px/);
-  assert.match(regle('.dem-savoir__ligne'), /height: 41px/);
-  assert.match(regle('.dem-touche'), /width: 36px/);
-  assert.match(regle('.dem-etape'), /height: 63px/);
-  assert.match(regle(":root[data-ambiance='noir'] .dem-aide"), /height: 92px[^}]*padding: 14px 16px/);
-  assert.match(regle('.dem-aide__grille'), /repeat\(3, minmax\(0, 1fr\)\)[^}]*gap: 14px/);
-  assert.match(regle('.dem-tuile'), /height: 62px/);
-  assert.match(regle('.dem-tuile__icone'), /width: 36px[^}]*height: 36px[^}]*border-radius: 10px/);
-  assert.match(regle('.dem-entete'), /margin-bottom: 16px/);
-  assert.match(regle('.dem-titre'), /font-size: 28px[^}]*font-weight: 600/);
+await dit('cotes de H42 : parcours 1108 × 164 (marges 18 / 22, gouttière 212, anneau 74, nœuds 36 / 48 au pas de 141,4), carte 748 × 486, droite 340 (233 + reste, écart 14), papier 318', () => {
+  assert.match(regle('.dem-surface'), /flex-direction: column; gap: 14px/);
+  assert.match(regle('.dem-bas'), /grid-template-columns: 748px 340px; gap: 20px; height: 486px/);
+  assert.match(regle(":root[data-ambiance='noir'] .dem-parcours"), /height: 164px/);
+  assert.match(regle('.dem-parcours__corps'), /padding: 18px 22px/);
+  assert.match(regle('.dem-parcours__resume'), /width: 213px; border-right: 1px solid var\(--socle-lateral-filet\)/);
+  assert.match(regle('.dem-route'), /grid-template-columns: repeat\(6, 141\.4px\)/);
+  assert.match(regle('.dem-noeud__rond'), /width: 36px; height: 36px/);
+  assert.match(regle(".dem-route__etape[data-forme='conseillee'] .dem-noeud__rond"), /width: 48px;\s*height: 48px;\s*background: var\(--socle-primaire\)/);
+  assert.match(regle(".dem-route__etape[data-forme='faite'] .dem-noeud__rond"), /var\(--socle-etat-succes\) 75%[\s\S]*var\(--socle-etat-succes\) 14%[\s\S]*color: var\(--socle-etat-succes\)/, 'H42.2 : les étapes faites en vert (image v3)');
+  assert.match(regle(".dem-route__etape[data-forme='afaire'] .dem-noeud__rond"), /border: 1px dashed var\(--socle-case-vide\)/);
+  assert.match(regle('.dem-route__titre'), /max-width: 136px; margin-top: 10px[^}]*font-size: 12\.5px/);
+  assert.match(regle('.dem-route__statut'), /font-size: 11\.5px/);
+  assert.match(regle('.dem-carte-etape__corps'), /padding: 22px 24px 16px/);
+  assert.match(regle(".dem-etape[data-avec-papier='true']"), /grid-template-columns: minmax\(0, 1fr\) 318px/);
+  assert.match(regle('.dem-etape__titre'), /font-size: 24px; font-weight: 600/);
+  assert.match(regle('.dem-rempli__ligne'), /height: 34px/);
+  assert.match(regle('.dem-ensuite'), /height: 52px[\s\S]*border: 1px dashed var\(--socle-bord-bouton\)[\s\S]*border-radius: 12px/);
+  assert.match(regle('.dem-papier'), /width: 318px/);
+  assert.match(regle('.dem-papier__ligne'), /height: 31px/);
+  assert.match(regle(":root[data-ambiance='noir'] .dem-pret"), /height: 233px/);
+  assert.match(regle('.dem-pret__ligne'), /height: 45px/);
+  assert.match(regle(":root[data-ambiance='noir'] .dem-aide"), /flex: 1/);
+  assert.match(regle('.dem-creneaux'), /repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(regle('.dem-aide__actions'), /margin-top: auto/);
+  assert.match(regle('.dem-titre'), /font-size: 28px; font-weight: 600/);
   assert.match(regle('.dem-sous'), /font-size: 13\.5px/);
-  assert.match(sansCommentaires(lireSource('VueDemarrage.tsx')), /taille=\{80\}[^>]*ton="succes"/);
-  assert.match(regle(".dem-etape[data-conseillee='true']"), /background: var\(--sc-dem-ligne-conseillee\)/);
+  assert.match(regle('.dem-actions'), /gap: 9px; padding-bottom: 3px/, 'les boutons d’en-tête posés comme sur H40');
+});
+
+await dit('C11 et C12 : la racine de page ne pose pas les chiffres tabulaires (les nombres seulement) ; chaque titre, libellé de carte et de liste porte sa couleur', () => {
+  const racinePage = regle(":root[data-ambiance='noir'] :is(.dem-page, .met-page)");
+  assert.doesNotMatch(racinePage, /tabular-nums/);
+  assert.match(css, /\.sc-nombre \{ font-variant-numeric: tabular-nums; \}/);
+  for (const sel of ['.dem-anneau__n', '.dem-anneau__total', '.dem-papier__numero']) assert.match(regle(sel), /tabular-nums/, sel);
+  for (const sel of ['.dem-titre', '.dem-parcours__pretes', '.dem-etape__titre', '.dem-carte__titre', '.dem-pret__titre', '.dem-papier__titre', '.dem-rempli__terme', '.dem-papier__montant'])
+    assert.match(regle(sel), /color: var\(--socle-texte-1\)/, `${sel} : T1`);
+  for (const sel of ['.dem-ensuite__titre', '.dem-rempli__texte', '.dem-papier__libelle']) assert.match(regle(sel), /color: var\(--socle-texte-courant\)/, `${sel} : T2`);
+  assert.match(css, /:is\(\.dem-parcours, \.dem-carte-etape, \.dem-pret, \.dem-aide\) > div \{ height: 100%; color: var\(--socle-texte-1\)/, 'rien n’hérite du gris de la carte');
 });
 
 await dit('cotes de H47 : tuiles de 127 (écart 14, rangées à 13), cartes de 65 / 165 / 61, aperçu de 82, carte de droite 340 × 369, lignes de 43, collante', () => {
@@ -817,11 +951,16 @@ await dit('les tuiles gardent leur titre à la même hauteur quelle que soit la 
 });
 
 await dit('sous 1108 et 780 px de contenu, les colonnes se rangent (conteneur de la coquille) ; le mouvement réduit coupe les animations', () => {
-  assert.match(css, /@container \(max-width: 1107px\) \{[^@]*\.dem-grille \{ grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(css, /@container \(max-width: 1107px\) \{[^@]*\.dem-bas \{ height: auto; grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(css, /@container \(max-width: 1000px\) \{[^@]*\.dem-route \{ display: flex; flex-direction: column/, 'sous 1000 px, le parcours devient vertical');
   assert.match(css, /@container \(max-width: 780px\) \{[^@]*\.met-tuiles \{ grid-template-columns: repeat\(2/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^@]*animation: none/);
   assert.match(css, /animation: met-fondu 160ms ease-out/);
-  assert.match(css, /stroke-dashoffset 220ms/);
+  const vue = sansCommentaires(lireSource('VueDemarrage.tsx'));
+  assert.equal(compter(vue, /data-mvt="onde"/g) + compter(vue, /<FlowLine\b/g), 2, 'deux animations continues seulement : le halo et la liaison qui s’écoule');
+  assert.match(vue, /data-mvt="entree"/);
+  assert.match(vue, /data-mvt="cascade"/, 'les lignes du papier entrent une à une');
+  for (const r of [0, 1, 2, 3]) assert.match(vue, new RegExp(`rang=\\{${r}\\}`), `la carte de rang ${r} entre à son tour`);
 });
 
 /* ═════════════════════════ L'hygiène ═════════════════════════ */
@@ -831,7 +970,7 @@ await dit('aucune couleur en dur : pas un #hex hors des trois `--sc-…` déclar
     const debut = css.lastIndexOf('\n', m.index) + 1;
     assert.match(css.slice(debut, css.indexOf('\n', m.index)), /^\s*--sc-[\w-]+:\s*#/, `couleur en dur : ${m[0]}`);
   }
-  assert.equal(compter(css, /--sc-[\w-]+:\s*#[0-9a-f]{6}/g), 3);
+  assert.equal(compter(css, /--sc-[\w-]+:\s*#[0-9a-f]{6}/g), 5);
   assert.doesNotMatch(css, /\brgba?\(|\bhsla?\(/);
   for (const f of codes) assert.doesNotMatch(sansCommentaires(lireSource(f)), /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![\w-])|rgba?\(/, `${f} : couleur en dur`);
 });
@@ -850,15 +989,17 @@ await dit('aucun nom d’exemple des fiches dans les sources ; « Stripe » n’
     if (f !== 'modeles.ts') assert.doesNotMatch(src, /stripe/i, `${f} : Stripe hors du libellé par défaut`);
   }
   const modeles = sansCommentaires(lireSource('modeles.ts'));
-  for (const [ligne] of modeles.matchAll(/^.*stripe.*$/gim)) assert.match(ligne, /L\('Connecter Stripe ou votre banque', 'Connect Stripe or your bank'\)/);
-  assert.equal(compter(modeles, /stripe/gi), 2);
+  for (const [ligne] of modeles.matchAll(/^.*stripe.*$/gim)) assert.match(ligne, /^\s*(sous|texte): L\('(Stripe ou votre banque|Reliez Stripe ou votre banque)[^']*', '(Stripe or your bank|Link Stripe or your bank)[^']*'\),$/);
+  assert.equal(compter(modeles, /stripe/gi), 4);
 });
 
 await dit('aucun robot, mascotte, émoji ni confettis ; Ajmani n’est qu’un nom et l’étincelle ; aucun secret', () => {
   for (const f of codes) {
     const src = sansCommentaires(lireSource(f));
     assert.doesNotMatch(src, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u, `${f} : un émoji`);
-    assert.doesNotMatch(src, /confetti|mascotte|\brobot\b|avatar/i, f);
+    assert.doesNotMatch(src, /confetti|mascotte|\brobot\b/i, f);
+    // Un avatar (des initiales, jamais un visage) seulement pour une PERSONNE de l'équipe : jamais pour Ajmani.
+    assert.doesNotMatch(src.replace(/<Avatar nom=\{r\.nom\}|<PileAvatars noms=\{\[\.\.\.p\.aInviter\]\}|\b(PileAvatars|Avatar),|\bAvatar\b(?= \})/g, ''), /avatar/i, `${f} : un avatar hors d’une personne`);
     assert.doesNotMatch(src, /sk_live|sk_test|api[_-]?key|\bsecret\b|password|mot de passe|Bearer /i, `${f} : un secret ?`);
   }
   assert.match(sansCommentaires(lireSource('VueDemarrage.tsx')), /IconeEtincelle/);

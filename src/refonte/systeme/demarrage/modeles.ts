@@ -44,6 +44,16 @@ export interface EtapeModele {
   action: Libelle;
   /** La destination du bouton (une route de l'application). */
   vers: string;
+  /** Le texte de la carte de l'étape (H42, « Je prépare… ») ; absent : le sous-titre. */
+  texte?: Libelle;
+  /** La durée fixe de l'étape en minutes ; absente : celle de `DUREES_ETAPES` (`etapes.ts`). */
+  duree?: number;
+}
+
+/** Une ligne type du devis d'un métier : un libellé et une quantité, JAMAIS un prix (aucun tarif n'est connu). */
+export interface LigneDevisType {
+  libelle: Libelle;
+  quantite: Libelle;
 }
 
 export interface EtapeMesuree extends EtapeModele {
@@ -77,28 +87,36 @@ export interface ModeleMetier {
   vocabulaire?: Readonly<Record<string, Libelle>>;
   apercu: readonly [CarteApercu, CarteApercu, CarteApercu];
   etapes: EtapesModele;
+  /** Les lignes types du premier devis (aperçu « papier » de H42) ; absentes quand l'étape 3 n'est pas un devis. */
+  devisType?: readonly LigneDevisType[];
 }
 
 /** Les trois étapes de la maquette : celles d'un artisan, et le repli quand aucun métier n'est choisi. */
 export const ETAPES_PAR_DEFAUT: EtapesModele = {
   client: {
-    titre: L('Ajouter votre premier client', 'Add your first client'),
+    titre: L('Ajouter vos clients', 'Add your clients'),
     sous: L('Ou importer un fichier en 1 clic', 'Or import a file in one click'),
     action: L('Ajouter un client', 'Add a client'),
     vers: '/clients',
+    texte: L('Ajoutez un premier client, ou importez votre fichier en un clic. Il servira à votre premier devis.', 'Add a first client, or import your file in one click. It will be used for your first quote.'),
+    duree: 2,
   },
   devis: {
     titre: L('Créer votre premier devis', 'Create your first quote'),
     sous: L('Ajmani vous guide, 2 minutes', 'Ajmani guides you, 2 minutes'),
-    action: L('Créer un devis', 'Create a quote'),
+    action: L('Créer le devis', 'Create the quote'),
     vers: '/clients',
     mesure: 'quotes',
+    texte: L('Je prépare un devis type pour votre métier, vous n’avez qu’à relire et ajuster. Comptez deux minutes.', 'I prepare a standard quote for your trade, you only have to review and adjust it. Allow two minutes.'),
+    duree: 2,
   },
   paiement: {
-    titre: L('Connecter Stripe ou votre banque', 'Connect Stripe or your bank'),
-    sous: L('Pour voir vos encaissements', 'To see what you collect'),
+    titre: L('Connecter vos encaissements', 'Connect your payments'),
+    sous: L('Stripe ou votre banque, pour voir ce qui arrive', 'Stripe or your bank, to see what comes in'),
     action: L('Connecter', 'Connect'),
     vers: '/facturation',
+    texte: L('Reliez Stripe ou votre banque pour voir vos encaissements arriver. Seules des valeurs masquées s’affichent ici.', 'Link Stripe or your bank to see your payments come in. Only masked values are shown here.'),
+    duree: 3,
   },
 };
 
@@ -117,6 +135,11 @@ export const MODELES: readonly ModeleMetier[] = [
       { etiquette: L('Devis', 'Quotes'), module: 'invoices', titre: L('Devis à envoyer', 'Quotes to send'), detail: L('Prêts à partir ce matin', 'Ready to go this morning') },
       { etiquette: L('Stock', 'Stock'), module: 'stock', titre: L('Matériaux à commander', 'Materials to order'), detail: L('Commande conseillée', 'Order recommended') },
     ],
+    devisType: [
+      { libelle: L('Main-d’œuvre', 'Labour'), quantite: L('1 jour', '1 day') },
+      { libelle: L('Fournitures', 'Supplies'), quantite: L('au forfait', 'flat rate') },
+      { libelle: L('Déplacement', 'Travel'), quantite: L('inclus', 'included') },
+    ],
     etapes: ETAPES_PAR_DEFAUT,
   },
   {
@@ -129,6 +152,11 @@ export const MODELES: readonly ModeleMetier[] = [
       { etiquette: L('Stock', 'Stock'), module: 'stock', titre: L('Articles sous le seuil', 'Items below the threshold'), detail: L('Réassort conseillé', 'Restock recommended') },
       { etiquette: L('Commandes', 'Orders'), module: 'orders', titre: L('Commandes à préparer', 'Orders to prepare'), detail: L('À expédier aujourd’hui', 'To ship today') },
       { etiquette: L('Avis', 'Reviews'), module: 'reviews', titre: L('Retours clients', 'Customer feedback'), detail: L('À lire ce matin', 'To read this morning') },
+    ],
+    devisType: [
+      { libelle: L('Articles', 'Items'), quantite: L('à la pièce', 'per item') },
+      { libelle: L('Livraison', 'Delivery'), quantite: L('au forfait', 'flat rate') },
+      { libelle: L('Emballage', 'Packaging'), quantite: L('offert', 'free') },
     ],
     etapes: {
       ...ETAPES_PAR_DEFAUT,
@@ -151,6 +179,11 @@ export const MODELES: readonly ModeleMetier[] = [
       { etiquette: L('Rendez-vous', 'Meetings'), module: 'agenda', titre: L('Rendez-vous client', 'Client meeting'), detail: L('Premier à 9:00', 'First one at 9:00') },
       { etiquette: L('Contrats', 'Contracts'), module: 'contracts', titre: L('Contrats à relire', 'Contracts to review'), detail: L('En attente de signature', 'Waiting for a signature') },
       { etiquette: L('Factures', 'Invoices'), module: 'invoices', titre: L('Factures à envoyer', 'Invoices to send'), detail: L('Relance conseillée', 'Reminder recommended') },
+    ],
+    devisType: [
+      { libelle: L('Mission de conseil', 'Consulting assignment'), quantite: L('1 jour', '1 day') },
+      { libelle: L('Suivi mensuel', 'Monthly follow-up'), quantite: L('3 mois', '3 months') },
+      { libelle: L('Compte rendu', 'Report'), quantite: L('offert', 'free') },
     ],
     etapes: ETAPES_PAR_DEFAUT,
   },
@@ -186,6 +219,11 @@ export const MODELES: readonly ModeleMetier[] = [
       { etiquette: L('Projet', 'Project'), module: 'projects', titre: L('Projet en cours', 'Project in progress'), detail: L('Prochaine étape cette semaine', 'Next step this week') },
       { etiquette: L('Visuels', 'Visuals'), module: 'adVisuals', titre: L('Visuels à valider', 'Visuals to approve'), detail: L('En attente de retour', 'Waiting for feedback') },
       { etiquette: L('Signature', 'Signature'), module: 'esign', titre: L('Documents à signer', 'Documents to sign'), detail: L('Envoi prévu ce matin', 'Sending planned this morning') },
+    ],
+    devisType: [
+      { libelle: L('Création', 'Design'), quantite: L('1 jour', '1 day') },
+      { libelle: L('Déclinaisons', 'Variations'), quantite: L('au forfait', 'flat rate') },
+      { libelle: L('Cession de droits', 'Rights transfer'), quantite: L('incluse', 'included') },
     ],
     etapes: ETAPES_PAR_DEFAUT,
   },

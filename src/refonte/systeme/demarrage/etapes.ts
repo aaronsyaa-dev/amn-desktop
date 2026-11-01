@@ -23,6 +23,12 @@ import { ROUTE_METIER } from './chemins';
 export type IdEtape = 'metier' | 'client' | 'devis' | 'equipe' | 'paiement' | 'mobile';
 export const ORDRE_ETAPES: readonly IdEtape[] = ['metier', 'client', 'devis', 'equipe', 'paiement', 'mobile'];
 
+/**
+ * La durée d'une étape, en minutes (« maintenant · 2 min », « environ 7 min pour le reste »). Des durées FIXES, celles
+ * du modèle de métier quand il en donne une (étapes 2, 3, 5), sinon celles-ci. Jamais une mesure de la personne.
+ */
+export const DUREES_ETAPES: Readonly<Record<IdEtape, number>> = { metier: 1, client: 2, devis: 2, equipe: 1, paiement: 3, mobile: 1 };
+
 export function estIdEtape(valeur: unknown): valeur is IdEtape {
   return typeof valeur === 'string' && (ORDRE_ETAPES as readonly string[]).includes(valeur);
 }
@@ -75,6 +81,10 @@ export interface EtapeCalculee {
   detectee: boolean;
   /** La première étape à faire : elle seule a le bouton primaire. */
   conseillee: boolean;
+  /** Sa place parmi les étapes montrées, à partir de 1 (« Étape 3 sur 6 »). */
+  rang: number;
+  /** Sa durée en minutes (fixe : celle du modèle, sinon `DUREES_ETAPES`). */
+  duree: number;
 }
 
 export type TexteAccueil = 'plusieurs' | 'une' | 'tout';
@@ -91,6 +101,10 @@ export interface ResultatEtapes {
   ratio: number;
   tout: boolean;
   conseillee: IdEtape | null;
+  /** L'étape à faire qui suit la conseillée dans l'ordre (« ensuite · 1 min », encart « Ensuite »). */
+  suivante: IdEtape | null;
+  /** La somme des durées des étapes encore à faire (« environ 7 min pour le reste »). */
+  minutesRestantes: number;
   texte: TexteAccueil;
   /** Les étapes que les données prouvent faites et que la mémoire ne connaît pas encore : à garder. */
   aMemoriser: readonly IdEtape[];
@@ -144,10 +158,12 @@ export function calculerEtapes(entree: {
   const destination = (id: IdEtape): string | null => (id === 'metier' ? ROUTE_METIER : id === 'equipe' ? '/membres' : id === 'mobile' ? null : (libelle(id)?.vers ?? null));
 
   const montrees = ORDRE_ETAPES.filter((id) => !memoire.retirees.includes(id) && !etapeMasquee(id, taille));
-  const base = montrees.map((id) => {
+  const base = montrees.map((id, i) => {
     const detectee = detecte(id);
     return {
       id,
+      rang: i + 1,
+      duree: libelle(id)?.duree ?? DUREES_ETAPES[id],
       libelle: libelle(id),
       vers: destination(id),
       manuelle: manuelle(id),
@@ -158,6 +174,8 @@ export function calculerEtapes(entree: {
   });
   const premiere = base.find((e) => !e.faite)?.id ?? null;
   const etapes: EtapeCalculee[] = base.map((e) => ({ ...e, conseillee: e.id === premiere }));
+  const iPremiere = etapes.findIndex((e) => e.id === premiere);
+  const suivante = iPremiere < 0 ? null : (etapes.slice(iPremiere + 1).find((e) => !e.faite)?.id ?? null);
 
   const n = etapes.filter((e) => e.faite).length;
   const total = etapes.length;
@@ -170,6 +188,8 @@ export function calculerEtapes(entree: {
     ratio: total === 0 ? 1 : n / total,
     tout: restantes === 0,
     conseillee: premiere,
+    suivante,
+    minutesRestantes: etapes.filter((e) => !e.faite).reduce((somme, e) => somme + e.duree, 0),
     texte: restantes === 0 ? 'tout' : restantes === 1 ? 'une' : 'plusieurs',
     aMemoriser: etapes.filter((e) => e.detectee && !memoire.faites.includes(e.id)).map((e) => e.id),
     retirees: ORDRE_ETAPES.filter((id) => memoire.retirees.includes(id)),
@@ -187,6 +207,21 @@ export function memoriserFaites(memoire: MemoireEtapes, ids: readonly IdEtape[])
 /** « Pas pour moi » : l'étape sort de la liste et du total. */
 export function retirerEtape(memoire: MemoireEtapes, id: IdEtape): MemoireEtapes {
   return memoire.retirees.includes(id) ? memoire : { ...memoire, retirees: ORDRE_ETAPES.filter((x) => memoire.retirees.includes(x) || x === id) };
+}
+
+/** « Annuler » (juste après « Pas pour moi ») : cette étape-là revient, les autres retirées restent retirées. */
+export function remettreEtape(memoire: MemoireEtapes, id: IdEtape): MemoireEtapes {
+  return memoire.retirees.includes(id) ? { ...memoire, retirees: memoire.retirees.filter((x) => x !== id) } : memoire;
+}
+
+/**
+ * L'étape qu'on montre après « Plus tard » (dans la carte) : la suivante à faire dans l'ordre, en revenant au début
+ * après la dernière. `null` : il n'y en a pas d'autre.
+ */
+export function etapeApres(etapes: readonly EtapeCalculee[], id: IdEtape): IdEtape | null {
+  const i = etapes.findIndex((e) => e.id === id);
+  const tour = [...etapes.slice(i + 1), ...etapes.slice(0, Math.max(0, i))];
+  return tour.find((e) => !e.faite && e.id !== id)?.id ?? null;
 }
 
 /** « Les remettre » : toutes les étapes retirées reviennent. Ce qui a été fait reste fait. */
@@ -222,7 +257,10 @@ export interface RaccourciSavoir {
   avecModificateur: boolean;
 }
 
-/** Les trois raccourcis qui existent dans l'application. « N : créer, partout » n'existe pas : il n'est pas montré. */
+/**
+ * Les trois raccourcis de « Bon à savoir » qui existent dans l'application. « N : créer, partout » n'existe pas (aucune
+ * touche N globale) : il n'est pas montré, « ? » (tous les raccourcis) prend sa place.
+ */
 export const RACCOURCIS_SAVOIR: readonly RaccourciSavoir[] = [
   { id: 'chercher', touche: 'k', avecModificateur: true },
   { id: 'ajmani', touche: 'j', avecModificateur: true },
