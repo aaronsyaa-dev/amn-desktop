@@ -1,7 +1,7 @@
 import type { Libelle } from '../../modules/declarer';
 
 /**
- * LES MODÈLES DE MÉTIER (H47) — huit familles, comme DONNÉES.
+ * LES MODÈLES DE MÉTIER (H47) — huit familles, comme DONNÉES, dans l'ordre de la grille v3 (Conseil et services d'abord).
  * ═══════════════════════════════════════════════════════════
  *
  * Un modèle dit ce qu'une famille de métiers emporte avec elle : les modules qu'elle active (désignés par
@@ -11,16 +11,18 @@ import type { Libelle } from '../../modules/declarer';
  * Rien ici n'est du React, rien n'est une donnée de la personne :
  *   · les cartes d'aperçu sont des EXEMPLES génériques, sans nom propre ni montant, que la page marque comme tels ;
  *   · un identifiant qui n'est pas au registre ne passe pas `check:systeme-demarrage` ;
- *   · l'ordre de `modules` compte : les six premiers se lisent dans la carte de droite, les autres comptent
- *     dans « + N autres modules disponibles à tout moment ».
+ *   · l'ordre de `modules` compte : les quatre premiers se lisent sur la carte du métier, les six premiers vont dans
+ *     la barre latérale (« Votre barre latérale »), les autres comptent dans « + N autres modules, T en tout ».
  *
  * Le poste n'a pas de « modèle de métier » côté serveur : le choix est un réglage PERSONNEL (voir `metier.ts`).
  */
 
 const L = (fr: string, en: string): Libelle => ({ fr, en });
 
-/** Ce que la carte de droite montre : six lignes, jamais plus. */
+/** Les modules qui vont dans la barre latérale (« Votre barre latérale », « Six modules dans votre barre ») : six, jamais plus. */
 export const MODULES_AFFICHES = 6;
+/** Les modules qu'une carte de métier montre (H47 v3) : quatre lignes. */
+export const MODULES_CARTE = 4;
 
 /** La taille de l'équipe (« Combien êtes-vous ? »). */
 export const TAILLES = ['seul', '2-5', '6-20', 'plus'] as const;
@@ -44,6 +46,16 @@ export interface EtapeModele {
   action: Libelle;
   /** La destination du bouton (une route de l'application). */
   vers: string;
+  /** Le texte de la carte de l'étape (H42, « Je prépare… ») ; absent : le sous-titre. */
+  texte?: Libelle;
+  /** La durée fixe de l'étape en minutes ; absente : celle de `DUREES_ETAPES` (`etapes.ts`). */
+  duree?: number;
+}
+
+/** Une ligne type du devis d'un métier : un libellé et une quantité, JAMAIS un prix (aucun tarif n'est connu). */
+export interface LigneDevisType {
+  libelle: Libelle;
+  quantite: Libelle;
 }
 
 export interface EtapeMesuree extends EtapeModele {
@@ -77,28 +89,36 @@ export interface ModeleMetier {
   vocabulaire?: Readonly<Record<string, Libelle>>;
   apercu: readonly [CarteApercu, CarteApercu, CarteApercu];
   etapes: EtapesModele;
+  /** Les lignes types du premier devis (aperçu « papier » de H42) ; absentes quand l'étape 3 n'est pas un devis. */
+  devisType?: readonly LigneDevisType[];
 }
 
 /** Les trois étapes de la maquette : celles d'un artisan, et le repli quand aucun métier n'est choisi. */
 export const ETAPES_PAR_DEFAUT: EtapesModele = {
   client: {
-    titre: L('Ajouter votre premier client', 'Add your first client'),
+    titre: L('Ajouter vos clients', 'Add your clients'),
     sous: L('Ou importer un fichier en 1 clic', 'Or import a file in one click'),
     action: L('Ajouter un client', 'Add a client'),
     vers: '/clients',
+    texte: L('Ajoutez un premier client, ou importez votre fichier en un clic. Il servira à votre premier devis.', 'Add a first client, or import your file in one click. It will be used for your first quote.'),
+    duree: 2,
   },
   devis: {
     titre: L('Créer votre premier devis', 'Create your first quote'),
     sous: L('Ajmani vous guide, 2 minutes', 'Ajmani guides you, 2 minutes'),
-    action: L('Créer un devis', 'Create a quote'),
+    action: L('Créer le devis', 'Create the quote'),
     vers: '/clients',
     mesure: 'quotes',
+    texte: L('Je prépare un devis type pour votre métier, vous n’avez qu’à relire et ajuster. Comptez deux minutes.', 'I prepare a standard quote for your trade, you only have to review and adjust it. Allow two minutes.'),
+    duree: 2,
   },
   paiement: {
-    titre: L('Connecter Stripe ou votre banque', 'Connect Stripe or your bank'),
-    sous: L('Pour voir vos encaissements', 'To see what you collect'),
+    titre: L('Connecter vos encaissements', 'Connect your payments'),
+    sous: L('Stripe ou votre banque, pour voir ce qui arrive', 'Stripe or your bank, to see what comes in'),
     action: L('Connecter', 'Connect'),
     vers: '/facturation',
+    texte: L('Reliez Stripe ou votre banque pour voir vos encaissements arriver. Seules des valeurs masquées s’affichent ici.', 'Link Stripe or your bank to see your payments come in. Only masked values are shown here.'),
+    duree: 3,
   },
 };
 
@@ -107,9 +127,27 @@ export const JEU_GENERAL: readonly string[] = ['home', 'tasks', 'agenda', 'clien
 
 export const MODELES: readonly ModeleMetier[] = [
   {
+    id: 'conseil',
+    nom: L('Conseil et services', 'Consulting and services'),
+    description: L('clients, missions, factures', 'clients, assignments, invoices'),
+    icone: 'utilisateurs',
+    modules: ['clients', 'contracts', 'projects', 'invoices', 'agenda', 'time', 'esign', 'binder', 'tasks', 'notes'],
+    apercu: [
+      { etiquette: L('Rendez-vous', 'Meetings'), module: 'agenda', titre: L('Rendez-vous client', 'Client meeting'), detail: L('Premier à 9:00', 'First one at 9:00') },
+      { etiquette: L('Contrats', 'Contracts'), module: 'contracts', titre: L('Contrats à relire', 'Contracts to review'), detail: L('En attente de signature', 'Waiting for a signature') },
+      { etiquette: L('Factures', 'Invoices'), module: 'invoices', titre: L('Factures à envoyer', 'Invoices to send'), detail: L('Relance conseillée', 'Reminder recommended') },
+    ],
+    devisType: [
+      { libelle: L('Mission de conseil', 'Consulting assignment'), quantite: L('1 jour', '1 day') },
+      { libelle: L('Suivi mensuel', 'Monthly follow-up'), quantite: L('3 mois', '3 months') },
+      { libelle: L('Compte rendu', 'Report'), quantite: L('offert', 'free') },
+    ],
+    etapes: ETAPES_PAR_DEFAUT,
+  },
+  {
     id: 'artisan',
     nom: L('Artisan du bâtiment', 'Building trades'),
-    description: L('Chantiers, devis, stock', 'Sites, quotes, stock'),
+    description: L('chantiers, devis, stock', 'sites, quotes, stock'),
     icone: 'camion',
     modules: ['assembly', 'invoices', 'clients', 'stock', 'agenda', 'suppliers', 'esign', 'expenses', 'binder', 'tasks', 'equipment', 'checklists'],
     apercu: [
@@ -117,18 +155,28 @@ export const MODELES: readonly ModeleMetier[] = [
       { etiquette: L('Devis', 'Quotes'), module: 'invoices', titre: L('Devis à envoyer', 'Quotes to send'), detail: L('Prêts à partir ce matin', 'Ready to go this morning') },
       { etiquette: L('Stock', 'Stock'), module: 'stock', titre: L('Matériaux à commander', 'Materials to order'), detail: L('Commande conseillée', 'Order recommended') },
     ],
+    devisType: [
+      { libelle: L('Main-d’œuvre', 'Labour'), quantite: L('1 jour', '1 day') },
+      { libelle: L('Fournitures', 'Supplies'), quantite: L('au forfait', 'flat rate') },
+      { libelle: L('Déplacement', 'Travel'), quantite: L('inclus', 'included') },
+    ],
     etapes: ETAPES_PAR_DEFAUT,
   },
   {
     id: 'commerce',
     nom: L('Commerce', 'Retail'),
-    description: L('Stock, fournisseurs, avis', 'Stock, suppliers, reviews'),
+    description: L('stock, fournisseurs, avis', 'stock, suppliers, reviews'),
     icone: 'cube',
     modules: ['stock', 'suppliers', 'reviews', 'loyalty', 'shop', 'clients', 'orders', 'cashCount', 'invoices', 'expenses', 'minisite', 'newsletter'],
     apercu: [
       { etiquette: L('Stock', 'Stock'), module: 'stock', titre: L('Articles sous le seuil', 'Items below the threshold'), detail: L('Réassort conseillé', 'Restock recommended') },
       { etiquette: L('Commandes', 'Orders'), module: 'orders', titre: L('Commandes à préparer', 'Orders to prepare'), detail: L('À expédier aujourd’hui', 'To ship today') },
       { etiquette: L('Avis', 'Reviews'), module: 'reviews', titre: L('Retours clients', 'Customer feedback'), detail: L('À lire ce matin', 'To read this morning') },
+    ],
+    devisType: [
+      { libelle: L('Articles', 'Items'), quantite: L('à la pièce', 'per item') },
+      { libelle: L('Livraison', 'Delivery'), quantite: L('au forfait', 'flat rate') },
+      { libelle: L('Emballage', 'Packaging'), quantite: L('offert', 'free') },
     ],
     etapes: {
       ...ETAPES_PAR_DEFAUT,
@@ -142,22 +190,9 @@ export const MODELES: readonly ModeleMetier[] = [
     },
   },
   {
-    id: 'conseil',
-    nom: L('Conseil et services', 'Consulting and services'),
-    description: L('Clients, missions, factures', 'Clients, assignments, invoices'),
-    icone: 'utilisateurs',
-    modules: ['clients', 'contracts', 'projects', 'invoices', 'agenda', 'time', 'esign', 'binder', 'tasks', 'notes'],
-    apercu: [
-      { etiquette: L('Rendez-vous', 'Meetings'), module: 'agenda', titre: L('Rendez-vous client', 'Client meeting'), detail: L('Premier à 9:00', 'First one at 9:00') },
-      { etiquette: L('Contrats', 'Contracts'), module: 'contracts', titre: L('Contrats à relire', 'Contracts to review'), detail: L('En attente de signature', 'Waiting for a signature') },
-      { etiquette: L('Factures', 'Invoices'), module: 'invoices', titre: L('Factures à envoyer', 'Invoices to send'), detail: L('Relance conseillée', 'Reminder recommended') },
-    ],
-    etapes: ETAPES_PAR_DEFAUT,
-  },
-  {
     id: 'startup',
     nom: L('Start-up', 'Start-up'),
-    description: L('Tickets, tableau de bord, équipe', 'Tickets, dashboard, team'),
+    description: L('tickets, tableau, équipe', 'tickets, dashboard, team'),
     icone: 'eclair',
     modules: ['projects', 'tasks', 'okr', 'dm', 'meetings', 'weekly', 'extensions', 'automations', 'knowledge', 'decisions'],
     apercu: [
@@ -179,7 +214,7 @@ export const MODELES: readonly ModeleMetier[] = [
   {
     id: 'creation',
     nom: L('Création et agence', 'Creative and agency'),
-    description: L('Projets, visuels, signatures', 'Projects, visuals, signatures'),
+    description: L('projets, visuels, signatures', 'projects, visuals, signatures'),
     icone: 'etincelle',
     modules: ['projects', 'adVisuals', 'esign', 'video', 'invoices', 'clients', 'postPlanner', 'minisite', 'binder', 'time'],
     apercu: [
@@ -187,12 +222,17 @@ export const MODELES: readonly ModeleMetier[] = [
       { etiquette: L('Visuels', 'Visuals'), module: 'adVisuals', titre: L('Visuels à valider', 'Visuals to approve'), detail: L('En attente de retour', 'Waiting for feedback') },
       { etiquette: L('Signature', 'Signature'), module: 'esign', titre: L('Documents à signer', 'Documents to sign'), detail: L('Envoi prévu ce matin', 'Sending planned this morning') },
     ],
+    devisType: [
+      { libelle: L('Création', 'Design'), quantite: L('1 jour', '1 day') },
+      { libelle: L('Déclinaisons', 'Variations'), quantite: L('au forfait', 'flat rate') },
+      { libelle: L('Cession de droits', 'Rights transfer'), quantite: L('incluse', 'included') },
+    ],
     etapes: ETAPES_PAR_DEFAUT,
   },
   {
     id: 'quotidien',
     nom: L('Vie de tous les jours', 'Everyday life'),
-    description: L('Courses, budget, rendez-vous', 'Groceries, budget, appointments'),
+    description: L('courses, budget, rendez-vous', 'groceries, budget, appointments'),
     icone: 'maison',
     // Budget et Courses sont toujours ouverts : ils ferment la liste, et la page les montre sans interrupteur.
     modules: ['tasks', 'agenda', 'habits', 'binder', 'notes', 'personalGoals', 'pomodoro', 'logbook', 'budget', 'courses'],
@@ -226,7 +266,7 @@ export const MODELES: readonly ModeleMetier[] = [
   {
     id: 'sante',
     nom: L('Santé et bien-être', 'Health and wellbeing'),
-    description: L('Agenda, dossiers, rappels', 'Calendar, records, reminders'),
+    description: L('agenda, dossiers, rappels', 'calendar, records, reminders'),
     icone: 'calendrier',
     // Droits et accès (`members`) et le Coffre-fort (`vault`) : des données sensibles, donc dans les premières lignes.
     modules: ['agenda', 'clients', 'tasks', 'binder', 'vault', 'members', 'notes', 'invoices', 'forms', 'esign'],
@@ -261,7 +301,7 @@ export const MODELES: readonly ModeleMetier[] = [
   {
     id: 'association',
     nom: L('Association', 'Non-profit'),
-    description: L('Membres, annonces, dons', 'Members, announcements, donations'),
+    description: L('membres, annonces, dons', 'members, announcements, donations'),
     icone: 'livre',
     modules: ['clients', 'announcements', 'donations', 'binder', 'agenda', 'evenements', 'newsletter', 'forms', 'polls', 'dm'],
     vocabulaire: { clients: L('Membres', 'Members') },
@@ -306,6 +346,44 @@ export function modeleParId(id: string | null | undefined): ModeleMetier | null 
 export function composition(modele: ModeleMetier, disponibles?: ReadonlySet<string> | null): { tous: readonly string[]; affiches: readonly string[]; autres: number } {
   const tous = disponibles ? modele.modules.filter((id) => disponibles.has(id)) : modele.modules;
   return { tous, affiches: tous.slice(0, MODULES_AFFICHES), autres: Math.max(0, tous.length - MODULES_AFFICHES) };
+}
+
+/**
+ * Ce qu'une CARTE de métier montre : ses quatre premiers modules, « + N autres modules, T en tout » (T = le total du
+ * modèle, N = T − 4, jamais écrit à la main) et la BANDE de composition : le nombre de modules par famille, dans l'ordre
+ * de première apparition (la couleur suit la famille du MODULE, pas le métier).
+ */
+export function carteModele(
+  modele: ModeleMetier,
+  familleDe: (id: string) => string | undefined,
+  disponibles?: ReadonlySet<string> | null,
+): { quatre: readonly string[]; autres: number; total: number; bande: readonly { famille: string; n: number }[] } {
+  const { tous } = composition(modele, disponibles);
+  const bande: { famille: string; n: number }[] = [];
+  for (const id of tous) {
+    const f = familleDe(id);
+    if (!f) continue;
+    const seg = bande.find((b) => b.famille === f);
+    if (seg) seg.n += 1;
+    else bande.push({ famille: f, n: 1 });
+  }
+  return { quatre: tous.slice(0, MODULES_CARTE), autres: Math.max(0, tous.length - MODULES_CARTE), total: tous.length, bande };
+}
+
+/**
+ * La barre latérale de l'aperçu : les six premiers modules ACTIVÉS du modèle, groupés par famille dans l'ordre de
+ * première apparition. `autres` : les modules activés qui n'y entrent pas (« 14 autres prêts à servir »).
+ */
+export function barreModele(actifsDansLOrdre: readonly string[], familleDe: (id: string) => string | undefined): { groupes: { famille: string; modules: string[] }[]; dans: number; autres: number } {
+  const dans = actifsDansLOrdre.slice(0, MODULES_AFFICHES);
+  const groupes: { famille: string; modules: string[] }[] = [];
+  for (const id of dans) {
+    const f = familleDe(id) ?? '';
+    const g = groupes.find((x) => x.famille === f);
+    if (g) g.modules.push(id);
+    else groupes.push({ famille: f, modules: [id] });
+  }
+  return { groupes, dans: dans.length, autres: Math.max(0, actifsDansLOrdre.length - dans.length) };
 }
 
 /** « + N autres modules » d'un modèle entier. */

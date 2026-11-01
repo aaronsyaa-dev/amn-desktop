@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAssistant } from '../../../assistant/AssistantContext';
 import { useGuide } from '../../../guide/GuideContext';
 import { parcoursGeneral } from '../../../guide/parcours';
 import { canBuildPublicLink, publicOrigin } from '../../../lib/publicUrl';
 import { Bouton, Modale } from '../../../socle/ui';
+import { usePageCoquille } from '../../coquille/page';
 import { useToucheModificatrice } from '../../coquille/touche';
 import { evenementDeTouche, type EtapeCalculee } from './etapes';
 import { useMots } from './i18n';
 import { ROUTE_METIER } from './chemins';
+import { presentationDemarrage } from './presentation';
 import { useDemarrage } from './useDemarrage';
 import { LienMobile, VueDemarrage } from './VueDemarrage';
 
@@ -16,22 +17,29 @@ import { LienMobile, VueDemarrage } from './VueDemarrage';
  * DÉMARRAGE (H42) — l'écran, branché sur le poste. Route : `ROUTE_DEMARRAGE` (`routes.ts`), export par défaut pour `lazy`.
  * ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
  *
- * La page n'est ni au registre ni au catalogue, et elle ne s'ouvre pas d'elle-même : la première connexion et la carte de
- * l'Accueil sont à brancher dans les couches qui les possèdent. « Plus tard » ramène à l'Accueil, sans rien perdre.
+ * La page n'est ni au registre ni au catalogue ; elle s'ouvre d'elle-même une seule fois, à la toute première connexion
+ * (`../premiereConnexion.ts`). « Plus tard » ramène à l'Accueil, sans rien perdre.
+ *
+ * Ce que la vue montre vient de `presentation.ts` (les vraies données, ligne par ligne) ; ce que le poste ne sait pas,
+ * elle ne le montre pas : aucune personne référente ni créneau (pas d'agenda de l'équipe AMN dans le poste) — la carte
+ * dit « L'équipe AMN vous répond » et mène à l'assistance ; aucun nom de personne à inviter avant qu'elle soit invitée.
  */
 
-/* ── L'écran, branché sur le poste ────────────────────────────────────────── */
-
 export function PageDemarrage() {
-  const { tm } = useMots();
+  const { tm, langue } = useMots();
   const navigate = useNavigate();
   const d = useDemarrage();
-  const assistant = useAssistant();
   const { lancer } = useGuide();
   const modKey = useToucheModificatrice();
   const [lienOuvert, setLienOuvert] = useState(false);
   const [copie, setCopie] = useState(false);
   const lien = useMemo(() => (canBuildPublicLink() ? publicOrigin() : null), []);
+  const vue = useMemo(
+    () => presentationDemarrage({ calcul: d.calcul, metier: d.metier, modele: d.modele, effectifs: d.effectifs, premierClient: d.premierClient, langue }),
+    [d.calcul, d.metier, d.modele, d.effectifs, d.premierClient, langue],
+  );
+
+  usePageCoquille({ famille: 'jour', sousPage: 'home', miettes: [{ libelle: tm('titre') }], ajmani: tm('ajmani.barre') });
 
   const aller = (e: EtapeCalculee) => {
     if (e.id === 'mobile') setLienOuvert(true);
@@ -55,6 +63,14 @@ export function PageDemarrage() {
         horsLigne={d.horsLigne}
         peutAdministrer={d.peutAdministrer}
         mac={modKey === '⌘'}
+        resumes={vue.resumes}
+        rempli={vue.rempli}
+        brouillon={vue.brouillon}
+        client={d.premierClient}
+        pret={vue.pret}
+        aInviter={[]}
+        referent={null}
+        lienMobile={lien}
         onPlusTard={() => navigate('/')}
         onAccueil={() => navigate('/')}
         onReprendreVisite={() => lancer(parcoursGeneral(d.prenom, { sansBienvenue: true }))}
@@ -65,12 +81,8 @@ export function PageDemarrage() {
         onRetirer={d.retirer}
         onRemettre={d.remettre}
         onRaccourci={(r) => window.dispatchEvent(new KeyboardEvent('keydown', evenementDeTouche(r, modKey === '⌘')))}
-        onAjmani={() => {
-          assistant.open('chat');
-          assistant.sendMessage(tm('aide.ajmani.demande'));
-        }}
-        onAppel={() => navigate('/assistance')}
-        onDonnees={() => navigate('/outils/donnees')}
+        onReserver={() => navigate('/assistance')}
+        onEcrire={() => navigate('/assistance')}
       />
       <Modale
         ouverte={lienOuvert}

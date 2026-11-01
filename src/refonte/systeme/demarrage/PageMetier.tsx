@@ -11,10 +11,11 @@ import { useNavAlleges } from '../../../state/useNavAlleges';
 import { REGISTRE_MODULES } from '../../modules/registre';
 import { useMots } from './i18n';
 import { CLE_PREFS_METIER, calculerAllegements, choixDepuisSelection, choixPasse, ecrireMetier, useMetierStocke, type ChoixMetier } from './metier';
-import { MODELES, TAILLE_DEFAUT, composition, modeleParId, type ModeleMetier, type TailleEquipe } from './modeles';
+import { MODELES, TAILLE_DEFAUT, barreModele, carteModele, composition, modeleParId, type ModeleMetier, type TailleEquipe } from './modeles';
 import { ROUTE_DEMARRAGE } from './chemins';
 import { useHorsLigne } from './useDemarrage';
-import { VueMetier, type LigneModule } from './VueMetier';
+import { usePageCoquille } from '../../coquille/page';
+import { VueMetier, type CarteMetier, type GroupeBarre, type LigneModule } from './VueMetier';
 
 /**
  * QUEL EST VOTRE MÉTIER ? (H47) — l'écran, branché sur le poste. Route : `ROUTE_METIER` (`routes.ts`), export par défaut pour `lazy`.
@@ -26,7 +27,9 @@ import { VueMetier, type LigneModule } from './VueMetier';
  *     tous restent dans « Tous les modules ») ; « Passer » garde le jeu général et marque l'étape « passée » — sans
  *     rien alléger : qui passe n'a rien demandé qu'on lui cache ;
  *   · « Décrire » envoie la phrase à l'assistant existant et ouvre son panneau : la composition automatique d'un
- *     espace n'existe pas dans le poste, l'assistant ne modifie donc rien tout seul.
+ *     espace n'existe pas dans le poste, l'assistant ne modifie donc rien tout seul ;
+ *   · « Votre espace, demain matin » n'a pas d'encarts « automatisations » ni « modèles de documents » : un modèle de
+ *     métier n'en crée aucun dans le poste (`extras` vide) — on ne montre pas ce qui n'arrivera pas.
  */
 
 /* ── L'écran, branché sur le poste ────────────────────────────────────────── */
@@ -68,6 +71,10 @@ export function PageMetier() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [langue]);
   const teintes = useMemo(() => new Map(REGISTRE_MODULES.entrees.map((e) => [e.id, e.teinte as string])), []);
+  const familles = useMemo(() => new Map(REGISTRE_MODULES.entrees.map((e) => [e.id, e.famille])), []);
+  const famillesRegistre = useMemo(() => new Map(REGISTRE_MODULES.familles.map((f) => [f.id, f])), []);
+
+  usePageCoquille({ famille: 'jour', sousPage: 'home', miettes: [{ libelle: tm('titre'), vers: ROUTE_DEMARRAGE }, { libelle: tm('metier.miette') }], ajmani: tm('metier.ajmani') });
 
   const modele: ModeleMetier | null = modeleParId(choix);
   const compo = modele ? composition(modele, disponibles) : null;
@@ -97,14 +104,29 @@ export function PageMetier() {
   };
 
   const activables = compo ? compo.tous.filter((id) => actifs.has(id) && !ALWAYS_ON_MODULES.includes(id)) : [];
-  const lignes: LigneModule[] = compo
-    ? compo.affiches.map((id) => ({
-        id,
-        nom: modele?.vocabulaire?.[id]?.[langue] ?? noms.get(id) ?? id,
-        teinte: teintes.get(id),
-        actif: actifs.has(id),
-        toujours: ALWAYS_ON_MODULES.includes(id),
-      }))
+  const nomDe = (m: ModeleMetier, id: string) => m.vocabulaire?.[id]?.[langue] ?? noms.get(id) ?? id;
+
+  /* Les huit cartes : quatre modules, la bande de composition, « + N autres, T en tout » — lus dans le modèle et le registre. */
+  const cartes: CarteMetier[] = MODELES.map((m) => {
+    const c = carteModele(m, (id) => teintes.get(id), disponibles);
+    const choisie = m.id === choix;
+    const lignes: LigneModule[] = c.quatre.map((id) => ({
+      id,
+      nom: nomDe(m, id),
+      teinte: teintes.get(id),
+      actif: choisie ? actifs.has(id) : true,
+      toujours: ALWAYS_ON_MODULES.includes(id),
+    }));
+    return { id: m.id, lignes, bande: c.bande.map((b) => ({ teinte: b.famille, n: b.n })), autres: c.autres, total: c.total };
+  });
+
+  /* La barre miniature : les six premiers modules ACTIVÉS du métier choisi, groupés par famille du registre. */
+  const barre = modele && compo ? barreModele(compo.tous.filter((id) => actifs.has(id) || ALWAYS_ON_MODULES.includes(id)), (id) => familles.get(id)) : null;
+  const groupes: GroupeBarre[] = modele && barre
+    ? barre.groupes.map((g) => {
+        const f = famillesRegistre.get(g.famille);
+        return { famille: g.famille, teinte: f?.teinte, nom: f ? f.nom[langue] : g.famille, modules: g.modules.map((id) => nomDe(modele, id)) };
+      })
     : [];
 
   const garder = (c: ChoixMetier, allegements: string[] | null): boolean => {
@@ -165,8 +187,12 @@ export function PageMetier() {
     <VueMetier
       choix={choix}
       taille={taille}
-      lignes={lignes}
-      autres={compo?.autres ?? 0}
+      cartes={cartes}
+      barre={groupes}
+      dansLaBarre={barre?.dans ?? 0}
+      autresPrets={barre?.autres ?? 0}
+      extras={[]}
+      totalModules={REGISTRE_MODULES.entrees.length}
       teintesApercu={modele ? modele.apercu.map((c) => teintes.get(c.module)) : []}
       dernierActif={activables.length <= 1}
       horsLigne={horsLigne}

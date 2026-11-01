@@ -5,7 +5,7 @@ import { useAuth } from '../../../auth/AuthContext';
 import { useProfilesOptionnel } from '../../../state/ProfilesContext';
 import { useCollection, useSync } from '../../../state/SyncContext';
 import { useMembers } from '../../../state/useMembers';
-import { calculerEtapes, memoriserFaites, prenomAffichable, remettreEtapes, retirerEtape, type IdEtape, type ResultatEtapes } from './etapes';
+import { calculerEtapes, memoriserFaites, prenomAffichable, remettreEtape, remettreEtapes, retirerEtape, type IdEtape, type ResultatEtapes } from './etapes';
 import { ecrireMemoire, useMemoireEtapes } from './memoire';
 import { modeleParId, type ModeleMetier } from './modeles';
 import { CLE_PREFS_METIER, ecrireMetier, lireChoix, useMetierStocke, type ChoixMetier } from './metier';
@@ -44,9 +44,14 @@ export interface DemarrageDonnees {
   peutAdministrer: boolean;
   metier: ChoixMetier | null;
   modele: ModeleMetier | null;
+  /** Les effectifs lus (des nombres, jamais des enregistrements), pour ce que disent les nœuds et « Déjà prêt ». */
+  effectifs: { clients: number; membres: number };
+  /** Le nom du premier client enregistré (société, sinon nom), pour l'aperçu du devis ; `null` sans client. */
+  premierClient: string | null;
   marquerFaite: (id: IdEtape) => void;
   retirer: (id: IdEtape) => void;
-  remettre: () => void;
+  /** Remet une étape retirée, ou toutes (`null`). */
+  remettre: (id: IdEtape | null) => void;
   reessayer: () => void;
 }
 
@@ -58,7 +63,13 @@ export function useDemarrage(): DemarrageDonnees {
   const horsLigne = useHorsLigne();
   const { membres, prets: equipePrete, recharger } = useMembers();
 
-  const clients = useCollection('clients').length;
+  const fiches = useCollection<{ name?: string; company?: string; createdAt?: string }>('clients');
+  const clients = fiches.length;
+  const premierClient = useMemo(() => {
+    const premier = [...fiches].sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))[0];
+    const nom = (premier?.company || premier?.name || '').trim();
+    return nom || null;
+  }, [fiches]);
   const quotes = useCollection('quotes').length;
   const tasks = useCollection('tasks').length;
   const appointments = useCollection('appointments').length;
@@ -113,7 +124,7 @@ export function useDemarrage(): DemarrageDonnees {
 
   const marquerFaite = useCallback((id: IdEtape) => void ecrireMemoire(email, memoriserFaites(memoire, [id])), [email, memoire]);
   const retirer = useCallback((id: IdEtape) => void ecrireMemoire(email, retirerEtape(memoire, id)), [email, memoire]);
-  const remettre = useCallback(() => void ecrireMemoire(email, remettreEtapes(memoire)), [email, memoire]);
+  const remettre = useCallback((id: IdEtape | null) => void ecrireMemoire(email, id ? remettreEtape(memoire, id) : remettreEtapes(memoire)), [email, memoire]);
   const reessayer = useCallback(() => {
     setEssai((n) => n + 1);
     void recharger();
@@ -122,5 +133,5 @@ export function useDemarrage(): DemarrageDonnees {
   const prenom = prenomAffichable(profils?.profileFor(email).name, user?.name);
   const peutAdministrer = role === null || isAdminRole(role);
 
-  return { etat, calcul, prenom, horsLigne, peutAdministrer, metier, modele, marquerFaite, retirer, remettre, reessayer };
+  return { etat, calcul, prenom, horsLigne, peutAdministrer, metier, modele, effectifs: { clients, membres: membres.length }, premierClient, marquerFaite, retirer, remettre, reessayer };
 }
