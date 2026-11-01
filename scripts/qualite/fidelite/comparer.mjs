@@ -49,6 +49,7 @@
  *   --contour <0-1>       tolérance sur un bord vif, en part du contraste local (défaut 0.4)
  *   --bloc <px>           taille des carrés (défaut 48) ; --taux <0-1> seuil par carré (défaut 0.02)
  *   --ignorer x,y,l,h     zone à écarter, en pixels absolus ; répétable
+ *   --zone x,y,l,h        ne comparer QUE cette zone (une palette posée sur une autre page, par exemple)
  *   --gabarit bureau|aucun  nomme les zones d'après la coquille (défaut bureau ; aucun pour
  *                         la connexion, le mobile, la tablette)
  *   --zones <n>           nombre de zones listées (défaut 8)
@@ -257,15 +258,21 @@ function placeDansLaCoquille(z) {
  * Les images doivent avoir la même taille.
  */
 export function comparerImages(ref, cap, options = {}) {
-  const { rayon = 2, couleur = 2, bloc = 48, taux = 0.02, contour = 0.4, ignorer = [], gabarit = 'bureau', zones: nbZones = 8 } = options;
+  const { rayon = 2, couleur = 2, bloc = 48, taux = 0.02, contour = 0.4, ignorer = [], zone = null, gabarit = 'bureau', zones: nbZones = 8 } = options;
   if (ref.largeur !== cap.largeur || ref.hauteur !== cap.hauteur) {
     return { erreur: `tailles différentes : référence ${ref.largeur}×${ref.hauteur}, capture ${cap.largeur}×${cap.hauteur}. Capturez à 1440 × 900.` };
   }
   const w = ref.largeur;
   const h = ref.hauteur;
   let masque = null;
+  if (zone) {
+    // Tout est écarté sauf la zone demandée.
+    masque = new Uint8Array(w * h).fill(1);
+    const [x0, y0, l, hh] = zone;
+    for (let y = Math.max(0, y0); y < Math.min(h, y0 + hh); y += 1) for (let x = Math.max(0, x0); x < Math.min(w, x0 + l); x += 1) masque[y * w + x] = 0;
+  }
   if (ignorer.length) {
-    masque = new Uint8Array(w * h);
+    masque = masque ?? new Uint8Array(w * h);
     for (const [x0, y0, l, hh] of ignorer) {
       for (let y = Math.max(0, y0); y < Math.min(h, y0 + hh); y += 1) for (let x = Math.max(0, x0); x < Math.min(w, x0 + l); x += 1) masque[y * w + x] = 1;
     }
@@ -359,7 +366,8 @@ export function comparerImages(ref, cap, options = {}) {
     couleur,
     contour,
     pixelsEcart,
-    tauxEcart: pixelsEcart / (w * h),
+    surfaceComparee: masque ? masque.reduce((n, v) => n + (v ? 0 : 1), 0) : w * h,
+    tauxEcart: pixelsEcart / (masque ? Math.max(1, masque.reduce((n, v) => n + (v ? 0 : 1), 0)) : w * h),
     carresEnEcart: mauvais.reduce((s, v) => s + v, 0),
     zones,
     verdict: zones.length === 0 ? 'ok' : 'a corriger',
@@ -391,7 +399,8 @@ export function imageDesEcarts(cap, res) {
 
 /* ── Les textes de la maquette (indicatif) ───────────────────────────────── */
 
-const normaliser = (s) => s.replace(/[   ]/g, ' ').replace(/\s+/g, ' ').trim();
+// Espaces insécables et apostrophes typographiques (’) valent leur forme simple : les maquettes écrivent n'importe, l'app n’importe.
+const normaliser = (s) => s.replace(/[\u00a0\u202f\u2009]/g, ' ').replace(/[\u2018\u2019\u02bc]/g, "'").replace(/\s+/g, ' ').trim();
 
 /** Les fragments de `_data/<ID>.json` (champ `text`, séparés par « | ») retrouvés dans le texte de la page. */
 export function verifierTextes(donnees, texteCapture) {
@@ -418,7 +427,12 @@ function lireOptions(argv) {
     if (nom === 'json') o.json = true;
     else if (['id', 'images', 'sortie', 'gabarit', 'textes', 'texte-capture'].includes(nom)) { o[nom] = valeur(i, nom); i += 1; }
     else if (['rayon', 'couleur', 'contour', 'bloc', 'taux', 'zones'].includes(nom)) { o[nom] = Number(valeur(i, nom)); i += 1; }
-    else if (nom === 'ignorer') {
+    else if (nom === 'zone') {
+      const r = valeur(i, nom).split(',').map(Number);
+      if (r.length !== 4 || r.some((n) => !Number.isFinite(n))) throw new Error('--zone attend x,y,largeur,hauteur');
+      o.zone = r;
+      i += 1;
+    } else if (nom === 'ignorer') {
       const r = valeur(i, nom).split(',').map(Number);
       if (r.length !== 4 || r.some((n) => !Number.isFinite(n))) throw new Error('--ignorer attend x,y,largeur,hauteur');
       o.ignorer.push(r);
@@ -447,14 +461,14 @@ function principal() {
     const fichierCap = o.positionnels[0];
     const ref = decoderPng(fs.readFileSync(fichierRef));
     const cap = decoderPng(fs.readFileSync(fichierCap));
-    const res = comparerImages(ref, cap, { rayon: o.rayon, couleur: o.couleur, contour: o.contour, bloc: o.bloc, taux: o.taux, ignorer: o.ignorer, gabarit: o.gabarit ?? 'bureau', zones: o.zones });
+    const res = comparerImages(ref, cap, { rayon: o.rayon, couleur: o.couleur, contour: o.contour, bloc: o.bloc, taux: o.taux, ignorer: o.ignorer, zone: o.zone, gabarit: o.gabarit ?? 'bureau', zones: o.zones });
     if (res.erreur) throw new Error(res.erreur);
 
     let ecarts = null;
     if (res.verdict !== 'ok') {
       const dossier = o.sortie ?? path.dirname(path.resolve(fichierCap));
       fs.mkdirSync(dossier, { recursive: true });
-      ecarts = path.join(dossier, `${id}-ecarts.png`);
+      ecarts = path.join(dossier, `${id}-ecarts${o.zone ? '-zone' : ''}.png`);
       fs.writeFileSync(ecarts, imageDesEcarts(cap, res));
     }
     let textes = null;
@@ -467,7 +481,7 @@ function principal() {
 
     const zones = res._zones;
     if (o.json) {
-      console.log(JSON.stringify({ ecran: id, verdict: res.verdict, taille: [res.largeur, res.hauteur], rayon: res.rayon, couleur: res.couleur, contour: res.contour, pixelsEnEcart: res.pixelsEcart, tauxEcart: res.tauxEcart, zonesTotal: res.zones.length, zones: zones.map(({ x, y, w, h, pixels, part, nature, place, relatif, decalage }) => ({ x, y, l: w, h, pixels, part, nature, place, relatif, decalage })), ignores: o.ignorer, imageEcarts: ecarts, textes }, null, 2));
+      console.log(JSON.stringify({ ecran: id, verdict: res.verdict, taille: [res.largeur, res.hauteur], rayon: res.rayon, couleur: res.couleur, contour: res.contour, pixelsEnEcart: res.pixelsEcart, tauxEcart: res.tauxEcart, zonesTotal: res.zones.length, zones: zones.map(({ x, y, w, h, pixels, part, nature, place, relatif, decalage }) => ({ x, y, l: w, h, pixels, part, nature, place, relatif, decalage })), ignores: o.ignorer, zoneSeule: o.zone ?? null, imageEcarts: ecarts, textes }, null, 2));
     } else {
       const sortie = [];
       sortie.push(`${id} · ${res.largeur}×${res.hauteur} · ±${res.rayon} px, couleur ±${res.couleur}`);
@@ -480,6 +494,7 @@ function principal() {
         sortie.push(` ${k + 1}. x ${z.x}–${z.x + z.w - 1}, y ${z.y}–${z.y + z.h - 1} (${z.w}×${z.h})${lieu} · ${pourcent(z.part)} · ${z.nature}${dec}`);
       });
       if (res.zones.length > zones.length) sortie.push(` … et ${res.zones.length - zones.length} autre${res.zones.length - zones.length > 1 ? 's' : ''} (--zones ${res.zones.length})`);
+      if (o.zone) sortie.push(`Comparaison limitée à la zone ${o.zone.join(',')}`);
       if (o.ignorer.length) sortie.push(`Zones écartées : ${o.ignorer.map((r) => r.join(',')).join(' ; ')}`);
       if (textes) {
         sortie.push(`Textes de la maquette : ${textes.trouves} sur ${textes.total} retrouvés${textes.absents.length ? ` — absents : ${textes.absents.slice(0, 6).map((t) => `« ${t.length > 40 ? `${t.slice(0, 40)}…` : t} »`).join(', ')}${textes.absents.length > 6 ? `, … (${textes.absents.length - 6} de plus)` : ''}` : ''}`);

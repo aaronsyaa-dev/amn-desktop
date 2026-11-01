@@ -208,6 +208,8 @@ groupe('textes de la maquette : retrouvés ou absents', () => {
   egal(t.total, 5, 'fragments de deux lettres ou plus (« A » et « x » écartés)');
   egal(t.trouves, 4, 'retrouvés (espaces insécables et retours à la ligne normalisés)');
   egal(t.absents.join(), 'Afficher', 'le seul absent');
+  const a = verifierTextes({ text: "Vos clients | l'application mobile | n'importe quoi" }, 'Vos clients\nl\u2019application mobile — n\u2019importe quoi');
+  egal(a.trouves, 3, 'apostrophe typographique = apostrophe droite');
 });
 
 console.log(`\n${verifies} vérification(s) — ${defauts.length} défaut(s).`);

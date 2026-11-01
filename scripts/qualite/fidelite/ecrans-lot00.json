@@ -1,0 +1,118 @@
+{
+  "lot": "LOT-00",
+  "_": "Les 8 écrans de S0. Chaque entrée dit comment amener l'app à l'état de l'image : route, horloge, stockage, gestes. 'mac' : les maquettes sont dessinées sur un Mac (⌘). La nouvelle coquille est éteinte par défaut dans l'app : on l'allume par localStorage['amn.coquille'] = 'noir'.",
+  "defaut": {
+    "mac": true,
+    "date": "2026-10-30T09:41:00",
+    "stockage": {
+      "amn.coquille": "noir"
+    }
+  },
+  "ecrans": [
+    {
+      "id": "H40",
+      "route": "#/notifications"
+    },
+    {
+      "id": "H41",
+      "route": "#/tasks",
+      "etapes": [
+        {
+          "touches": "Meta+k"
+        },
+        {
+          "attendre": "[role=dialog] input"
+        },
+        {
+          "saisie": "menna",
+          "delai": 40
+        },
+        {
+          "pause": 700
+        }
+      ],
+      "zone": [
+        360,
+        90,
+        720,
+        460
+      ]
+    },
+    {
+      "id": "H42",
+      "route": "#/demarrage"
+    },
+    {
+      "id": "H47",
+      "route": "#/demarrage/metier",
+      "etapes": [
+        {
+          "attendre": "text=Artisan du bâtiment"
+        },
+        {
+          "clic": "text=Artisan du bâtiment"
+        },
+        {
+          "pause": 700
+        }
+      ]
+    },
+    {
+      "id": "H43",
+      "route": "#/dev/etats",
+      "dev": true,
+      "gabarit": "aucun"
+    },
+    {
+      "id": "D02",
+      "route": "#/tous-les-modules",
+      "etapes": [
+        {
+          "attendre": "input[type=search]"
+        },
+        {
+          "clic": "input[type=search]"
+        },
+        {
+          "saisie": "envoyer une fac",
+          "delai": 40
+        },
+        {
+          "pause": 600
+        }
+      ]
+    },
+    {
+      "id": "G06",
+      "sansConnexion": true,
+      "gabarit": "aucun",
+      "stockage": {}
+    },
+    {
+      "id": "G05",
+      "route": "#/",
+      "date": "2026-10-20T09:41:00",
+      "etapes": [
+        {
+          "touches": "Meta+j"
+        },
+        {
+          "attendre": "[role=dialog]"
+        },
+        {
+          "saisie": "Relancer l'Atelier Dupont",
+          "delai": 30
+        },
+        {
+          "pause": 900
+        }
+      ],
+      "zone": [
+        400,
+        108,
+        640,
+        530
+      ]
+    }
+  ]
+}

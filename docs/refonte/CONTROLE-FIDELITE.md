@@ -35,6 +35,35 @@ AMN_E2E_EMAIL=essai.interne@exemple.test AMN_E2E_PASSWORD=… \
 Utiles : `--attendre '<sélecteur>'` (attend qu'un élément soit visible), `--pause <ms>`.
 La capture écrit aussi `H41.txt`, le texte visible de la page.
 
+Pour atteindre l'état de l'image (palette ouverte, texte saisi, carte cliquée) :
+
+- `--etapes <fichier.json>` : des gestes joués avant la capture, par exemple
+  `[{"touches":"Meta+k"},{"attendre":"[role=dialog] input"},{"saisie":"menna","delai":40},{"pause":700}]`
+  (`clic`, `touches`, `saisie`, `remplir`, `attendre`, `pause`) ;
+- `--stockage 'clé=valeur;;clé=valeur'` : le `localStorage` posé avant le chargement (par exemple le drapeau d'une
+  nouvelle coquille éteinte par défaut) ;
+- `--mac` : l'app se croit sur un Mac, donc ⌘ au lieu de `Ctrl` (les maquettes sont dessinées ainsi) ;
+- `--date 2026-10-30T09:41:00` : fige l'horloge (« en retard de 12 jours », « Ven. 31 ») ;
+- `--sans-connexion` : un écran d'avant la connexion (G06).
+
+Le guide de bienvenue et l'accueil quotidien (« Bienvenue sur AMN Business », cinq secondes) masqueraient tout
+dans un navigateur neuf : la capture les marque déjà vus pour le jour de l'horloge, comme le ferait quelqu'un
+qui les a déjà parcourus. Un écran qui n'existe qu'en développement (`import.meta.env.DEV`, comme H43) demande un
+build `NODE_ENV=development`.
+
+**Tout un lot d'un coup** : décrivez ses écrans dans un fichier de scénarios (modèle :
+`scripts/qualite/fidelite/ecrans-lot00.json`) puis
+
+```sh
+node scripts/qualite/fidelite/lot.mjs --scenarios <fichier.json> --dist <build> [--dist-dev <build-dev>] \
+  --images "$IMAGES" --data "$DATA" --api http://127.0.0.1:4171 --sortie /tmp/fid
+```
+
+Un scénario peut limiter la comparaison à une zone (`"zone": [x,y,l,h]`) quand l'écran est une palette posée
+sur une autre page : le pourcentage de l'écran entier n'a alors pas de sens. Les fiches des maquettes qui
+supposent des données (Menna Conseil, F-2041…) se sèment avec `scripts/qualite/fidelite/graines-maquettes.mjs`.
+Premier résultat : [`docs/qualite/fidelite/ECARTS-LOT-00.md`](../qualite/fidelite/ECARTS-LOT-00.md).
+
 ## 2. Comparer
 
 ```sh
@@ -86,9 +115,10 @@ absent ou en trop ne passe jamais.
 | bord de texte `--contour` | ±40 % du contraste local | le crénelage d'une lettre bouge de beaucoup pour un demi-pixel ; un filet faible, lui, reste surveillé |
 | carré `--bloc` / `--taux` | 48 px, 2 % | un carré est en écart au-delà de 2 % de pixels refusés ; aucun carré en écart = OK |
 
-Essayé sur trois images du lot 00 (D02, G06, H41) : un décalage de 1 ou 2 px est accepté, de 3 px refusé ;
-sur G06, un aplat de teinte décalée de 3 niveaux est vu. Les règles sont figées par
-`node tests/fidelite/comparer.test.mjs` (44 vérifications, sur des images fabriquées).
+Réglages calibrés sur trois images du lot 00 (D02, G06, H41) : un décalage de 1 ou 2 px est accepté, de 3 px
+refusé ; sur G06, un aplat de teinte décalée de 3 niveaux est vu. Les huit écrans du lot ont ensuite été
+capturés et comparés (résultats : `docs/qualite/fidelite/ECARTS-LOT-00.md`). Les règles sont figées par
+`node tests/fidelite/comparer.test.mjs` (45 vérifications, sur des images fabriquées).
 
 ## Sûreté
 

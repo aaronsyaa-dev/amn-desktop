@@ -31,7 +31,11 @@
  *       --dist <dossier> --route '#/tasks' --api http://127.0.0.1:4171 --sortie <capture.png>
  *
  * Options : --attendre <sélecteur CSS> (attend qu'il soit visible), --pause <ms> (après le
- * rendu, défaut 800), --date <ISO> (fige l'horloge de la page), --theme sombre|clair.
+ * rendu, défaut 800), --date <ISO> (fige l'horloge de la page), --theme sombre|clair,
+ * --stockage 'clé=valeur;;clé=valeur' (localStorage posé avant le chargement),
+ * --etapes <fichier.json> (gestes avant la capture : clic, touches, saisie, remplir, attendre, pause),
+ * --sans-connexion (un build : ne se connecte pas, pour l'écran de connexion),
+ * --mac (l'app se croit sur un Mac : ⌘ au lieu de Ctrl ; les maquettes sont dessinées ainsi).
  * Écrit aussi <capture>.txt : le texte visible de la page, pour `comparer.mjs --textes`.
  */
 import fs from 'node:fs';
@@ -52,7 +56,8 @@ function lireOptions(argv) {
     const a = argv[i];
     if (!a.startsWith('--')) throw new Error(`argument inattendu : ${a}`);
     const nom = a.slice(2);
-    if (!['page', 'dist', 'route', 'api', 'sortie', 'attendre', 'pause', 'date', 'theme'].includes(nom)) throw new Error(`option inconnue : --${nom}`);
+    if (nom === 'sans-connexion' || nom === 'mac') { o[nom] = true; continue; }
+    if (!['page', 'dist', 'route', 'api', 'sortie', 'attendre', 'pause', 'date', 'theme', 'stockage', 'etapes'].includes(nom)) throw new Error(`option inconnue : --${nom}`);
     if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) throw new Error(`--${nom} demande une valeur`);
     o[nom] = argv[i + 1];
     i += 1;
@@ -94,12 +99,16 @@ async function principal() {
     }
     let email = '';
     let motDePasse = '';
-    if (dist) {
+    if (dist && !o['sans-connexion']) {
       email = process.env.AMN_E2E_EMAIL ?? '';
       motDePasse = process.env.AMN_E2E_PASSWORD ?? '';
       if (!email || !motDePasse) throw new Error('un build demande AMN_E2E_EMAIL et AMN_E2E_PASSWORD (compte d’essai en @exemple.test)');
       if (!/@exemple\.test$/i.test(email)) throw new Error(`le compte doit être en @exemple.test (reçu : ${email}) — jamais de compte réel`);
     }
+    // Les étapes jouées avant la capture (clics, touches, saisies), lues dans un fichier JSON.
+    const etapes = o.etapes ? JSON.parse(fs.readFileSync(path.resolve(o.etapes), 'utf8')) : [];
+    // Le stockage local posé avant le chargement : « clé=valeur », plusieurs séparés par « ;; ».
+    const stockage = o.stockage ? o.stockage.split(';;').map((kv) => { const i = kv.indexOf('='); if (i < 1) throw new Error(`--stockage attend clé=valeur (reçu : ${kv})`); return [kv.slice(0, i), kv.slice(i + 1)]; }) : [];
 
     const { chromium } = require('playwright-core');
     // Chromium (141 et plus) retient tout appel d'une page « publique » vers le réseau local en attendant une
@@ -107,7 +116,7 @@ async function principal() {
     // publique : la connexion à l'amn-api d'essai restait suspendue. On lève ces contrôles pour CE lancement ;
     // le gardien ci-dessous reste la seule porte (seuls les hôtes de cette machine, listés, sortent).
     const sansReseauLocalBloque = '--disable-features=LocalNetworkAccessChecks,PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults,BlockInsecurePrivateNetworkRequests';
-    navigateur = await chromium.launch({ executablePath: process.env.AMN_E2E_CHROMIUM ?? '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--font-render-hinting=none', sansReseauLocalBloque] });
+    navigateur = await chromium.launch({ executablePath: process.env.AMN_E2E_CHROMIUM ?? '/opt/pw-browsers/chromium', args: ['--no-sandbox', '--font-render-hinting=none', sansReseauLocalBloque, '--no-proxy-server', '--disable-background-networking', '--disable-sync', '--disable-component-update', '--no-pings'] });
     const contexte = await navigateur.newContext({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 1,
@@ -137,18 +146,33 @@ async function principal() {
     const page = await contexte.newPage();
     if (o.date && page.clock) await page.clock.install({ time: new Date(o.date) });
 
+    // Les maquettes sont dessinées sur un Mac (⌘K, ⌘J) : l'app choisit ses glyphes d'après la plateforme.
+    if (o.mac) await contexte.addInitScript(() => { Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' }); });
+    if (stockage.length) {
+      await contexte.addInitScript((paires) => {
+        try { for (const [k, v] of paires) localStorage.setItem(k, v); } catch { /* sans stockage */ }
+      }, stockage);
+    }
+
     if (dist) {
       // Le guide de première connexion masque tout à un navigateur neuf : on le marque comme vu, comme le ferait quelqu’un qui l’a parcouru.
-      await contexte.addInitScript((mail) => {
-        try { for (const q of ['general', 'profil', 'presentation']) localStorage.setItem(`amn.guide.${q}.${mail}`, 'vu'); } catch { /* sans stockage */ }
-      }, email);
+      // L'accueil quotidien (« Bienvenue sur AMN Business… », cinq secondes) ne se joue qu'une fois par jour : on le marque joué pour le jour de la page.
+      const jourDeLaPage = (o.date ? new Date(o.date) : new Date()).toISOString().slice(0, 10);
+      await contexte.addInitScript(([mail, jour]) => {
+        try {
+          for (const q of ['general', 'profil', 'presentation']) localStorage.setItem(`amn.guide.${q}.${mail}`, 'vu');
+          localStorage.setItem('amn.welcome.lastShown', jour);
+        } catch { /* sans stockage */ }
+      }, [email, jourDeLaPage]);
       await page.goto(adresse);
-      await page.locator('input[name="email"]').fill(email);
-      await page.locator('input[name="password"]').fill(motDePasse);
-      await page.locator('button:has-text("Se connecter")').click();
-      for (let i = 0; i < 20 && (await page.content()).includes('name="password"'); i += 1) await new Promise((r) => setTimeout(r, 500));
-      if ((await page.content()).includes('name="password"')) throw new Error('la connexion n’a pas abouti (amn-api d’essai joignable ? compte créé ? voir --api)');
-      await new Promise((r) => setTimeout(r, 1500));
+      if (!o['sans-connexion']) {
+        await page.locator('input[name="email"]').fill(email);
+        await page.locator('input[name="password"]').fill(motDePasse);
+        await page.locator('button:has-text("Se connecter")').click();
+        for (let i = 0; i < 20 && (await page.content()).includes('name="password"'); i += 1) await new Promise((r) => setTimeout(r, 500));
+        if ((await page.content()).includes('name="password"')) throw new Error('la connexion n’a pas abouti (amn-api d’essai joignable ? compte créé ? voir --api)');
+        await new Promise((r) => setTimeout(r, 1500));
+      }
       if (o.route) {
         const cible = o.route.startsWith('#') ? `${ORIGINE_VIRTUELLE}/${o.route}` : `${ORIGINE_VIRTUELLE}${o.route}`;
         await page.goto(cible);
@@ -161,6 +185,16 @@ async function principal() {
     await page.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; scroll-behavior: auto !important; }' });
     await page.evaluate(() => document.fonts?.ready).catch(() => undefined);
     if (o.attendre) await page.locator(o.attendre).first().waitFor({ state: 'visible', timeout: 15000 });
+    await new Promise((r) => setTimeout(r, 600)); // l'écran est monté avant le premier geste
+    for (const e of etapes) {
+      if (e.clic) await page.locator(e.clic).first().click({ timeout: 10000 });
+      else if (e.touches) await page.keyboard.press(e.touches);
+      else if (e.saisie !== undefined) await page.keyboard.type(e.saisie, { delay: e.delai ?? 20 });
+      else if (e.remplir) await page.locator(e.remplir.sel).first().fill(e.remplir.texte);
+      else if (e.attendre) await page.locator(e.attendre).first().waitFor({ state: 'visible', timeout: 15000 });
+      else if (e.pause) await new Promise((r) => setTimeout(r, e.pause));
+      else throw new Error(`étape inconnue : ${JSON.stringify(e)}`);
+    }
     await new Promise((r) => setTimeout(r, Number(o.pause ?? 800)));
 
     await page.screenshot({ path: sortie, fullPage: false });
