@@ -1,0 +1,58 @@
+diff --git a/src/ateliers/verifier.mjs b/src/ateliers/verifier.mjs
+index 0b03eb5..f1e1d6c 100644
+--- a/src/ateliers/verifier.mjs
++++ b/src/ateliers/verifier.mjs
+@@ -55,8 +55,32 @@ const exiger = (cond, message) => {
+   if (!cond) throw new Error(message);
+ };
+ 
++/**
++ * Depuis S5, le registre ramasse ses déclarations avec `import.meta.glob`, un mot de Vite
++ * qu'esbuild ne connaît pas : sans ce remplacement il est VIDE (même plugin que check:navigation).
++ */
++const globVite = {
++  name: 'import-meta-glob',
++  setup(b) {
++    b.onLoad({ filter: /[\\/]src[\\/]refonte[\\/]modules[\\/]registre\.ts$/ }, (args) => {
++      const dir = path.dirname(args.path);
++      const imports = [];
++      const contents = fs.readFileSync(args.path, 'utf8').replace(/import\.meta\.glob(?:<[^>]*>)?\(\s*'\.\/([\w-]+)\/\*\.ts'[^)]*\)/g, (_t, sous) => {
++        const champs = fs.readdirSync(path.join(dir, sous)).filter((f) => f.endsWith('.ts')).sort().map((f) => {
++          const n = imports.length;
++          imports.push(`import * as __glob${n} from './${sous}/${f}';`);
++          return `'./${sous}/${f}': __glob${n}`;
++        });
++        return `{ ${champs.join(', ')} }`;
++      });
++      return { contents: `${imports.join('\n')}\n${contents}`, loader: 'ts' };
++    });
++  },
++};
++
+ async function charger(code) {
+   const construit = await esbuild.build({
++    plugins: [globVite],
+     stdin: { contents: code, resolveDir: dossierAteliers, loader: 'tsx' },
+     bundle: true,
+     write: false,
+@@ -81,14 +105,18 @@ const modules = fs
+   .filter((n) => demandes.length === 0 || demandes.includes(n))
+   .sort();
+ 
+-const { REGISTRE, ACTIONS, FAMILLES, NIVEAUX } = await charger(
++const { REGISTRE, REGISTRE_MODULES, FAMILLES, NIVEAUX } = await charger(
+   [
+-    "export { REGISTRE, ACTIONS } from '../refonte/navigation/registre';",
++    "export { REGISTRE } from '../refonte/navigation/registre';",
++    "export { REGISTRE_MODULES } from '../refonte/modules/registre';",
+     "export { FAMILLES } from '../socle/familles';",
+     "export { NIVEAUX } from './_commun/manifeste';",
+   ].join('\n'),
+ );
+ 
++// Depuis S5, les actions d'une famille vivent dans sa déclaration (src/refonte/modules/declarations/).
++const ACTIONS = Object.fromEntries(REGISTRE_MODULES.familles.map((f) => [f.id, f.actions.map((a) => a.id)]));
++
+ const PIECES = ['module.ts', 'logique.ts', 'donnees.ts', 'i18n.ts', 'tests.ts', 'Ecran.tsx'];
+ const IMPORTS_PERMIS = [/^\.\/[\w.-]+$/, /^\.\.\/_commun\/[\w.-]+$/, /^\.\.\/\.\.\/socle(\/[\w.-]+)*$/, /^\.\.\/\.\.\/i18n$/, /^react$/, /^lucide-react$/, /^framer-motion$/];
+ const RESEAU = /\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|\bimport\s*\(/;
