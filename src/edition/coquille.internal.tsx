@@ -10,3 +10,5 @@
 export { CoquilleRefonte } from '../refonte/coquille/CoquilleRefonte';
 export { CoquilleSection } from '../refonte/coquille/CoquilleSection';
 export { useCoquilleActive } from '../refonte/coquille/drapeau';
+/** L'écran de veille v3 (G09), monté par `IdleScreensaver` quand la nouvelle coquille est allumée. */
+export { EcranDeVeille } from '../refonte/systeme/veille/EcranDeVeille';

@@ -203,6 +203,19 @@
   /* Le compteur d'une ligne du répertoire « Tous les modules » (fiche D02, `CountBadge` : 16 px, fond `#26262a`). */
   --socle-pastille-compte: #26262a;
 
+  /* ── L'écran de veille (G09) : le SEUL noir absolu de l'application ──
+     Tout le reste garde les quasi-noirs étagés ; `--socle-veille-noir` n'est lu que par
+     `src/refonte/systeme/veille/veille.css` (`check:systeme-veille` le tient). Orbites pointillées `#202023`,
+     heures à venir `#26262a`, arc écoulé `#3a3a3e`, repères bordés `#2e2e32`, pastille bordée `#1f1f22`,
+     halo de l'instant `rgba(237,237,237,.12)`. */
+  --socle-veille-noir: #000000;
+  --socle-veille-orbite: #202023;
+  --socle-veille-heure-avenir: #26262a;
+  --socle-veille-arc: #3a3a3e;
+  --socle-veille-bord-repere: #2e2e32;
+  --socle-veille-bord-pastille: #1f1f22;
+  --socle-veille-halo: rgba(237, 237, 237, 0.12);
+
   /* ── Les noms du socle S0, redéfinis ── */
   --color-bg: #0c0c0d;
 

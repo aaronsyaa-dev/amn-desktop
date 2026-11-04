@@ -206,7 +206,7 @@ L'app n'est pas lancée (ni `npm start`, ni `build:web`, ni serveur). Chaque éc
 | G06 Connexion | `cf2aca6` | 15,6 % | 0,09 % (balayage et méthodes absentes écartés) | titre « Connexion » au lieu de « Bon retour, … » |
 | G05 Ajmani ⌘J | `c347081` | 13,8 % (palette) | chaque bande à ± 1 px | bas décalé de 38 px : texte en 2 lignes, pas de ligne « Objet » |
 
-**8 écrans sur 8 faits en v3.** Gardes : `typecheck`, `typecheck:business`, `lint`, tous les `check:*` sans navigateur identiques à la base (seuls `check:encres`, `check:migration`, `check:xss`, `check:visite`, `check:support` échouent, avant comme après) ; tous les `check:socle-*` et `check:systeme-*` verts, dont les nouveaux `check:socle-vivant` et `check:systeme-connexion`.
+**8 écrans sur 8 faits en v3, plus G09 (9 sur 9).** Gardes : `typecheck`, `typecheck:business`, `lint`, tous les `check:*` sans navigateur identiques à la base (seuls `check:encres`, `check:migration`, `check:xss`, `check:visite`, `check:support` échouent, avant comme après) ; tous les `check:socle-*` et `check:systeme-*` verts, dont les nouveaux `check:socle-vivant` et `check:systeme-connexion`.
 
 ### Composants v3 disponibles (internes seulement, depuis `src/socle/ui`)
 
@@ -257,6 +257,26 @@ Laissés, avec la raison :
 - **D02** : comptes du registre, donc la 4ᵉ colonne défile dans la carte ; noms longs coupés avec info-bulle ; pas de « +N ce mois » (le journal ne garde que la dernière ouverture) ; « À découvrir » = jamais ouverts ; Cyber « 9 espaces » (catalogue) au lieu de 12 ; lignes de 21 px (fiche) sous les 34 px du §7.6 ; nouvelle coquille éteinte : D02 s'affiche comme une page dans l'ancienne mise en page.
 - **G06** : clé d'accès, lien par e-mail et compte enregistré n'existent pas dans le dépôt : non dessinés (fiche §8, « sans compte mémorisé ») ; titre « Connexion », adresse et mot de passe ; pastille « La Garde veille · connexion chiffrée » (pas d'état public des services) ; « Écrire à l'équipe » affiche un texte d'aide (aucune adresse d'assistance) ; authentification inchangée, vérifiée par `check:systeme-connexion`.
 - **G05** : « Préparer les n relances » au lieu d'« Envoyer » (écart décidé) ; pas de « attend un appel », de modèle approuvé, de ligne « Objet » ni de « Programmer » (aucune source) ; Relances ne lit pas encore les factures présélectionnées.
+
+### G09 Écran de veille (9ᵉ écran, ajout du dirigeant)
+
+- **Fait** : capture comparée à l'image, 0,00 % de pixels hors ± 2 px, 15 textes sur 15 retrouvés.
+- **Composants** (`src/refonte/systeme/veille/`) : `IdleScreen` (calque plein écran `#000` au-dessus de tout, sans clic fantôme, rend le focus), `DayRing24`, `WatchOrbit` (avec `SlowSweep` 60 s), `BigClock`, `StatusPill`. Le noir `#000` est un jeton propre (`--socle-veille-noir`), utilisé là seulement.
+- **Bascule** : par `src/components/IdleScreensaver.tsx`. Nouvelle coquille allumée → G09 ; éteinte (défaut) → le voile d'avant (Salle de situation), inchangé. `amn:veille-ouverte` part dans les deux cas. Côté client, `EcranDeVeille` de `@edition/coquille` ne rend rien.
+- **Données** : l'horloge du poste, l'état global de La Garde (même règle que la pastille de l'en-tête, `usePoulsGarde`) et la prochaine ronde (`prochaineRondeAt` des gardes actives, déjà chargé ; absente si aucune ronde n'est annoncée). Aucun nom de client ou d'organisation, aucun montant (vérifié par `check:systeme-veille`).
+- **Jamais pendant** un appel, un partage ou une prise de contrôle d'écran, une dictée d'Ajmani ou une vidéo en lecture.
+- **Réglage H18** : Paramètres, ligne « Écran de veille » entre « Mouvement » et « Nouvelle coquille » (couture interne, rien côté client) : activer (oui par défaut), « Veille après » 5 min par défaut, « Verrouiller l'espace après » 15 min par défaut (ou « Jamais »). Stockage par poste `amn.ecranDeVeille`.
+- **Mouvement** : couche commune ; tout s'arrête avec `prefers-reduced-motion` ou Mouvement « aucun » (fond figé, halo et point fixes, pas de dérive).
+
+Écarts :
+
+1. **Aucun verrouillage après inactivité n'existe dans le dépôt** : rien n'a été créé (interface seulement, authentification inchangée). Le délai de verrouillage est enregistré sans effet, et l'aide des Paramètres le dit ; « Espace verrouillé » et « · verrouillage après 15 min » ne s'affichent pas dans l'app (seulement dans l'aperçu de capture).
+2. Message vocal de l'équipe (`VoiceRecorder`) : aucun état lisible ; couvert indirectement (3 min au plus, délai minimal 5 min).
+3. Plusieurs écrans : une seule fenêtre Electron, le calque ne couvre qu'elle.
+4. Entrée par l'animation commune `entree` (montée de 6 px) plutôt qu'un fondu pur ; halo du repère en anneau fixe et onde sur le point.
+5. État « La Garde ne répond pas » repris de l'en-tête (la fiche ne le prévoit pas).
+
+Questions pour le CO : basculer la coquille (donc G09) par défaut ? Créer un vrai verrouillage menant à G06 (touche à l'authentification) ? Masquer les notifications natives du système pendant la veille ?
 
 ### Questions pour le CO (v3)
 

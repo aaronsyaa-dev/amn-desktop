@@ -14,6 +14,11 @@ export function CoquilleSection(): null {
   return null;
 }
 
+/** L'écran de veille v3 (G09) n'existe pas côté cliente : la vitrine du jour (`VeilleCliente`) reste la sienne. */
+export function EcranDeVeille(): null {
+  return null;
+}
+
 /** Toujours faux : la coquille d'origine. */
 export function useCoquilleActive(): boolean {
   return false;

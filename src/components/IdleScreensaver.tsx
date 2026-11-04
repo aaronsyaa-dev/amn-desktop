@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 // Interne seulement : ce fichier n'est monté que par `AppLayout` (appRoot.internal) —
 // le paquet client ne l'atteint pas, d'où l'import direct de la refonte (S3).
 import { SalleDeSituation } from '../refonte/garde/SalleDeSituation';
+import { EcranDeVeille, useCoquilleActive } from '@edition/coquille';
 import { useInactivite } from '../lib/useInactivite';
 
 /**
@@ -19,7 +20,18 @@ import { useInactivite } from '../lib/useInactivite';
  */
 const IDLE_MS = 4 * 60_000; // 4 minutes — restful, not twitchy.
 
+/**
+ * DEUX VEILLES, UN DRAPEAU (G09). Avec la nouvelle coquille (`@edition/coquille`, éteinte par défaut), l'écran de
+ * veille v3 : noir absolu, l'heure, le jour et l'état de La Garde, rien d'autre (`src/refonte/systeme/veille/`,
+ * réglable dans Paramètres, jamais pendant un appel, un partage, une dictée ou une vidéo). Coquille éteinte :
+ * le voile d'avant, la Salle de situation, inchangé. Les deux annoncent `amn:veille-ouverte`.
+ */
 export function IdleScreensaver() {
+  const coquille = useCoquilleActive();
+  return coquille ? <EcranDeVeille /> : <VoileSalle />;
+}
+
+function VoileSalle() {
   const { actif, reveiller } = useInactivite(IDLE_MS);
   // La veille termine la session des bureaux : la prochaine entrée dans un
   // bureau rejoue son sas complet (cahier 11 §3).

@@ -1,0 +1,172 @@
+/*
+  L'ÉCRAN DE VEILLE (G09) — le seul écran en noir absolu (`--socle-veille-noir`, lu ICI et nulle part ailleurs).
+  Cotes de la fiche G09 (image 1440 × 900, centre du dessin en (720, 410)) : orbites 372 / 452 / 560, anneau de 300
+  (traits depuis 292, 11 et 16 px), étiquettes à 326, heure 176 px en haut à y 298, jour 20 px à y 506, pastille de
+  34 px à y 560 ; marque à (48, 40), verrou bord droit 1392 à y 46, pied centré à y 846. Couleurs : jetons de
+  `src/socle/noir.css` seulement. Mouvement : la couche commune (`data-mvt`), rien d'autre. Chargée avec l'écran,
+  édition interne seulement.
+*/
+:root[data-ambiance='noir'] .ve {
+  position: fixed;
+  /* Au-dessus de tout : la pile des calques monte à 300, les bandeaux d'appel à 245. */
+  z-index: 2147483000;
+  inset: 0;
+  overflow: hidden;
+  background: var(--socle-veille-noir);
+  color: var(--socle-texte-1);
+  cursor: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: normal;
+  outline: none;
+  user-select: none;
+}
+.ve-tout { position: absolute; inset: 0; }
+.ve-tout p { margin: 0; }
+
+/* ── Le dessin, centré et mis à l'échelle (1440 × 900 de référence) ── */
+.ve-dessin { position: absolute; top: 50%; left: 50%; width: 1440px; height: 900px; margin: -450px 0 0 -720px; transform-origin: 50% 50%; }
+
+/* ── Z0 · Z2 : orbites pointillées, huit repères anonymes, balayage lent ── */
+.ve-orbites { position: absolute; top: 410px; left: 720px; width: 0; height: 0; }
+.ve-orbites__svg { position: absolute; top: -600px; left: -600px; overflow: visible; }
+.ve-orbite { stroke: var(--socle-veille-orbite); stroke-width: 1; }
+:root[data-ambiance='noir'] .ve-balayage[data-mvt='balayage'] {
+  position: absolute;
+  top: -560px;
+  left: -560px;
+  width: 1120px;
+  height: 1120px;
+  /* Un tour en 60 s, 4 % au plus du gris de La Garde ; masqué au centre et au bord : aucune arête visible.
+     En mouvement réduit il est FIGÉ à sa place (la couche coupe la rotation). */
+  --sc-mvt-balayage: 60s;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 16deg,
+    color-mix(in srgb, var(--socle-fam-garde) 4%, transparent) 42deg,
+    color-mix(in srgb, var(--socle-fam-garde) 2%, transparent) 62deg,
+    color-mix(in srgb, var(--socle-fam-garde) 1%, transparent) 76deg,
+    color-mix(in srgb, var(--socle-fam-garde) 0.5%, transparent) 88deg,
+    transparent 98deg 360deg
+  );
+  mask-image: radial-gradient(circle closest-side, transparent 150px, var(--socle-veille-noir) 260px, transparent 540px);
+}
+.ve-repere {
+  position: absolute;
+  display: flex;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  margin: -6px 0 0 -6px;
+  border: 1px solid var(--socle-veille-bord-repere);
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--socle-veille-noir);
+}
+.ve-repere__point { width: 4px; height: 4px; border-radius: var(--socle-rayon-pastille); background: var(--socle-trait-tres-discret); color: var(--socle-trait-tres-discret); }
+.ve-repere[data-veille='true'] { border-color: color-mix(in srgb, var(--socle-etat-succes) 50%, transparent); }
+/* Le halo du repère en veille : un anneau très discret, fixe ; l'onde du point (3,6 s) vit par-dessus. */
+.ve-repere[data-veille='true']::before {
+  position: absolute;
+  inset: -12px;
+  border: 1.5px solid color-mix(in srgb, var(--socle-etat-succes) 3%, transparent);
+  border-radius: var(--socle-rayon-pastille);
+  content: '';
+}
+.ve-repere[data-veille='true'] .ve-repere__point { --sc-mvt-voyant: 3600ms; background: var(--socle-etat-succes); color: var(--socle-etat-succes); }
+
+/* ── Z1 : l'anneau des 24 heures (midi en haut) ── */
+.ve-anneau { position: absolute; top: 410px; left: 720px; width: 0; height: 0; }
+.ve-anneau__svg { position: absolute; top: -360px; left: -360px; overflow: visible; }
+.ve-trait { stroke-width: 1.4; stroke-linecap: butt; }
+.ve-trait[data-etat='ecoulee'] { stroke: var(--socle-trait-tres-discret); }
+.ve-trait[data-etat='avenir'] { stroke: var(--socle-veille-heure-avenir); }
+.ve-trait[data-etat='encours'] { stroke: var(--socle-texte-1); stroke-width: 2.2; stroke-linecap: round; }
+.ve-arc { stroke: var(--socle-veille-arc); stroke-width: 1.2; }
+.ve-instant { fill: var(--socle-texte-1); }
+.ve-instant__halo { fill: var(--socle-veille-halo); }
+.ve-etiquette {
+  position: absolute;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  /* Le centre des chiffres sur le cercle de 326 (la boîte de ligne les poserait 1 px trop bas). */
+  transform: translate(-50%, calc(-50% - 1px));
+  white-space: nowrap;
+}
+
+/* ── Z3 · Z4 : l'heure et le jour ── */
+.ve-heure {
+  position: absolute;
+  top: 298px;
+  right: 0;
+  left: 0;
+  display: block;
+  color: var(--socle-texte-1);
+  font-size: 176px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 200;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  text-align: center;
+}
+.ve-jour { position: absolute; top: 506px; right: 0; left: 0; color: var(--socle-texte-2); font-size: 20px; letter-spacing: 0.01em; line-height: 24px; text-align: center; }
+
+/* ── Z5 : la pastille de La Garde, sans fond plein ── */
+.ve-ligne-pastille { position: absolute; top: 560px; right: 0; left: 0; display: flex; justify-content: center; }
+.ve-tout .ve-pastille {
+  /* Le point vivant du socle, en 7 px ici (fiche G09). */
+  --sc-v-voyant: 7px;
+  display: inline-flex;
+  height: 34px;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 11px;
+  padding: 0 16px;
+  border: 1px solid var(--socle-veille-bord-pastille);
+  border-radius: var(--socle-rayon-pastille);
+  background: none;
+  color: var(--socle-texte-2);
+  font-size: 13px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.ve-pastille__fort { color: var(--socle-texte-courant); }
+.ve-pastille__sep { color: var(--socle-trait-tres-discret); }
+.ve-pastille__ronde { color: var(--socle-texte-courant); font-size: 13px; }
+
+/* ── Z6 · Z7 : la marque, le verrou ── */
+.ve-marque { position: absolute; top: 40px; left: 48px; display: flex; align-items: center; gap: 11px; }
+.ve-marque__logo {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: linear-gradient(160deg, var(--socle-connexion-logo-haut), var(--socle-connexion-logo-bas));
+  color: var(--socle-primaire-encre);
+  font-size: 13px;
+  font-weight: 700;
+}
+.ve-marque__nom { color: var(--socle-texte-courant); font-size: 13.5px; font-weight: 600; }
+.ve-tout .ve-verrou { position: absolute; top: 46px; right: 48px; display: flex; height: 15px; align-items: center; gap: 8px; color: var(--socle-texte-3); font-size: 12.5px; line-height: 15px; }
+.ve-verrou svg { flex: none; }
+
+/* ── Z8 : le pied ── */
+.ve-pied {
+  position: absolute;
+  right: 48px;
+  bottom: 44px;
+  left: 48px;
+  display: grid;
+  height: 18px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+}
+.ve-pied__delais { color: var(--socle-texte-3); font-size: 12px; line-height: 16px; }
+.ve-pied__reprendre { color: var(--socle-texte-2); font-size: 13.5px; line-height: 18px; text-align: center; }
+.ve-pied__reglages { color: var(--socle-texte-3); font-size: 12px; line-height: 16px; text-align: right; }
