@@ -8,7 +8,9 @@
  * puis lit le graphe d'imports (metafile) :
  *
  *   · le paquet client n'atteint AUCUN fichier de `src/socle/**`, `src/refonte/**`, `src/edition/*.internal.*`,
- *     `src/components/AppLayout.tsx`, `src/components/IdleScreensaver.tsx` ;
+ *     `src/components/AppLayout.tsx`, `src/components/IdleScreensaver.tsx`, ni de la coque interne
+ *     `src/client-context/**` (la session de support) et `src/bureaux/**` (les cinq bureaux) — un import de
+ *     `ClientContextLayout` ou de `CadreBureau` par un fichier partagé est une faute d'import, pas un hasard de texte ;
  *   · le texte du paquet ne contient aucun motif de `scripts/business-bundle-rules.mjs` (`FORBIDDEN`,
  *     exception comptée comprise) ;
  *   · la liste des fichiers atteints hors node_modules est écrite dans la sortie, pour relecture.
@@ -39,7 +41,9 @@ const INTERDITS: { nom: string; touche: (f: string) => boolean }[] = [
   { nom: 'src/edition/*.internal.*', touche: (f) => /^src\/edition\/[^/]*\.internal\./.test(f) },
   { nom: 'src/components/AppLayout.tsx', touche: (f) => f === 'src/components/AppLayout.tsx' },
   { nom: 'src/components/IdleScreensaver.tsx', touche: (f) => f === 'src/components/IdleScreensaver.tsx' },
-  { nom: 'src/refonte/donnees/**', touche: (f) => f.startsWith('src/refonte/donnees/') },
+  // La coque interne : la session de support cliente et la pièce des cinq bureaux, montées par AppLayout seulement.
+  { nom: 'src/client-context/**', touche: (f) => f.startsWith('src/client-context/') },
+  { nom: 'src/bureaux/**', touche: (f) => f.startsWith('src/bureaux/') },
 ];
 /** Ce que le paquet client DOIT atteindre : sans quoi un build vide ou mal aiguillé passerait au vert. */
 const ATTENDUS = ['src/edition/appRoot.business.tsx', 'src/business/BusinessLayout.tsx'];
