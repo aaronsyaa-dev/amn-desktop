@@ -19,7 +19,8 @@
  *   dateIso(date)                 → « 2026-10-30T09:42:00.000Z » (pour <time dateTime>)
  *
  * Jamais une donnée réelle ici : ce sont des fonctions pures, sans React, sans import hors du socle. Les règles
- * (espaces insécables, « — » pour un nombre illisible, mêmes euros que `formatCentsCompact`) sont tenues par
+ * (espaces insécables ; « — » pour une valeur illisible — NaN, ±Infinity, date invalide — sur chacun des huit
+ * exports sauf `dateIso`, qui rend « » ; mêmes euros que `formatCentsCompact`) sont tenues par
  * `check:socle-graphiques` et `check:socle-archetypes` ; ce module y est vérifié identique à ses sources.
  */
 export { formaterNombre, formaterPourcent, formaterEuro, ESPACE_INSECABLE, ESPACE_FINE, TIRET_ABSENT, type OptionsNombre } from './ui/graphiques/format';
