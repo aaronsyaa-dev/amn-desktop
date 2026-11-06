@@ -827,6 +827,114 @@ await dit('le drapeau de la coquille : éteint par défaut, allumé sur ce poste
   stockage.delete(drapeau.CLE_COQUILLE);
 });
 
+/* ── Les Réglages de LOT-00 : trois surfaces propres, les liens « Réglages » des écrans, aucun archétype en gabarit ── */
+
+console.log('\nSocle de la refonte — réglages des écrans LOT-00\n');
+
+const entreeReglages = {
+  code: [
+    "import { createElement as h } from 'react';",
+    "import { renderToStaticMarkup } from 'react-dom/server.browser';",
+    "import { MemoryRouter } from 'react-router-dom';",
+    "import { MouvementSection, ancreDeReglages, ANCRES_REGLAGES } from '../src/edition/socle.internal';",
+    "export const rendre = (etat) => renderToStaticMarkup(h(MemoryRouter, { initialEntries: [{ pathname: '/settings', state: etat ?? null }] }, h(MouvementSection)));",
+    'export { ancreDeReglages, ANCRES_REGLAGES };',
+  ].join('\n'),
+};
+const R = await charger<{ rendre: (etat?: unknown) => string; ancreDeReglages: (s: unknown) => string | null; ANCRES_REGLAGES: readonly string[] }>(entreeReglages);
+
+await dit('Réglages : Mouvement, Écran de veille et Nouvelle coquille sont trois surfaces propres (carte du socle, ancre, contrôles différents), pas un gabarit répété', () => {
+  /* framer-motion sonde `prefers-reduced-motion` au premier rendu et s'y abonne : la fenêtre factice le lui permet, le temps de ce rendu. */
+  const fenetre = (globalThis as Record<string, unknown>).window as Record<string, unknown>;
+  const matchMediaAvant = fenetre.matchMedia;
+  fenetre.matchMedia = () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined });
+  let html: string;
+  try {
+    html = R.rendre();
+  } finally {
+    fenetre.matchMedia = matchMediaAvant;
+  }
+  const surfaces = [...html.matchAll(/<div id="(reglages-[a-z-]+)" data-reglage="([a-z-]+)"><section data-socle="carte"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(surfaces, [['reglages-mouvement', 'mouvement'], ['reglages-ecran-de-veille', 'ecran-de-veille'], ['reglages-coquille', 'coquille']]);
+  const decoupe = (id: string) => {
+    const debut = html.indexOf(`id="${id}"`);
+    const fin = html.indexOf('<div id="reglages-', debut + 1);
+    return html.slice(debut, fin < 0 ? undefined : fin);
+  };
+  const mouvement = decoupe('reglages-mouvement');
+  const veille = decoupe('reglages-ecran-de-veille');
+  const coquille = decoupe('reglages-coquille');
+  /* Chacune a son titre et son aide. */
+  assert.match(mouvement, /<h2[^>]*>Mouvement<\/h2>/);
+  assert.match(mouvement, /Ce qui bouge dans l’interface/);
+  assert.match(veille, /<h2[^>]*>Écran de veille<\/h2>/);
+  assert.match(veille, /ce poste couvre l’écran de noir/);
+  assert.match(coquille, /<h2[^>]*>Nouvelle coquille<\/h2>/);
+  assert.match(coquille, /Une seule navigation, un fil d’Ariane/);
+  /* Mouvement : un segmenté à trois niveaux, l'aide du niveau choisi, aucun interrupteur ni liste. */
+  assert.match(mouvement, /<div role="radiogroup" aria-label="Niveau de mouvement" class="sc-segmente">/);
+  assert.equal((mouvement.match(/role="radio"/g) ?? []).length, 3);
+  assert.match(mouvement, /aria-live="polite"[^>]*>Les panneaux glissent/);
+  assert.doesNotMatch(mouvement, /role="switch"|<select/);
+  /* Écran de veille : un interrupteur, un segmenté de délais, une liste de délais. */
+  assert.equal((veille.match(/role="switch"/g) ?? []).length, 1);
+  assert.equal((veille.match(/role="radio"/g) ?? []).length, 4);
+  assert.equal((veille.match(/<select /g) ?? []).length, 1);
+  /* Nouvelle coquille : l'état en pastille, les quatre points avec ⌘K et ⌘J, un interrupteur ; ni segmenté ni liste. */
+  assert.match(coquille, /class="sc-etat"[^>]*>Éteinte</);
+  assert.equal((coquille.match(/<li /g) ?? []).length, 4);
+  assert.match(coquille, /<kbd class="sc-kbd">⌘K<\/kbd><span>pour chercher<\/span>/);
+  assert.match(coquille, /<kbd class="sc-kbd">⌘J<\/kbd><span>pour Ajmani<\/span>/);
+  assert.match(coquille, /role="switch" aria-checked="false" aria-label="La nouvelle coquille sur ce poste"/);
+  assert.doesNotMatch(coquille, /role="radio"|<select/);
+  /* Trois compositions distinctes : les jeux de contrôles ne se répètent pas. */
+  const signature = (x: string) => ['switch', 'radio', 'select', 'sc-kbd', 'aria-live'].map((c) => (x.includes(c) ? c : '-')).join(',');
+  assert.equal(new Set([signature(mouvement), signature(veille), signature(coquille)]).size, 3, 'deux surfaces ont la même composition');
+  /* Plus rien du gabarit d'avant : ni case native, ni `panel`, ni `eyebrow`. */
+  assert.doesNotMatch(html, /type="radio"|type="checkbox"|class="panel|class="eyebrow/);
+  for (const f of ['src/edition/socle.internal.tsx', 'src/refonte/systeme/veille/EcranDeVeilleSection.tsx', 'src/refonte/coquille/CoquilleSection.tsx']) {
+    assert.doesNotMatch(lireSrc(f).replace(/\/\*[\s\S]*?\*\//g, ''), /["' ]panel[ "']|eyebrow|accent-\[var/, `${f} reprend le gabarit d’avant`);
+  }
+});
+
+await dit('Réglages : H40 « Réglages » mène aux Paramètres (/settings), rubrique Notifications, par l’ancre que la porte interne fait défiler', () => {
+  const page = lireSrc('src/refonte/systeme/notifications/PageNotifications.tsx');
+  assert.match(page, /navigate\('\/settings', \{ state: \{ section: 'notifications' \} \}\)/);
+  assert.match(lireSrc('src/edition/appRoot.internal.tsx'), /<Route path="\/settings" element=\{<SettingsScreen \/>\} \/>/, 'la route réelle des Paramètres de l’édition interne');
+  const reglages = lireSrc('src/screens/SettingsScreen.tsx');
+  assert.match(reglages, /<div id="reglages-notifications">/, 'l’ancre de la rubrique Notifications');
+  assert.match(reglages, /<MouvementSection \/>/, 'la porte interne est montée dans les Paramètres');
+  assert.equal(R.ancreDeReglages('notifications'), 'reglages-notifications');
+  for (const a of R.ANCRES_REGLAGES) assert.ok(reglages.includes(`id="reglages-${a}"`) || ['mouvement', 'ecran-de-veille', 'coquille'].includes(a), `l’ancre « ${a} » n’existe pas dans les Paramètres`);
+  assert.equal(R.ancreDeReglages('inconnue'), null);
+  assert.equal(R.ancreDeReglages({ toString: () => 'notifications' }), null, 'un état qui n’est pas une chaîne ne fait rien défiler');
+  assert.match(lireSrc('src/edition/socle.internal.tsx'), /scrollIntoView\(\{ behavior: niveau === 'complet' \? 'smooth' : 'auto', block: 'start' \}\)/, 'le défilement suit le réglage Mouvement');
+});
+
+await dit('Réglages : G09 « Réglages · Écran de veille » reste inactif pendant la veille ; G05, H41, H42, H47, H43, D02 et G06 n’envoient à aucun réglage', () => {
+  assert.match(lireSrc('src/refonte/systeme/veille/VueVeille.tsx'), /<p className="ve-pied__reglages">\{tm\('pied\.reglages'\)\}<\/p>/, 'un texte, ni lien ni bouton');
+  const dossiers = ['src/refonte/systeme/ajmani', 'src/refonte/systeme/recherche', 'src/refonte/systeme/demarrage', 'src/refonte/systeme/h43-etats', 'src/refonte/systeme/modules', 'src/refonte/systeme/connexion', 'src/refonte/systeme/veille'];
+  for (const d of dossiers) {
+    for (const f of fichiersSous(d).filter((x) => /\.tsx?$/.test(x))) {
+      const src = lireSrc(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      assert.doesNotMatch(src, /['"`]\/settings|navigate\(['"]\/settings|to=['"]\/settings/, `${f} envoie aux Paramètres : aucune fiche de ces écrans ne le prévoit`);
+    }
+  }
+});
+
+await dit('aucun écran LOT-00 n’est composé sur un archétype du §5 comme gabarit (DispositionPage, Page, RangeeKpi, ColonneDroite, GrilleCartes, Scinde, Semaine, Kanban) — la démonstration exceptée', () => {
+  const gabarits = /\b(DispositionPage|Page|RangeeKpi|ColonneDroite|GrilleCartes|Scinde|Semaine|Kanban)\b/;
+  for (const f of fichiersSous('src/refonte/systeme').filter((x) => /\.tsx$/.test(x) && !x.includes('/demo/'))) {
+    const src = lireSrc(f);
+    for (const [, noms, source] of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+      if (!/socle\/ui/.test(source)) continue;
+      const importes = noms.split(',').map((n) => n.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]);
+      const fautifs = importes.filter((n) => gabarits.test(n));
+      assert.deepEqual(fautifs, [], `${f} importe ${fautifs.join(', ')} du socle : un archétype du §5 pris pour squelette d’écran`);
+    }
+  }
+});
+
 console.log('');
 if (echecs > 0) {
   console.error(`ÉCHEC — ${echecs} propriété(s) du socle ne tiennent pas.`);

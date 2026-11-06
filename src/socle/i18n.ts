@@ -64,6 +64,11 @@ const EN = {
   'coquille.reglage.eteinte': 'Off',
   'coquille.reglage.allumer': 'Turn on the new shell',
   'coquille.reglage.eteindre': 'Back to the previous shell',
+  'coquille.reglage.surCePoste': 'The new shell on this device',
+  'coquille.reglage.point.navigation': 'One navigation, in black and grey',
+  'coquille.reglage.point.fil': 'A breadcrumb in the header',
+  'coquille.reglage.point.recherche': 'to search',
+  'coquille.reglage.point.ajmani': 'for Ajmani',
   'coquille.replier': 'Collapse the sidebar',
   'coquille.deplier': 'Expand the sidebar',
   'coquille.section.espace': 'Space',
@@ -126,6 +131,7 @@ const EN = {
   'mouvement.aucun': 'None',
   'mouvement.aucun.aide': 'Nothing moves. Every change appears at once.',
   'mouvement.systeme': 'Your system asks for less motion, so Reduced is the default here.',
+  'mouvement.choix': 'Motion level',
   'mouvement.revenirSysteme': 'Follow the system',
 } as const;
 
@@ -179,6 +185,11 @@ const FR: Record<CleSocle, string> = {
   'coquille.reglage.eteinte': 'Éteinte',
   'coquille.reglage.allumer': 'Allumer la nouvelle coquille',
   'coquille.reglage.eteindre': 'Revenir à la coquille précédente',
+  'coquille.reglage.surCePoste': 'La nouvelle coquille sur ce poste',
+  'coquille.reglage.point.navigation': 'Une seule navigation, en noir et gris',
+  'coquille.reglage.point.fil': 'Un fil d’Ariane dans l’en-tête',
+  'coquille.reglage.point.recherche': 'pour chercher',
+  'coquille.reglage.point.ajmani': 'pour Ajmani',
   'coquille.replier': 'Replier la barre',
   'coquille.deplier': 'Déplier la barre',
   'coquille.section.espace': 'Espace',
@@ -241,6 +252,7 @@ const FR: Record<CleSocle, string> = {
   'mouvement.aucun': 'Aucun',
   'mouvement.aucun.aide': 'Plus rien ne bouge. Chaque changement apparaît d’un coup.',
   'mouvement.systeme': 'Votre système demande moins de mouvement : « Réduit » est donc le réglage par défaut.',
+  'mouvement.choix': 'Niveau de mouvement',
   'mouvement.revenirSysteme': 'Suivre le système',
 };
 
