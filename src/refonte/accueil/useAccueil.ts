@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useLangue, libelleNav } from '../../i18n';
-import { useCollection, useSync } from '../../state/SyncContext';
-import { useClients } from '../../state/useClients';
-import { useInvoices, isOverdue, isoDay, invoiceTotals, netDueCents } from '../../state/useInvoices';
-import { useAppointments, appointmentEnd } from '../../state/useAppointments';
+import { useCollection } from '../../state/SyncContext';
+import { isOverdue, isoDay, invoiceTotals, netDueCents } from '../../state/useInvoices';
+import { appointmentEnd } from '../../state/useAppointments';
 import { useAttention } from '../../state/useAttention';
 import { useActivity } from '../../state/ActivityContext';
 import { toutesLesSections } from '../../data/spaces';
@@ -34,18 +33,12 @@ import type { Journee, TypeAlerte } from './scenes';
  * partagé avec la carte de la barre latérale (§1.10 point 3). Rien de tout
  * cela n'est recalculé ici ; les règles restent celles de `filDuJour.ts` et
  * `tuiles.ts`.
+ *
+ * Les accès que ce calcul lit déjà (tâches, priorités du jour, rendez-vous,
+ * factures, clients) sont repris de `useAujourdhui().acces` : une seule
+ * instance de chaque hook d'accès, pas d'abonnement ni d'effet d'import en
+ * double à chaque montage de l'Accueil.
  */
-
-interface LigneTache {
-  title?: string;
-  status?: string;
-  assigneeEmail?: string;
-}
-interface JourPriorites {
-  email: string;
-  day: string;
-  items: { doneAt: string | null }[];
-}
 
 /** Les modules qu'on ouvre peu : un par jour, à tour de rôle (il n'existe pas de trace des visites). */
 export const MODULES_OUBLIES: { route: string; nom: { fr: string; en: string } }[] = [
@@ -103,19 +96,14 @@ export interface Accueil {
 export function useAccueil(): Accueil {
   const { user } = useAuth();
   const { langue } = useLangue();
-  const { ready } = useSync();
-  const { clients } = useClients();
-  const { invoices } = useInvoices();
-  const { appointments } = useAppointments();
-  const taches = useCollection<LigneTache>('tasks');
-  const priorites = useCollection<JourPriorites>('dailyPriorities');
   const revues = useCollection<{ week: string; prochaine?: string }>('weeklyReviews');
   const journal = useCollection<{ text: string; kind: string; byEmail: string; at: string }>('logbook');
   const { items } = useAttention();
   const { events, totalUnseen, unseen } = useActivity();
 
-  /* « Aujourd'hui » : le même objet que la carte de la barre latérale (un seul calcul, une seule horloge). */
-  const { email, maintenant, jour, fil: visibles, faites: faits, masquees, serie, prochainRdv, compteVide, enLigne, presenceMontree, nomDe, cocher, retoucher } = useAujourdhui();
+  /* « Aujourd'hui » : le même objet que la carte de la barre latérale (un seul calcul, une seule horloge), et ses accès. */
+  const { pret: ready, email, maintenant, jour, fil: visibles, faites: faits, masquees, serie, prochainRdv, compteVide, enLigne, presenceMontree, nomDe, cocher, retoucher, acces } = useAujourdhui();
+  const { clients, invoices, appointments, taches, priorites } = acces;
   const moi = email.toLowerCase();
 
   return useMemo(() => {

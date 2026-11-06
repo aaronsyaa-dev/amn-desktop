@@ -38,7 +38,7 @@ import { useCarteAujourdhui } from './aujourdhui';
  *
  * v3 (01-SOCLE-DESIGN §0.1) : la barre a trois sections (ESPACE, SURVEILLANCE,
  * ÉPINGLÉS) et, en bas, la carte « Aujourd'hui » — les chiffres de l'Accueil
- * (`useCarteAujourdhui`, qui lit `useAccueil`). Une page hors registre donne son
+ * (`useCarteAujourdhui`, qui lit `useAujourdhui`). Une page hors registre donne son
  * fil d'Ariane, sa famille et sa sous-page par `usePageCoquille` (`page.ts`) ;
  * les pages système connues sont dans `pagesSysteme.ts`. Le bouton « panneau »
  * replie la barre sur ce poste, le temps de la session (un état local : il
