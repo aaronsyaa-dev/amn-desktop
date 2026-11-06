@@ -220,3 +220,36 @@ Nouveaux groupes de briques dans `src/socle/ui/` (tous réexportés par `index.t
 ## Mise à jour — v3 (2026-11-01)
 
 Couche de mouvement commune (`src/socle/mouvement.css`, attribut `data-mvt`), police monospace (`--socle-police-mono`, `.sc-mono`), composants vivants (`src/socle/ui/vivant/` : `LiveDot`, `Caret`, `Severity`, `FilterChips`, `Gauge`, `HeatCell`, `FlowLine`, `InlineSuggestion`), coquille v3 (`usePageCoquille`). Aperçus de capture : `scripts/apercu/`. Détail et chemins : section « LOT-00 v3 » de [`refonte/STATUT.md`](refonte/STATUT.md).
+
+## Mise à jour — briques partagées v3 (STATUT § 1.10, point 1)
+
+Les briques que les fiches v3 citent dans tous les lots vivent dans `src/socle/ui/briques-partagees/` (feuille
+`briques-partagees.css`, chargée par `@import` depuis `briques.css`, donc par `Ambiance.tsx`, édition interne seulement) et
+s'importent depuis `src/socle/ui` :
+
+```tsx
+import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageHead, StatusPill } from '../socle/ui';
+```
+
+- **`IconTile`** (`icone`, `taille` 22 | 26 | 28 | 36 | 38 | 42 | 44 | 48, `famille?` dont `garde`, `ton?` neutre | succes |
+  attention | critique | info, `part?` 10 | 13 | 14 | 18, `bordure?`, `libelle?`) : le carré arrondi teinté de la famille à
+  13 % (§ 4) ou neutre (`--socle-tag`). Rayon et glyphe suivent la taille. `part` et `bordure` reproduisent les images de
+  D02 (10 %, bordure à 22 %) et de H41 (14 %, 18 % pour l'aperçu) ; `BlocEtat`, D02 et H41 l'emploient sans changer un pixel.
+- **`CountBadge`** (`n`, `libelle?`, `variante?` standard | laterale | texte, `critique?`) : 16 px, fond
+  `--socle-pastille-compte`, 10,5 / 600 ; la pastille de Cyber (`laterale`) et le chiffre seul des épinglés (`texte`) de
+  la barre latérale ; rien à zéro, « 99+ » au-delà, le chiffre dit en mots (lecteur d'écran et info-bulle).
+- **`ModuleTile`** (`nom`, `icone`, `famille?`, `sousTexte?`, `accessoire?`, `variante?` standard | ligne, `actif?`,
+  `vers?` ou `onClick`, `tuile?`) : un lien ou un bouton, focus visible. `ligne` = la puce des épinglés de D02 (34 px) ;
+  `standard` = 41 px (tuile 26, nom 13 T2, sous-texte 11,5 T4, survol de ligne, `aria-current` du module ouvert),
+  **provisoire** jusqu'aux fiches F10 à F70.
+- **`ModuleGroupGrid`** (`titre`, `effectif?`, `colonnes?`, `onAjouter?` ou `versAjouter?`, enfants `ModuleTile`) et
+  **`AddModuleTile`** (`libelle?`, `vers?` ou `onClick`, `variante?`) : la grille d'un groupe (titre 11 px capitales T4,
+  écart 6) fermée par « + Ajouter un module » (pointillé `--socle-pointille`, même hauteur que la tuile). Provisoires.
+- **`PageHead`** (= `EnTeteDePage`) : `titre`, `sousTitre?`, `primaire?`, `secondaires?` (avec `infobulle?`), `extra?`,
+  `controles?` (à la place des boutons, D02), `className?` (les cotes propres d'un écran restent dans sa feuille, en
+  `.x-entete.sc-page__entete`), `attributsTitre?` (`data-guide` d'une visite). H40, H42, H47 et D02 l'emploient.
+- **`StatusPill`** = `PastilleEtat` ; **le catalogue des noms des fiches** est `src/socle/ui/noms.ts` (`Card` = `Carte`,
+  `Button` = `Bouton`… tableau en tête du fichier ; `Sidebar`, `Header`, `AjmaniBar` depuis `src/socle/coquille`). Un alias
+  n'existe que si la brique suit la ligne du § 4 : `Empty` n'en a pas (voir `noms.ts`).
+
+Démonstration : section « Briques partagées » de `/dev/socle`. Garde : `npm run check:socle-briques`.
