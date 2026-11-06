@@ -252,3 +252,9 @@ Les fiches des lots nomment les mouvements à l'anglaise ; `src/socle/mouvement.
 | `amnHalo` | keyframes de `data-mvt="onde"` | une onde qui s'élargit (opacité .55 → 0, échelle 1 → 2,6), en boucle |
 
 Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement).
+
+### `Mono` et `src/socle/formats.ts` (chantier s1b)
+
+- `Mono` (`src/socle/ui/Mono.tsx`, exporté par `src/socle/ui`) : la donnée technique « en MONO » des fiches — `<Mono>10:42:07</Mono>`, `<Mono as="time" dateTime="…">`, `<Mono as="code">`, `taille` de 11 à 18 px (bornée) ; la couleur vient du parent. C'est `.sc-mono` de `noir.css` (`--socle-police-mono`, chiffres tabulaires, sans ligatures).
+- `src/socle/formats.ts` : `formaterNombre`, `formaterPourcent` (déjà en pour cent), `formaterRatio` (0 à 1), `formaterEuro`, `formaterMontant`, `formaterDate`, `formaterHeure`, `dateIso`, importables depuis tout code interne (`import { formaterEuro } from '../../socle/formats'`) — `check:socle-graphiques` interdit d'importer `src/socle/ui/graphiques/*` hors du socle ; ce module neutre réexporte les deux sources sans rien recopier.
+- Jetons ajoutés dans `noir.css` : `--socle-decor-1/2/3` (illustrations seulement), `--socle-hachure-attention` / `--socle-hachure-grise` (`background-image`), `--socle-pointille-ok` / `--socle-pointille-attention` (`border`) ; la teinte de sélection `#D9A27A` des fiches est `--socle-fam-creer`.
