@@ -20,6 +20,9 @@
   --sc-g-pastille: 8px;
   /* Valeur au centre de l'anneau (72 à 80 px) : 600, tabulaire. La spec ne donne pas de taille. */
   --sc-g-anneau-valeur: 16px;
+  /* Les petits anneaux (LOT-06, 26 à 58 px) : 13 px de 48 à 71, 11 px de 40 à 47, rien en dessous (`coteAnneau`). */
+  --sc-g-anneau-valeur-moyen: 13px;
+  --sc-g-anneau-valeur-petit: 11px;
 }
 
 .sc-g {
@@ -197,6 +200,8 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
+.sc-g-anneau[data-cote='moyen'] .sc-anneau__centre { font-size: var(--sc-g-anneau-valeur-moyen); }
+.sc-g-anneau[data-cote='petit'] .sc-anneau__centre { font-size: var(--sc-g-anneau-valeur-petit); }
 
 /*
   ── Les entrées : la couche de mouvement commune (src/socle/mouvement.css, §0.2) ──

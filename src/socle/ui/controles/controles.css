@@ -175,6 +175,8 @@
   color: var(--socle-texte-3);
 }
 .sc-boite-recherche[data-grande='true'] { height: 42px; padding: 0 16px; border-color: var(--socle-bord-bouton); border-radius: 12px; background: var(--socle-pilule); }
+/* 38 px (D02, champ de l'en-tête de page) : même rayon, mêmes couleurs, rembourrage 12. */
+.sc-boite-recherche[data-hauteur='38'] { height: 38px; padding: 0 12px; }
 .sc-boite-recherche:focus-within { border-color: var(--color-socle-focus); }
 .sc-boite-recherche input {
   min-width: 0;
@@ -218,6 +220,9 @@
 .sc-segment { padding: 5px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--socle-texte-3); font-family: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .sc-segment:hover { color: var(--socle-texte-courant); }
 .sc-segment[aria-checked='true'] { background: var(--socle-segment-actif); color: var(--socle-texte-1); }
+/* Compact (LOT-06) : 26 px de haut — rembourrage 2, segments 12 px, 3 × 9, rayon 9 ; mêmes couleurs. */
+.sc-segmente[data-taille='compact'] { padding: 2px; border-radius: var(--socle-rayon-controle); }
+.sc-segmente[data-taille='compact'] .sc-segment { padding: 3px 9px; border-radius: 6px; font-size: 12px; line-height: 14px; }
 
 /* ── Suggestion d'Ajmani : carte teintée, étincelle verte, deux boutons ── */
 .sc-suggestion {

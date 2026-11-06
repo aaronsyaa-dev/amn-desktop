@@ -62,7 +62,7 @@ interface Modules {
 
 const M = (await chargerRendu<Modules & Record<string, unknown>>(
   [
-    "import { Courbe, MiniCourbe, Barres, Donut, Anneau, formaterNombre, formaterPourcent, formaterEuro } from '../src/socle/ui/graphiques';",
+    "import { Courbe, MiniCourbe, Barres, Donut, Anneau, formaterNombre, formaterPourcent, formaterEuro, tailleAnneau, epaisseurAnneau, coteAnneau, TAILLE_ANNEAU_MIN, TAILLE_ANNEAU_MAX } from '../src/socle/ui/graphiques';",
     "import { calculerEchelle, positionner, repartirPourcents, arcsDonut, pasEtiquettes, indicesEtiquetes, resumer, cheminLigne, TAILLE_AXE } from '../src/socle/ui/graphiques/calculs';",
     "import { couleurTon } from '../src/socle/ui/graphiques/tons';",
     "import { AnneauProgression } from '../src/socle/ui/Indicateurs';",
@@ -73,6 +73,7 @@ const M = (await chargerRendu<Modules & Record<string, unknown>>(
     'Courbe', 'MiniCourbe', 'Barres', 'Donut', 'Anneau', 'AnneauProgression', 'formaterNombre', 'formaterPourcent', 'formaterEuro',
     'calculerEchelle', 'positionner', 'repartirPourcents', 'arcsDonut', 'pasEtiquettes', 'indicesEtiquetes', 'resumer', 'cheminLigne',
     'TAILLE_AXE', 'couleurTon', 'formatCentsCompact', 'traduireSocle', 'DICTIONNAIRES_SOCLE',
+    'tailleAnneau', 'epaisseurAnneau', 'coteAnneau', 'TAILLE_ANNEAU_MIN', 'TAILLE_ANNEAU_MAX',
   ],
 )) as unknown as Modules & { h: (t: unknown, p?: Record<string, unknown> | null, ...c: unknown[]) => unknown; rendre: (e: unknown) => string };
 
@@ -586,6 +587,35 @@ await dit('Anneau : un ton d’état colore le trait ; centre libre possible', (
   assert.match(rend(M.Anneau, { valeur: 0.6, libelle: 'x' }), /<circle class="sc-anneau__trait"[^>]*stroke-dashoffset="[\d.]+"><\/circle>/, 'neutre : pas de style en ligne sur le trait');
   const centre = rend(M.Anneau, { valeur: 3 / 7, libelle: 'x', children: '3/7' });
   assert.match(centre, /sc-anneau__centre">3\/7</);
+});
+
+await dit('Anneau : de 26 à 58 px (LOT-06), épaisseur proportionnée (3 à 6), valeur centrée 13 px puis 11 px, muette sous 40 ; borné à [26, 80] (s1b)', () => {
+  const G = M as unknown as { tailleAnneau: (t?: number) => number; epaisseurAnneau: (t: number) => number; coteAnneau: (t: number) => string; TAILLE_ANNEAU_MIN: number; TAILLE_ANNEAU_MAX: number };
+  assert.equal(G.TAILLE_ANNEAU_MIN, 26);
+  assert.equal(G.TAILLE_ANNEAU_MAX, 80);
+  assert.deepEqual([G.tailleAnneau(10), G.tailleAnneau(26), G.tailleAnneau(58), G.tailleAnneau(100), G.tailleAnneau(Number.NaN), G.tailleAnneau(undefined)], [26, 26, 58, 80, 72, 72]);
+  assert.deepEqual([26, 34, 40, 48, 58, 64, 72, 76, 80].map(G.epaisseurAnneau), [3, 4, 4, 5, 6, 7, 8, 8, 8]);
+  assert.deepEqual([26, 39, 40, 47, 48, 71, 72, 80].map(G.coteAnneau), ['muet', 'muet', 'petit', 'petit', 'moyen', 'moyen', 'grand', 'grand']);
+  const petit = rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 26 });
+  assert.match(petit, /<svg width="26" height="26" viewBox="0 0 26 26"/);
+  assert.equal(compter(petit, /stroke-width="3"/g), 2);
+  assert.match(petit, /data-cote="muet"/);
+  assert.doesNotMatch(petit, /sc-anneau__centre/, 'rien d’écrit au centre sous 40 px');
+  assert.match(petit, new RegExp(`aria-valuetext="50${NBSP}%"`), 'la valeur reste dite en mots');
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 26, children: '3' }), /sc-anneau__centre">3</, 'children force un centre');
+  const moyen = rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 58 });
+  assert.match(moyen, /width="58"/);
+  assert.equal(compter(moyen, /stroke-width="6"/g), 2);
+  assert.match(moyen, /data-cote="moyen"/);
+  assert.match(moyen, new RegExp(`sc-anneau__centre">50${NBSP}%<`));
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 44 }), /data-cote="petit"/);
+  assert.doesNotMatch(rend(M.Anneau, { valeur: 0.5, libelle: 'x' }), /data-cote/, '72 px : rien de plus qu’avant');
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 200 }), /width="80" height="80"/);
+  const feuille = sansCommentaires(lire(`${REP}/graphiques.css`));
+  assert.match(feuille, /--sc-g-anneau-valeur-moyen:\s*13px/);
+  assert.match(feuille, /--sc-g-anneau-valeur-petit:\s*11px/);
+  assert.match(feuille, /\.sc-g-anneau\[data-cote='moyen'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-moyen\); \}/);
+  assert.match(feuille, /\.sc-g-anneau\[data-cote='petit'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-petit\); \}/);
 });
 
 await dit('AnneauProgression : défaut inchangé — 44 px, épaisseur 4, aucun style en ligne sur le trait ni sur la piste', () => {

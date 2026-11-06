@@ -105,9 +105,8 @@
   margin-top: 16px;
 }
 
-/* L'état vide d'origine (cadre pointillé, quand l'état occupe une carte entière) suit les cotes de H43 : titre 15 px, texte 12,5 px. */
-:root[data-ambiance='noir'] .sc-vide__titre { font-size: 15px; }
-:root[data-ambiance='noir'] .sc-vide__texte { font-size: 12.5px; }
+/* L'état vide d'origine (cadre pointillé, `EtatVide`) suit le §4 (« Empty » : titre 14 px, texte 12,5 px) dans briques.css ;
+   le bloc d'état de H43 (`BlocEtat`, 48 px / 15 px / 240 px) garde les cotes mesurées sur son image. */
 
 /* ── Le squelette : fond, lignes et reflet de H43 ── */
 :root[data-ambiance='noir'] .sc-squelette {

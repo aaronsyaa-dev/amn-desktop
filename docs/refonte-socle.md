@@ -220,3 +220,21 @@ Nouveaux groupes de briques dans `src/socle/ui/` (tous réexportés par `index.t
 ## Mise à jour — v3 (2026-11-01)
 
 Couche de mouvement commune (`src/socle/mouvement.css`, attribut `data-mvt`), police monospace (`--socle-police-mono`, `.sc-mono`), composants vivants (`src/socle/ui/vivant/` : `LiveDot`, `Caret`, `Severity`, `FilterChips`, `Gauge`, `HeatCell`, `FlowLine`, `InlineSuggestion`), coquille v3 (`usePageCoquille`). Aperçus de capture : `scripts/apercu/`. Détail et chemins : section « LOT-00 v3 » de [`refonte/STATUT.md`](refonte/STATUT.md).
+
+## Mise à jour — alignement du § 4 (chantier s1b, 2026-11-06)
+
+Audit brique par brique de `01-SOCLE-DESIGN.md` § 4, mesuré dans le **CSS calculé** de `/dev/socle` (aperçu `scripts/apercu/ecrans/SOCLE-DEMO.tsx`, Chromium 1440 × 900 ; script Playwright jetable, effacé). Tout ce que la table ne cite pas était déjà à la valeur exacte (Card, Subcard, Button, IconButton, Kpi, StatusPill, Pill, Tag, FlagUrgent, Kbd, Avatar / AvatarStack / Sq, Progress, Ring, Donut, Check, Toggle, Field / Select, Tabs, Segmented, SearchBox, Table, Ticket, colonne de kanban, Suggestion, cartes ludiques) ; `check:socle-controles`, `check:socle-graphiques` et `check:socle-archetypes` tiennent désormais chaque valeur.
+
+| Brique | Spec § 4 | Mesuré avant | Corrigé |
+|---|---|---|---|
+| TimelineItem, filet vertical | `#222224` | `#2a2a2d` (`--socle-filet-vertical`) | oui : jeton à `#222224` |
+| Empty (`EtatVide`), pointillé | `#2E2E33` | `#28282b` (`--socle-bord-controle`) | oui : `--socle-pointille` |
+| Empty, rayon | 14 | 12 | oui : `--socle-rayon-carte` |
+| Empty, titre | 14 px / 600 | 15 px (surcharge de `situations.css`) | oui : 14 px, surcharge retirée |
+| Empty, texte | 12,5 px T4, 300 px au plus | 12,5 px T4, sans limite | oui : `max-width: 300px` |
+| Empty, icône | 44 px dans un carré arrondi | absente | oui : prop `icone` (`.sc-vide__icone`, 44 px, rayon 12, glyphe 20) |
+| Empty, action | toujours | facultative | oui : `action` demandé (`null` l'assume) |
+| Check, bordure | 1,5 px `#3A3A3E` | déclarée 1,5 px, rendue 1 px (Chromium arrondit une bordure de 1,5 px à 1 px en échelle 1) | non : la feuille dit 1,5 px, le rendu ne peut pas faire mieux |
+| `BlocEtat` (le bloc d'état de H43) | — (c'est `StateBlock`, fiche H43) | tuile 48 px, titre 15 px, texte 240 px | non : cotes mesurées sur l'image H43 (0,72 %), hors § 4 |
+
+Ajouts demandés par LOT-06 (point 2) : `Anneau` accepte `taille` de **26 à 80** (`tailleAnneau` borne, `epaisseurAnneau` donne 3 px à 26 → 8 px dès 72, `coteAnneau` règle la valeur centrée : 16 px, 13 px sous 72, 11 px sous 48, rien sous 40 — `children` l'y remet) ; `CaseACocher` prend `taille={16 | 18 | 24}` (16 px, coche de 11 px ; `'serie'` reste) ; `Segmente` prend `taille="compact"` (26 px : rembourrage 2, segments 12 px 3 × 9) ; `BoiteRecherche` prend `hauteur={38}` (le champ 270 × 38 de l'en-tête de D02). Une cible de 16 ou 26 px est sous les 34 px du § 7.6 : réservée aux rangées denses.

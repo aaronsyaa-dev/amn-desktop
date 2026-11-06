@@ -7,9 +7,19 @@ import React from 'react';
  * donne le bouton pour le faire. Un chargement garde la place du contenu à
  * venir (le squelette) et se dit aux lecteurs d'écran (`aria-busy`).
  */
-export function EtatVide({ titre, texte, action }: { titre?: string; texte: string; action?: React.ReactNode }) {
+/**
+ * L'ÉTAT VIDE (« Empty », §4) : cadre pointillé `#2e2e33`, rayon 14, icône de 44 px dans un carré arrondi (en option),
+ * titre 14 px / 600, texte 12,5 px T4 (300 px au plus), et TOUJOURS une action — `action` est demandé ; un appelant
+ * qui n'en a aucune le dit avec `action={null}` (lecture seule), jamais en l'oubliant.
+ */
+export function EtatVide({ titre, texte, action, icone }: { titre?: string; texte: string; action: React.ReactNode; /** Le glyphe (lucide, 20 px) : décoratif, le titre dit déjà la situation. */ icone?: React.ReactNode }) {
   return (
     <div className="sc-vide">
+      {icone && (
+        <span aria-hidden className="sc-vide__icone">
+          {icone}
+        </span>
+      )}
       {titre && <p className="sc-vide__titre">{titre}</p>}
       <p className="sc-vide__texte">{texte}</p>
       {action}

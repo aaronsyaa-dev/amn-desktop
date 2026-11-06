@@ -81,14 +81,18 @@ export function PanneauOnglet({ idBase, cle, actif, children }: { idBase: string
 }
 
 /**
- * Un choix unique entre quelques options (segmented) : conteneur `#141415` bordé `#28282b`, rayon 10, l'option active
- * sur `#242427`. `role="radiogroup"` ; ← → déplacent le choix.
+ * Un choix unique entre quelques options (segmented) : conteneur `#141415` bordé `#28282b`, rayon 10, rembourrage 3,
+ * l'option active sur `#242427` en T1 / 500. `role="radiogroup"` ; ← → déplacent le choix.
+ *
+ * `taille="compact"` (LOT-06) : 26 px de haut au lieu de 37 — rembourrage 2, segments 12 px, 3 × 9, rayon 9. Les
+ * couleurs ne changent pas. Une cible de 26 px est sous les 34 px du §7.6 : à réserver aux rangées denses, jamais à
+ * un réglage principal.
  */
-export function Segmente({ libelle, options, valeur, onChange }: { libelle: string; options: { cle: string; libelle: string }[]; valeur: string; onChange: (cle: string) => void }) {
+export function Segmente({ libelle, options, valeur, onChange, taille = 'normale' }: { libelle: string; options: { cle: string; libelle: string }[]; valeur: string; onChange: (cle: string) => void; taille?: 'normale' | 'compact' }) {
   const refs = useRef(new Map<string, HTMLButtonElement>());
   const cles = options.map((o) => o.cle);
   return (
-    <div role="radiogroup" aria-label={libelle} className="sc-segmente">
+    <div role="radiogroup" aria-label={libelle} data-taille={taille === 'compact' ? 'compact' : undefined} className="sc-segmente">
       {options.map((o) => {
         const estActif = o.cle === valeur;
         return (

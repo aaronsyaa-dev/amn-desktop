@@ -112,7 +112,8 @@
   --socle-anneau-fond: #1e1e20;
   --socle-grille-graphique: #1e1e20;
   --socle-colonne-graphique: #2a2b31;
-  --socle-filet-vertical: #2a2a2d;
+  /* Le filet vertical d'une ligne de temps (§4 TimelineItem) : `#222224`, le même que les filets de la barre latérale (§1). */
+  --socle-filet-vertical: #222224;
   --socle-ligne-active: #1a1a1c;
   --socle-ligne-choisie: #262629;
   --socle-sous-element-actif: #242427;

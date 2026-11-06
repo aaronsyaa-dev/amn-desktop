@@ -296,6 +296,9 @@ button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
   transition: background-color 0.18s ease-out, border-color 0.18s ease-out;
 }
 .sc-case[data-taille='serie'] { width: 24px; height: 24px; }
+/* 16 px (LOT-06 : listes serrées) : la coche passe à 11 px. */
+.sc-case[data-taille='16'] { width: 16px; height: 16px; }
+.sc-case[data-taille='16'] svg { width: 11px; height: 11px; }
 .sc-case[aria-checked='true'] { border-color: var(--socle-primaire); background: var(--socle-primaire); }
 .sc-case:hover:not([aria-disabled='true']) { border-color: var(--socle-texte-1); }
 .sc-case[aria-disabled='true'] { cursor: default; opacity: 0.7; }
@@ -343,19 +346,32 @@ button.sc-ligne__corps:disabled { cursor: default; }
 }
 .sc-ligne__droite { display: flex; flex: none; align-items: center; gap: 8px; }
 
-/* ── État vide : une invitation à agir ── */
+/* ── État vide (« Empty », §4) : pointillé #2e2e33, rayon 14, icône 44 px dans un carré arrondi, titre 14 / 600,
+   texte 12,5 T4 (300 px au plus), toujours une action ── */
 .sc-vide {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
   padding: 18px 18px;
-  border: 1px dashed var(--socle-bord-controle);
-  border-radius: 12px;
+  border: 1px dashed var(--socle-pointille);
+  border-radius: var(--socle-rayon-carte);
   background: var(--socle-encart);
 }
-.sc-vide__titre { color: var(--socle-texte-1); font-size: 14px; font-weight: 600; }
-.sc-vide__texte { color: var(--socle-texte-3); font-size: 13px; line-height: 1.45; }
+.sc-vide__icone {
+  display: inline-flex;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--fam, var(--socle-texte-2)) 13%, transparent);
+  color: var(--fam, var(--socle-texte-2));
+}
+.sc-vide__icone svg { width: 20px; height: 20px; }
+.sc-vide__titre { color: var(--socle-texte-1); font-size: 14px; font-weight: 600; line-height: 1.35; }
+.sc-vide__texte { max-width: 300px; color: var(--socle-texte-3); font-size: 12.5px; line-height: 1.45; }
 
 /* ── Raccourci clavier ── */
 .sc-kbd {
