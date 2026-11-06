@@ -31,7 +31,7 @@ export function EcranDeVeilleSection() {
         <fieldset disabled={!reglage.actif} className="mt-4 grid gap-4 border-0 p-0 sm:grid-cols-2">
           <legend className="sr-only">{tm('reglage.activer')}</legend>
           <div className="sc-champ">
-            <span id="reglages-veille-delai" className="sc-champ__etiquette">
+            <span className="sc-champ__etiquette">
               {tm('reglage.veille')}
             </span>
             <Segmente

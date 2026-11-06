@@ -916,6 +916,8 @@ await dit('Réglages : Mouvement, Écran de veille et Nouvelle coquille sont tro
   assert.match(coquille, /<kbd class="sc-kbd">⌘K<\/kbd><span>pour chercher<\/span>/);
   assert.match(coquille, /<kbd class="sc-kbd">⌘J<\/kbd><span>pour Ajmani<\/span>/);
   assert.match(coquille, /role="switch" aria-checked="false" aria-label="La nouvelle coquille sur ce poste"/);
+  /* Le libellé visible est relié à l'interrupteur par un <label> (un bouton est étiquetable) : cliquer le texte bascule. */
+  assert.match(coquille, /<label class="[^"]*"><span class="[^"]*">La nouvelle coquille sur ce poste<\/span><button type="button" role="switch"/, 'l’interrupteur de la coquille n’est pas dans un <label> avec son texte');
   assert.doesNotMatch(coquille, /role="radio"|<select/);
   /* Trois compositions distinctes : les jeux de contrôles ne se répètent pas. */
   const signature = (x: string) => ['switch', 'radio', 'select', 'sc-kbd', 'aria-live'].map((c) => (x.includes(c) ? c : '-')).join(',');
@@ -935,7 +937,14 @@ await dit('Réglages : H40 « Réglages » mène aux Paramètres (/settings), ru
   assert.match(reglages, /<div id="reglages-notifications">/, 'l’ancre de la rubrique Notifications');
   assert.match(reglages, /<MouvementSection \/>/, 'la porte interne est montée dans les Paramètres');
   assert.equal(R.ancreDeReglages('notifications'), 'reglages-notifications');
-  for (const a of R.ANCRES_REGLAGES) assert.ok(reglages.includes(`id="reglages-${a}"`) || ['mouvement', 'ecran-de-veille', 'coquille'].includes(a), `l’ancre « ${a} » n’existe pas dans les Paramètres`);
+  /* Les ancres vivent dans SettingsScreen ou dans les sections qu'il monte sans condition (Guide, Extensions, dans #reglages-accueil). */
+  assert.match(reglages, /<GuideSection \/>\s*<ExtensionsSection \/>/, 'les sections Guide et Extensions sont montées dans les Paramètres');
+  const porteurs = [reglages, lireSrc('src/guide/GuideSection.tsx'), lireSrc('src/components/settings/ExtensionsSection.tsx')];
+  for (const a of R.ANCRES_REGLAGES) assert.ok(porteurs.some((src) => src.includes(`id="reglages-${a}"`)) || ['mouvement', 'ecran-de-veille', 'coquille'].includes(a), `l’ancre « ${a} » n’existe pas dans les Paramètres`);
+  /* Chaque rubrique du plan des Paramètres se laisse viser par l'état de navigation : son ancre est dans la liste. */
+  const plan = [...reglages.matchAll(/ancre: 'reglages-([a-z-]+)'/g)].map((m) => m[1]);
+  assert.ok(plan.includes('guide') && plan.includes('extensions'), 'le plan des Paramètres annonce Guide et Extensions');
+  for (const a of plan) assert.ok(R.ANCRES_REGLAGES.includes(a), `la rubrique « ${a} » du plan des Paramètres n’est pas dans ANCRES_REGLAGES : ancreDeReglages('${a}') ne ferait rien défiler`);
   assert.equal(R.ancreDeReglages('inconnue'), null);
   assert.equal(R.ancreDeReglages({ toString: () => 'notifications' }), null, 'un état qui n’est pas une chaîne ne fait rien défiler');
   assert.match(lireSrc('src/edition/socle.internal.tsx'), /scrollIntoView\(\{ behavior: niveau === 'complet' \? 'smooth' : 'auto', block: 'start' \}\)/, 'le défilement suit le réglage Mouvement');
