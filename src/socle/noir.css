@@ -59,7 +59,8 @@
   /* ── Rayons ── */
   --socle-rayon-carte: 14px;
   --socle-rayon-controle: 9px;
-  --socle-rayon-bouton: 10px;
+  /* Le bouton (§4) : rayon 9, le même que `--socle-rayon-controle` (STATUT §1.2 : DS avait 10). Le champ fait 10 (`--socle-rayon-champ`). */
+  --socle-rayon-bouton: 9px;
   --socle-rayon-pastille: 99px;
 
   /* ── Gabarits ── */

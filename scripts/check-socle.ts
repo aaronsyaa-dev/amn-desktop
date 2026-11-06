@@ -406,7 +406,7 @@ await dit('noir.css : les jetons validés par la direction de design, valeur pou
     '--socle-primaire': '#ededed', '--socle-primaire-encre': '#0c0c0d',
     '--socle-fam-jour': '#8aa4d6', '--socle-fam-contacts': '#6fb7a8', '--socle-fam-ecrire': '#a79bdb', '--socle-fam-argent': '#8fbf7a', '--socle-fam-echanger': '#d98fa8', '--socle-fam-creer': '#d9a27a', '--socle-fam-outils': '#9a9aa0',
     '--socle-etat-succes': '#8fbf7a', '--socle-etat-attention': '#e0b35a', '--socle-etat-critique': '#e08a80', '--socle-etat-info': '#8aa4d6',
-    '--socle-rayon-carte': '14px', '--socle-rayon-controle': '9px', '--socle-rayon-bouton': '10px', '--socle-rayon-pastille': '99px',
+    '--socle-rayon-carte': '14px', '--socle-rayon-controle': '9px', '--socle-rayon-bouton': '9px', '--socle-rayon-pastille': '99px',
     '--socle-largeur-lateral': '252px', '--socle-hauteur-entete': '60px', '--socle-hauteur-ajmani': '46px',
   };
   for (const [nom, valeur] of Object.entries(attendu)) assert.equal(brut(nom), valeur, nom);
@@ -422,6 +422,105 @@ await dit('noir.css : les noms du socle S0 disent la même chose que les jetons 
     ...['jour', 'contacts', 'ecrire', 'argent', 'echanger', 'creer', 'outils'].flatMap((f): [string, string][] => [[`--color-fam-${f}`, `--socle-fam-${f}`], [`--color-fam-${f}-texte`, `--socle-fam-${f}`]]),
   ];
   for (const [socle, brutNom] of paires) assert.equal(brut(socle), brut(brutNom), `${socle} ≠ ${brutNom}`);
+});
+
+/* ── § 1.2 de docs/refonte/STATUT.md : les écarts DS → socle, une assertion par ligne ────
+   Le CO a comparé `noir.css` à 01-SOCLE-DESIGN et listé ce que LOT-00 doit corriger. Chaque
+   ligne du § 1.2 est tenue ici : le jeton existe avec la valeur du socle, ET une feuille du
+   socle le lit (un jeton déclaré que rien ne pose n'est pas une correction). */
+
+console.log('\nSocle de la refonte — § 1.2 (écarts DS → socle)\n');
+
+const FEUILLES_SOCLE = {
+  briques: sansCommentaires(lireSrc('src/socle/ui/briques.css')),
+  controles: sansCommentaires(lireSrc('src/socle/ui/controles/controles.css')),
+  coquille: sansCommentaires(lireSrc('src/socle/coquille/coquille.css')),
+  archetypes: sansCommentaires(lireSrc('src/socle/ui/archetypes/archetypes.css')),
+  situations: sansCommentaires(lireSrc('src/socle/ui/situations/situations.css')),
+  graphiques: sansCommentaires(lireSrc('src/socle/ui/graphiques/graphiques.css')),
+};
+const TOUTES_LES_FEUILLES = Object.values(FEUILLES_SOCLE).join('\n');
+const lu = (jeton: string) => assert.ok(TOUTES_LES_FEUILLES.includes(`var(${jeton})`), `${jeton} est déclaré mais aucune feuille du socle ne le lit`);
+
+await dit('§1.2 conformes : fond, latéral, carte, champ, cinq bordures, T1, plancher T4, sept familles, états, gabarits 252 et 60', () => {
+  const conformes: Record<string, string> = {
+    '--socle-fond-page': '#0c0c0d', '--socle-fond-lateral': '#101011', '--socle-carte-haut': '#161617', '--socle-carte-bas': '#131314', '--socle-champ': '#131314',
+    '--socle-bord-carte': '#232325', '--socle-bord-entete': '#1d1d1f', '--socle-bord-ligne': '#19191b', '--socle-bord-lateral': '#222224', '--socle-bord-controle': '#28282b',
+    '--socle-texte-1': '#ededed', '--socle-texte-3': '#8a8a8e',
+    '--socle-etat-succes': '#8fbf7a', '--socle-etat-critique': '#e08a80', '--socle-etat-info': '#8aa4d6',
+    '--socle-largeur-lateral': '252px', '--socle-hauteur-entete': '60px',
+  };
+  for (const [nom, valeur] of Object.entries(conformes)) assert.equal(brut(nom), valeur, nom);
+  assert.equal(['jour', 'contacts', 'ecrire', 'argent', 'echanger', 'creer', 'outils'].filter((f) => /^#[0-9a-f]{6}$/.test(brut(`--socle-fam-${f}`))).length, 7, 'sept familles');
+});
+
+await dit('§1.2 ATTENTION vaut #e0b35a (le socle), et plus la couleur de la famille Créer', () => {
+  assert.equal(brut('--socle-etat-attention'), '#e0b35a');
+  assert.equal(brut('--color-etat-attention'), '#e0b35a');
+  assert.notEqual(brut('--socle-etat-attention'), brut('--socle-fam-creer'), 'ATTENTION ne doit pas être #d9a27a (Créer)');
+  lu('--socle-etat-attention');
+});
+
+await dit('§1.2 le texte courant T2 #c4c4c8 existe (--socle-texte-courant) et sert d’encre ; #a0a0a5 reste le T3', () => {
+  assert.equal(brut('--socle-texte-courant'), '#c4c4c8');
+  assert.equal(brut('--socle-texte-2'), '#a0a0a5');
+  assert.match(TOUTES_LES_FEUILLES, /(?:^|[;{\s])color:\s*var\(--socle-texte-courant\)/, 'T2 est posé en `color` par une feuille du socle');
+  assert.match(FEUILLES_SOCLE.coquille, /\.sc-famille \{[^}]*color: var\(--socle-texte-courant\)/, 'le libellé de famille est en T2 (§0.1)');
+});
+
+await dit('§1.2 bordure de champ #5a5a60 (--socle-bord-champ), posée sur le champ et la liste', () => {
+  assert.equal(brut('--socle-bord-champ'), '#5a5a60');
+  assert.notEqual(brut('--socle-bord-champ'), '#6e6e73', 'plus la bordure forte de DS');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-champ__controle,\s*\.sc-selecteur \{[^}]*border: 1px solid var\(--socle-bord-champ\)/);
+});
+
+await dit('§1.2 la 8e famille « La Garde et la supervision » #d6d6da (--socle-fam-garde), sur l’icône bouclier de la famille active, jamais en pastille', () => {
+  assert.equal(brut('--socle-fam-garde'), '#d6d6da');
+  assert.match(FEUILLES_SOCLE.coquille, /\[data-cle='garde'\] > \.sc-famille\[data-active='true'\] \.sc-famille__icone,\s*\[data-cle='cyber'\][^{]*\{ color: var\(--socle-fam-garde\); \}/);
+  for (const [, declarations] of TOUTES_LES_FEUILLES.matchAll(/\{([^}]*--socle-fam-garde[^}]*)\}/g)) {
+    assert.doesNotMatch(declarations, /background[^;]*--socle-fam-garde/, 'la teinte de La Garde ne fait jamais un fond (pastille)');
+  }
+});
+
+await dit('§1.2 rayons : bouton 9, champ 10, sous-carte 11, tag 6, ticket 12 (et colonne de kanban 14), chacun lu par sa brique', () => {
+  assert.equal(brut('--socle-rayon-bouton'), '9px');
+  assert.equal(brut('--socle-rayon-controle'), '9px', 'le rayon des contrôles est celui du bouton');
+  assert.equal(brut('--socle-rayon-champ'), '10px');
+  assert.equal(brut('--socle-rayon-sous-carte'), '11px');
+  assert.equal(brut('--socle-rayon-tag'), '6px');
+  assert.equal(brut('--socle-rayon-ticket'), '12px');
+  assert.equal(brut('--socle-rayon-kanban'), '14px');
+  assert.match(FEUILLES_SOCLE.briques, /\[data-socle='bouton'\] \{[^}]*border-radius: var\(--socle-rayon-controle\)/, 'le bouton porte le rayon 9');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-selecteur \{[^}]*border-radius: var\(--socle-rayon-champ\)/, 'le champ porte le rayon 10');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-bouton-icone \{[^}]*border-radius: var\(--socle-rayon-controle\)/, 'le bouton-icône porte le rayon 9');
+  for (const j of ['--socle-rayon-bouton', '--socle-rayon-sous-carte', '--socle-rayon-tag', '--socle-rayon-ticket', '--socle-rayon-kanban']) lu(j);
+});
+
+await dit('§1.2 bordures #212123 (sous-carte), #2e2e31 (bouton secondaire) et le pointillé #2e2e33 (zone vide, dépôt)', () => {
+  assert.equal(brut('--socle-bord-sous-carte'), '#212123');
+  assert.equal(brut('--socle-bord-bouton'), '#2e2e31');
+  assert.equal(brut('--socle-pointille'), '#2e2e33');
+  lu('--socle-bord-sous-carte');
+  assert.match(FEUILLES_SOCLE.briques, /\[data-variante='secondaire'\] \{[^}]*border-color: var\(--socle-bord-bouton\)/);
+  assert.match(TOUTES_LES_FEUILLES, /border: 1px dashed var\(--socle-pointille\)/, 'le pointillé est posé en `dashed`');
+});
+
+await dit('§1.2 barre Ajmani : 46 px (--socle-hauteur-ajmani), la hauteur de .sc-ajmani', () => {
+  assert.equal(brut('--socle-hauteur-ajmani'), '46px');
+  assert.match(FEUILLES_SOCLE.coquille, /\.sc-ajmani \{[^}]*height: var\(--socle-hauteur-ajmani\)/);
+});
+
+const COMPOSANTS_1_2 = ['Interrupteur', 'Onglets', 'Segmente', 'Tableau', 'Ticket', 'ColonneKanban', 'Kanban', 'Donut', 'Courbe', 'Barres', 'MiniCourbe', 'LigneTemps', 'CarteCases', 'CarteAnneau', 'CarteSerie', 'CarteJalon', 'SuggestionAjmani'];
+const U = await charger<Record<string, unknown>>({ code: `export { ${COMPOSANTS_1_2.join(', ')} } from '../src/socle/ui';` });
+await dit('§1.2 composants du §4 cités comme manquants — Toggle, Tabs, Segmented, Table, Ticket, colonne de kanban, Donut, graphiques, TimelineItem, cartes ludiques, Suggestion — exportés par src/socle/ui, aux valeurs du §4', () => {
+  for (const nom of COMPOSANTS_1_2) assert.equal(typeof U[nom], 'function', `${nom} n’est pas exporté par src/socle/ui`);
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-interrupteur \{[^}]*width: 34px;[^}]*height: 20px;[^}]*background: var\(--socle-toggle-inactif\)/, 'Toggle 34 × 20');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-interrupteur\[aria-checked='true'\] \{ background: var\(--socle-toggle-actif\); \}/, 'Toggle actif #2e4327');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-onglet\[aria-selected='true'\]::after \{[^}]*height: 2px;[^}]*background: var\(--socle-primaire\)/, 'Tabs : filet 2 px #ededed');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-segmente \{[^}]*padding: 3px;[^}]*border: 1px solid var\(--socle-bord-controle\);[^}]*border-radius: var\(--socle-rayon-champ\);[^}]*background: var\(--socle-segment-fond\)/, 'Segmented : #141415, #28282b, rayon 10, 3 px');
+  assert.match(FEUILLES_SOCLE.archetypes, /border-radius: var\(--socle-rayon-ticket\);[^}]*background: var\(--socle-ticket\)/, 'Ticket : rayon 12, fond #171718');
+  assert.match(FEUILLES_SOCLE.archetypes, /border: 1px solid var\(--socle-bord-kanban\);\s*border-radius: var\(--socle-rayon-kanban\)/, 'colonne de kanban : #1e1e20, rayon 14');
+  assert.match(lireSrc('src/socle/ui/graphiques/Donut.tsx'), /epaisseur = 14/, 'Donut : épaisseur 14');
 });
 
 const FONDS_TEXTE = ['--socle-fond-page', '--socle-fond-lateral', '--socle-carte-haut', '--socle-carte-bas', '--socle-encart', '--socle-champ'];
