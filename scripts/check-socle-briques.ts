@@ -18,7 +18,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { assert, chargerRendu, creerEssais, jetons, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
+import { assert, chargerRendu, creerEssais, jetons, lire, racine, rapportContraste, sansCommentaires } from './lib/essai-socle.ts';
 
 const { dit, fin } = creerEssais('Socle — briques partagées (v3)');
 
@@ -38,7 +38,7 @@ const compter = (s: string, re: RegExp): number => (s.match(re) ?? []).length;
 type Composant = (props: any) => unknown;
 const R = await chargerRendu<Record<string, Composant>>(
   [
-    "import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageHead, EnTeteDePage, StatusPill, PastilleEtat, Carte, Card, Bouton, Button, TuileKpi, Kpi, BarreProgression, Progress, AnneauProgression, Ring, Raccourci, Kbd, PileAvatars, AvatarStack, CaseACocher, Check, Saisie, Field, Interrupteur, Toggle, BoutonIcone, IconButton, Selecteur, Select, BoiteRecherche, SearchBox, Onglets, Tabs, Segmente, Segmented, SuggestionAjmani, Suggestion, SousCarte, Subcard, DrapeauUrgent, FlagUrgent, FilterChips, Chips, InlineSuggestion, SuggestionCompact, MiniCourbe, Sparkline, LigneTemps, TimelineItem } from '../src/socle/ui';",
+    "import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageHead, EnTeteDePage, StatusPill, PastilleEtat, Carte, Card, Bouton, Button, TuileKpi, Kpi, BarreProgression, Progress, AnneauProgression, Ring, Raccourci, Kbd, PileAvatars, AvatarStack, CaseACocher, Check, Saisie, Field, Interrupteur, Toggle, BoutonIcone, IconButton, Selecteur, Select, BoiteRecherche, SearchBox, Onglets, Tabs, Segmente, Segmented, SuggestionAjmani, Suggestion, SousCarte, Subcard, DrapeauUrgent, FlagUrgent, FilterChips, Chips, InlineSuggestion, SuggestionCompact, MiniCourbe, Sparkline, LigneTemps, TimelineItem, EtatVide, Empty } from '../src/socle/ui';",
     "import { BarreLaterale, Sidebar, EnTete, Header, BarreAjmani, AjmaniBar } from '../src/socle/coquille';",
   ].join('\n'),
   [
@@ -46,7 +46,7 @@ const R = await chargerRendu<Record<string, Composant>>(
     'Carte', 'Card', 'Bouton', 'Button', 'TuileKpi', 'Kpi', 'BarreProgression', 'Progress', 'AnneauProgression', 'Ring', 'Raccourci', 'Kbd', 'PileAvatars', 'AvatarStack',
     'CaseACocher', 'Check', 'Saisie', 'Field', 'Interrupteur', 'Toggle', 'BoutonIcone', 'IconButton', 'Selecteur', 'Select', 'BoiteRecherche', 'SearchBox', 'Onglets', 'Tabs',
     'Segmente', 'Segmented', 'SuggestionAjmani', 'Suggestion', 'SousCarte', 'Subcard', 'DrapeauUrgent', 'FlagUrgent', 'FilterChips', 'Chips', 'InlineSuggestion', 'SuggestionCompact',
-    'MiniCourbe', 'Sparkline', 'LigneTemps', 'TimelineItem', 'BarreLaterale', 'Sidebar', 'EnTete', 'Header', 'BarreAjmani', 'AjmaniBar',
+    'MiniCourbe', 'Sparkline', 'LigneTemps', 'TimelineItem', 'EtatVide', 'Empty', 'BarreLaterale', 'Sidebar', 'EnTete', 'Header', 'BarreAjmani', 'AjmaniBar',
   ],
 );
 const { h, rendre } = R as unknown as { h: (t: unknown, p?: Record<string, unknown> | null, ...e: unknown[]) => unknown; rendre: (el: unknown) => string };
@@ -90,7 +90,8 @@ await dit('CountBadge : 16 px, fond #26262A (--socle-pastille-compte), 10,5 / 60
   assert.equal(noir.get('--socle-pastille-compte'), '#26262a');
   assert.match(noirBrut, /--socle-rayon-pastille: 99px;/);
   const laterale = bloc(".sc-count-badge[data-variante='laterale']");
-  assert.match(laterale, /min-width: 21px/);
+  // Elle pose son propre `display` : 21 × 16 même hors d'un parent flex (dans un titre, une cellule), pas seulement dans la barre.
+  assert.match(laterale, /display: inline-flex;\s*flex: none;\s*min-width: 21px;\s*height: 16px;\s*align-items: center;\s*justify-content: center/);
   assert.match(laterale, /padding: 0 6px/);
   assert.match(laterale, /background: var\(--socle-lateral-compteur\)/);
   assert.match(laterale, /color: var\(--socle-texte-courant\)/);
@@ -112,7 +113,9 @@ await dit('ModuleTile : ligne 34 px (D02 : tuile 22, nom 12,5 / 500, bordée, ra
   assert.match(ligne, /height: 34px/);
   assert.match(ligne, /gap: 9px;\s*padding: 0 8px/);
   assert.match(ligne, /border: 1px solid var\(--socle-bord-sous-carte\)/);
-  assert.match(ligne, /border-radius: 9px/);
+  // Le rayon 9 de la puce est le jeton du socle (le même que la variante standard), pas une cote écrite en dur.
+  assert.match(ligne, /border-radius: var\(--socle-rayon-controle\)/);
+  assert.match(noirBrut, /--socle-rayon-controle: 9px;/);
   assert.match(ligne, /background: var\(--socle-sous-carte\)/);
   assert.match(ligne, /color: var\(--socle-texte-1\)/);
   assert.match(ligne, /font-size: 12\.5px;\s*font-weight: 500/);
@@ -121,9 +124,14 @@ await dit('ModuleTile : ligne 34 px (D02 : tuile 22, nom 12,5 / 500, bordée, ra
   assert.match(standard, /height: 41px/);
   assert.match(standard, /gap: 10px/);
   assert.match(standard, /border-radius: var\(--socle-rayon-controle\)/);
-  assert.match(standard, /font-size: 13px/);
+  assert.match(standard, /font-size: 13px;\s*font-weight: 500/, 'nom 13 px / 500');
   assert.match(css, /\.sc-module-tile\[aria-current='page'\] \{ background: var\(--socle-ligne-choisie\); color: var\(--socle-texte-1\); \}/);
+  assert.equal(noir.get('--socle-ligne-choisie'), '#262629', 'le fond du module ouvert (fiche D02 : sélection clavier)');
   assert.match(bloc('.sc-module-tile__sous'), /color: var\(--socle-texte-3\);\s*font-size: 11\.5px/);
+  // Sur le fond du module ouvert, T4 n'atteint pas AA : le sous-texte y passe en T3, et noir.css doit le prouver.
+  assert.match(css, /\.sc-module-tile\[aria-current='page'\] \.sc-module-tile__sous \{ color: var\(--socle-texte-2\); \}/, 'sous-texte du module ouvert en T3');
+  assert.ok(rapportContraste(String(noir.get('--socle-texte-2')), String(noir.get('--socle-ligne-choisie'))) >= 4.5, 'T3 sur le fond du module ouvert : AA');
+  assert.ok(rapportContraste(String(noir.get('--socle-texte-3')), String(noir.get('--socle-ligne-choisie'))) < 4.5, 'T4 n’y tient pas : la règle reste nécessaire');
   assert.match(bloc('.sc-module-tile__nom'), /overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap/, 'jamais un nom coupé net (§7.1)');
   assert.match(bloc('.sc-module-tile__acc'), /margin-left: auto/);
   assert.match(sansCommentaires(lire('src/socle/mouvement.css')), /\[data-mvt-survol='ligne'\]:hover \{ background-color: var\(--socle-ligne-survol\); \}/);
@@ -137,11 +145,11 @@ await dit('AddModuleTile : pointillé --socle-pointille (#2E2E33, comme Empty), 
   assert.match(ajout, /color: var\(--socle-texte-2\)/, 'T3');
   assert.match(ajout, /font-size: 12\.5px/);
   assert.equal(noir.get('--socle-pointille'), '#2e2e33');
-  assert.match(css, /\.sc-add-module-tile\[data-variante='ligne'\] \{ height: 34px; border-radius: 9px; \}/);
+  assert.match(css, /\.sc-add-module-tile\[data-variante='ligne'\] \{ height: 34px; border-radius: var\(--socle-rayon-controle\); \}/);
   assert.match(css, /prefers-reduced-motion: reduce\)[^{]*\{[^}]*\.sc-add-module-tile \{ transition: none; \}/);
   const titre = bloc('.sc-module-group__titre');
   assert.match(titre, /color: var\(--socle-texte-3\)/, 'T4');
-  assert.match(titre, /font-size: 11px/);
+  assert.match(titre, /font-size: 11px;\s*font-weight: 600/, '11 px / 600');
   assert.match(titre, /letter-spacing: 0\.08em/);
   assert.match(titre, /text-transform: uppercase/);
   assert.match(bloc('.sc-module-group__grille'), /grid-template-columns: repeat\(var\(--sc-module-colonnes, 3\), minmax\(0, 1fr\)\);\s*gap: 6px/);
@@ -185,6 +193,7 @@ await dit('CountBadge : rien à zéro, 99+ au-delà, le chiffre dit en mots (lec
   assert.match(rendre(h(R.CountBadge, { n: 5, libelle: '5 alertes ouvertes', variante: 'laterale' })), /^<span class="sc-count-badge" data-variante="laterale" title="5 alertes ouvertes">5</);
   assert.match(rendre(h(R.CountBadge, { n: 2, libelle: '2 à voir', variante: 'texte', className: 'sc-epingle__compteur' })), /^<span class="sc-count-badge sc-epingle__compteur" data-variante="texte" title="2 à voir">2</);
   assert.match(rendre(h(R.CountBadge, { n: 2, critique: true })), /data-critique="true" title="2 (alertes critiques|critical alerts)">2<span class="sr-only"> 2 (alertes critiques|critical alerts)<\/span>/, 'le mot du socle dit la gravité');
+  assert.match(rendre(h(R.CountBadge, { n: 1, critique: true })), /data-critique="true" title="1 (alerte critique|critical alert)">1<span class="sr-only"> 1 (alerte critique|critical alert)<\/span>/, 'au singulier (fiche D02 : Alertes [1])');
   assert.match(rendre(h(R.CountBadge, { n: 4 })), /title="4 (à voir|to see)"/);
 });
 
@@ -207,17 +216,26 @@ await dit('ModuleTile : un lien avec `vers`, un bouton sinon, focus visible, sur
 await dit('AddModuleTile et ModuleGroupGrid : « + Ajouter un module » en lien ou en bouton, dernière tuile de la grille quand on peut ajouter ; le groupe est une section nommée par son titre et son effectif', () => {
   const ajout = rendre(h(R.AddModuleTile, { vers: '/modules' }));
   assert.match(ajout, /^<a class="sc-add-module-tile sc-focus" data-variante="standard" href="\/modules"[^>]*><svg[^>]*lucide-plus[^>]*>[\s\S]*<\/svg><span class="sc-add-module-tile__libelle">(Ajouter un module|Add a module)<\/span><\/a>$/);
+  assert.match(ajout, /<svg[^>]*width="14"[^>]*height="14"[^>]*lucide-plus/, 'icône + de 14 px');
   assert.match(rendre(h(R.AddModuleTile, { onClick: noop, variante: 'ligne', libelle: 'Épingler' })), /^<button type="button" class="sc-add-module-tile sc-focus" data-variante="ligne">[\s\S]*<span class="sc-add-module-tile__libelle">Épingler<\/span><\/button>$/);
   assert.match(rendre(h(R.AddModuleTile, { onClick: noop, variante: 'ligne' })), /<span class="sc-add-module-tile__libelle">(Ajouter|Add)<\/span>/, 'en ligne (132 px), le mot court');
   assert.match(bloc('.sc-add-module-tile__libelle'), /overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap/);
   const tuiles = [1, 2, 3, 4].map((i) => h(R.ModuleTile, { key: i, nom: `Module ${i}`, icone: glyphe(), onClick: noop }));
   const groupe = rendre(h(R.ModuleGroupGrid, { titre: 'Ma journée', colonnes: 2, onAjouter: noop }, ...tuiles));
-  assert.match(groupe, /^<section aria-labelledby="([^"]+)" class="sc-module-group"><h3 id="\1" class="sc-module-group__titre"><span class="sc-module-group__nom">Ma journée<\/span><span class="sc-module-group__effectif sc-nombre" aria-label="4 modules">4<\/span><\/h3><div class="sc-module-group__grille" style="--sc-module-colonnes:2">/);
+  // L'effectif : le chiffre à l'œil, « 4 modules » en texte pour les lecteurs d'écran (jamais un aria-label sur un span sans rôle).
+  assert.match(groupe, /^<section aria-labelledby="([^"]+)" class="sc-module-group"><h3 id="\1" class="sc-module-group__titre"><span class="sc-module-group__nom">Ma journée<\/span><span class="sc-module-group__effectif sc-nombre"><span aria-hidden="true">4<\/span><span class="sr-only"> 4 modules<\/span><\/span><\/h3><div class="sc-module-group__grille" style="--sc-module-colonnes:2">/);
+  assert.doesNotMatch(groupe, /sc-module-group__effectif[^>]*aria-label/, 'pas d’aria-label sur l’effectif');
   assert.equal(compter(groupe, /class="sc-module-tile sc-focus"/g), 4);
   assert.match(groupe, /class="sc-add-module-tile sc-focus" data-variante="standard"><svg[\s\S]*<\/div><\/section>$/, 'la tuile d’ajout ferme la grille');
+  assert.match(rendre(h(R.ModuleGroupGrid, { titre: 'Vers', versAjouter: '/modules' }, tuiles[0])), /<a class="sc-add-module-tile sc-focus" data-variante="standard" href="\/modules"/, 'versAjouter : un lien');
   const sans = rendre(h(R.ModuleGroupGrid, { titre: 'Un seul', effectif: 1 }, tuiles[0]));
   assert.doesNotMatch(sans, /sc-add-module-tile/);
-  assert.match(sans, /aria-label="(1 module)">1</);
+  assert.match(sans, /<span aria-hidden="true">1<\/span><span class="sr-only"> 1 module<\/span>/);
+  // Une tuile sans `vers` ni `onClick` serait un bouton inerte : le type le refuse (CibleTuile), pour ModuleTile et AddModuleTile.
+  const src = sansCommentaires(lire(`${REP}/ModuleTile.tsx`));
+  assert.match(src, /export type CibleTuile = \{ vers: string; onClick\?: \(\) => void \} \| \{ vers\?: undefined; onClick: \(\) => void \};/);
+  assert.match(src, /export type ModuleTileProps = ModuleTileBase & CibleTuile;/);
+  assert.match(src, /export type AddModuleTileProps = AddModuleTileBase & CibleTuile;/);
 });
 
 await dit('PageHead : un seul h1, attributs de données sur le titre, classe de l’écran, infobulle d’un bouton, et `controles` à la place du groupe d’actions ; EnTeteDePage est le même composant', () => {
@@ -230,9 +248,11 @@ await dit('PageHead : un seul h1, attributs de données sur le titre, classe de 
   const infobulle = /<span title="Choisissez un métier"><button[^>]*>/.exec(boutons)?.[0] ?? '';
   assert.match(infobulle, /data-variante="primaire"/, 'l’infobulle enveloppe le primaire');
   assert.match(infobulle, /disabled=""/, 'le bouton reste inactif sous son infobulle');
-  const controles = rendre(h(R.PageHead, { titre: 'Tous les modules', controles: h('div', { role: 'search' }, 'champ'), primaire: { libelle: 'ignoré' } }));
+  const controles = rendre(h(R.PageHead, { titre: 'Tous les modules', controles: h('div', { role: 'search' }, 'champ') }));
   assert.match(controles, /<\/div><div class="sc-page__controles"><div role="search">champ<\/div><\/div><\/header>$/);
   assert.doesNotMatch(controles, /sc-page__actions|data-variante="primaire"/, 'des contrôles À LA PLACE des boutons');
+  // L'exclusivité est dans le type : `controles` avec `primaire`, `secondaires` ou `extra` ne compile pas (rien ne disparaît en silence).
+  assert.match(sansCommentaires(lire('src/socle/ui/archetypes/Page.tsx')), /controles: React\.ReactNode;\s*primaire\?: never;\s*secondaires\?: never;\s*extra\?: never;/, 'PageHeadProps : actions ou contrôles, par le type');
   assert.doesNotMatch(rendre(h(R.PageHead, { titre: 'T' })), /sc-page__actions|sc-page__controles|<p/);
 });
 
@@ -244,12 +264,12 @@ await dit('StatusPill : PastilleEtat sous son nom de fiche ; un point et un mot,
 
 /* ═══════════════════════  3. Les alias des fiches  ═══════════════════════ */
 
-await dit('noms.ts : chaque nom de fiche pointe sur sa brique (et le tableau en tête les documente tous) ; Sidebar, Header, AjmaniBar depuis la coquille', () => {
+await dit('noms.ts : chaque nom de fiche pointe sur sa brique (et le tableau en tête les documente tous), Empty compris depuis que l’état vide suit le §4 ; Sidebar, Header, AjmaniBar depuis la coquille', () => {
   const paires: [string, string][] = [
     ['Card', 'Carte'], ['Button', 'Bouton'], ['Kpi', 'TuileKpi'], ['Progress', 'BarreProgression'], ['Ring', 'AnneauProgression'], ['Kbd', 'Raccourci'], ['AvatarStack', 'PileAvatars'],
     ['Check', 'CaseACocher'], ['Field', 'Saisie'], ['Toggle', 'Interrupteur'], ['IconButton', 'BoutonIcone'], ['Select', 'Selecteur'], ['SearchBox', 'BoiteRecherche'], ['Tabs', 'Onglets'],
     ['Segmented', 'Segmente'], ['Suggestion', 'SuggestionAjmani'], ['Subcard', 'SousCarte'], ['FlagUrgent', 'DrapeauUrgent'], ['Chips', 'FilterChips'], ['SuggestionCompact', 'InlineSuggestion'],
-    ['Sparkline', 'MiniCourbe'], ['TimelineItem', 'LigneTemps'], ['StatusPill', 'PastilleEtat'], ['Sidebar', 'BarreLaterale'], ['Header', 'EnTete'], ['AjmaniBar', 'BarreAjmani'],
+    ['Sparkline', 'MiniCourbe'], ['TimelineItem', 'LigneTemps'], ['StatusPill', 'PastilleEtat'], ['Empty', 'EtatVide'], ['Sidebar', 'BarreLaterale'], ['Header', 'EnTete'], ['AjmaniBar', 'BarreAjmani'],
   ];
   const noms = lire('src/socle/ui/noms.ts');
   for (const [alias, brique] of paires) {
@@ -259,8 +279,10 @@ await dit('noms.ts : chaque nom de fiche pointe sur sa brique (et le tableau en 
     assert.match(noms, new RegExp(`\\| ${alias}\\s+\\| ${brique.replace('PageHead', 'PageHead')}`), `${alias} absent du tableau de noms.ts`);
   }
   assert.match(noms, /\| PageHead\s+\| PageHead \(= EnTeteDePage\)/);
-  assert.match(noms, /SANS ALIAS[\s\S]*`Empty` ≠ `EtatVide`/, 'l’écart Empty est écrit');
-  assert.doesNotMatch(noms, /as Empty\b/, 'pas d’alias Empty tant que EtatVide ne suit pas le §4');
+  // L'état vide suit le §4 (check:socle-controles le mesure) : le catalogue ne décrit plus l'ancien écart, et sa ligne dit l'action demandée.
+  assert.doesNotMatch(noms, /SANS ALIAS|`Empty` ≠ `EtatVide`|action est facultative|gardent leurs pixels/, 'le catalogue décrit un écart Empty qui n’existe plus');
+  assert.match(noms, /\| Empty\s+\| EtatVide\s+\| src\/socle\/ui\/Etats\.tsx[^\n]*pointillé `--socle-pointille`[^\n]*rayon 14[^\n]*icône 44 px[^\n]*titre 14 \/ 600[^\n]*12,5 T4[^\n]*action demandée/, 'la ligne Empty du tableau');
+  assert.match(noms, /export \{ EtatVide as Empty \} from '\.\/Etats';/);
   assert.match(sansCommentaires(lire('src/socle/ui/index.ts')), /export \* from '\.\/briques-partagees';\s*export \* from '\.\/noms';/);
 });
 

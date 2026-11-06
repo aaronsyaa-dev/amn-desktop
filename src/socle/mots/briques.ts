@@ -11,6 +11,7 @@ export const EN_BRIQUES = {
   'briques.tuile.actif': 'current module',
   'briques.compte': '{n} to see',
   'briques.compte.critique': '{n} critical alerts',
+  'briques.compte.critique.un': '1 critical alert',
 } as const;
 
 export const FR_BRIQUES: Readonly<Record<keyof typeof EN_BRIQUES, string>> = {
@@ -21,4 +22,5 @@ export const FR_BRIQUES: Readonly<Record<keyof typeof EN_BRIQUES, string>> = {
   'briques.tuile.actif': 'module ouvert',
   'briques.compte': '{n} à voir',
   'briques.compte.critique': '{n} alertes critiques',
+  'briques.compte.critique.un': '1 alerte critique',
 };

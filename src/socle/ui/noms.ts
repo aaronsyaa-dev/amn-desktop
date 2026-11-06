@@ -29,6 +29,7 @@
  * | SuggestionCompact   | InlineSuggestion    | src/socle/ui/vivant/InlineSuggestion.tsx  | bandeau étincelle + texte + Oui/Non |
  * | Sparkline           | MiniCourbe          | src/socle/ui/graphiques/MiniCourbe.tsx    | 70 × 26 par défaut |
  * | TimelineItem        | LigneTemps          | src/socle/ui/archetypes/LigneTemps.tsx    | heure 42 (12 T4), pastille 26, filet, titre 13,5 / 500, détail 12 T4 |
+ * | Empty               | EtatVide            | src/socle/ui/Etats.tsx (+ briques.css)    | pointillé `--socle-pointille` (#2E2E33), rayon 14 (`--socle-rayon-carte`), icône 44 px dans un carré arrondi (rayon 12, glyphe 20), titre 14 / 600, texte 12,5 T4 (300 px au plus), action demandée (`null` l'assume) |
  * | StatusPill          | PastilleEtat        | src/socle/ui/Pastilles.tsx                | point 6 + libellé 11,5, fond teinté 12 %, padding 3 × 9, rayon 99 |
  * | PageHead            | PageHead (= EnTeteDePage) | src/socle/ui/archetypes/Page.tsx    | h1 28 / 600 −.02 em 1,1, sous-titre 13,5 T4 à 7 px, boutons 31 à 9 px, `controles` |
  * | IconTile            | IconTile            | src/socle/ui/briques-partagees/IconTile.tsx         | carré arrondi teinté 13 % ou neutre, 22 à 48 px |
@@ -40,12 +41,11 @@
  * | Header              | EnTete              | src/socle/coquille/EnTete.tsx             | §3 (capturée) |
  * | AjmaniBar           | BarreAjmani         | src/socle/coquille/BarreAjmani.tsx        | §0.4 (capturée) |
  *
- * SANS ALIAS (la brique ne correspond pas à la ligne du §4 ; à décider par le CO) :
- * · `Empty` ≠ `EtatVide` : le §4 veut un pointillé `--socle-pointille` (#2E2E33), un rayon 14, une icône de 44 px
- *   dans un carré arrondi, un titre 14 / 600, un texte 12,5 T4 (300 px au plus) et TOUJOURS une action ; `EtatVide`
- *   dessine un pointillé `--socle-bord-controle` (#28282B), un rayon 12, aucune icône, un titre de 15 px sous
- *   l'ambiance noire (cote de H43), et son action est facultative. Les écrans qui l'emploient (`AccueilVivant`)
- *   gardent leurs pixels : il n'est pas retouché ici. `BlocEtat` (situations, 48 ou 36 px) couvre les états de H43.
+ * `Empty` = `EtatVide` depuis que l'état vide suit la ligne du §4 (il dessinait un pointillé `--socle-bord-controle`,
+ * un rayon 12, aucune icône, un titre de 15 px, et son action était facultative) : `check:socle-controles` tient chaque
+ * valeur, et `action` est demandé par le type (`action={null}` pour un emplacement en lecture seule). Les écrans qui
+ * l'emploient (`AccueilVivant`) en changent : bordure, rayon et titre suivent la brique. `BlocEtat` (situations, 48 ou
+ * 36 px) couvre les états de H43.
  *
  * `Sq` n'est pas une brique à part : `<Avatar forme="carre" />`. `Pill` = `Etiquette`, `Tag`, `Severity`, `LiveDot`,
  * `Caret`, `Gauge`, `HeatCell`, `FlowLine`, `Table`, `Ticket`, `Donut` gardent déjà leur nom de fiche ou leur nom
@@ -65,3 +65,4 @@ export { FilterChips as Chips } from './vivant/FilterChips';
 export { InlineSuggestion as SuggestionCompact } from './vivant/InlineSuggestion';
 export { MiniCourbe as Sparkline } from './graphiques/MiniCourbe';
 export { LigneTemps as TimelineItem } from './archetypes/LigneTemps';
+export { EtatVide as Empty } from './Etats';

@@ -30,7 +30,8 @@ export const PLAFOND_COMPTE = 99;
 export function CountBadge({ n, libelle, variante = 'standard', critique = false, className }: CountBadgeProps) {
   const { ts } = useSocleLangue();
   if (!(n > 0)) return null;
-  const mots = libelle ?? ts(critique ? 'briques.compte.critique' : 'briques.compte', { n });
+  // Le mot du socle s'accorde : « 1 alerte critique » (le cas de la fiche D02), « 2 alertes critiques ».
+  const mots = libelle ?? ts(critique ? (n === 1 ? 'briques.compte.critique.un' : 'briques.compte.critique') : 'briques.compte', { n });
   return (
     <span className={['sc-count-badge', className].filter(Boolean).join(' ')} data-variante={variante} data-critique={critique || undefined} title={mots}>
       {n > PLAFOND_COMPTE ? `${PLAFOND_COMPTE}+` : n}

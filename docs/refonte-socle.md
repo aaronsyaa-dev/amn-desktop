@@ -236,21 +236,27 @@ import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageH
   13 % (§ 4) ou neutre (`--socle-tag`). Rayon et glyphe suivent la taille. `part` et `bordure` reproduisent les images de
   D02 (10 %, bordure à 22 %) et de H41 (14 %, 18 % pour l'aperçu) ; `BlocEtat`, D02 et H41 l'emploient sans changer un pixel.
 - **`CountBadge`** (`n`, `libelle?`, `variante?` standard | laterale | texte, `critique?`) : 16 px, fond
-  `--socle-pastille-compte`, 10,5 / 600 ; la pastille de Cyber (`laterale`) et le chiffre seul des épinglés (`texte`) de
-  la barre latérale ; rien à zéro, « 99+ » au-delà, le chiffre dit en mots (lecteur d'écran et info-bulle).
+  `--socle-pastille-compte`, 10,5 / 600 ; la pastille de Cyber (`laterale`, qui pose son propre `display` : 21 × 16 où
+  qu'elle soit) et le chiffre seul des épinglés (`texte`) de la barre latérale ; rien à zéro, « 99+ » au-delà, le chiffre
+  dit en mots (lecteur d'écran et info-bulle ; « 1 alerte critique » au singulier).
 - **`ModuleTile`** (`nom`, `icone`, `famille?`, `sousTexte?`, `accessoire?`, `variante?` standard | ligne, `actif?`,
-  `vers?` ou `onClick`, `tuile?`) : un lien ou un bouton, focus visible. `ligne` = la puce des épinglés de D02 (34 px) ;
-  `standard` = 41 px (tuile 26, nom 13 T2, sous-texte 11,5 T4, survol de ligne, `aria-current` du module ouvert),
-  **provisoire** jusqu'aux fiches F10 à F70.
+  `vers` ou `onClick` — l'un des deux au moins, par le type `CibleTuile` —, `tuile?`) : un lien ou un bouton, focus
+  visible. `ligne` = la puce des épinglés de D02 (34 px, rayon `--socle-rayon-controle`) ; `standard` = 41 px (tuile 26,
+  nom 13 T2, sous-texte 11,5 T4 — T3 sur le module ouvert, pour tenir AA sur `--socle-ligne-choisie` —, survol de ligne,
+  `aria-current` du module ouvert), **provisoire** jusqu'aux fiches F10 à F70. Un `LiveDot` en accessoire porte
+  `afficherLibelle` : un point seul ne dit pas l'état (§ 7.6).
 - **`ModuleGroupGrid`** (`titre`, `effectif?`, `colonnes?`, `onAjouter?` ou `versAjouter?`, enfants `ModuleTile`) et
-  **`AddModuleTile`** (`libelle?`, `vers?` ou `onClick`, `variante?`) : la grille d'un groupe (titre 11 px capitales T4,
-  écart 6) fermée par « + Ajouter un module » (pointillé `--socle-pointille`, même hauteur que la tuile). Provisoires.
-- **`PageHead`** (= `EnTeteDePage`) : `titre`, `sousTitre?`, `primaire?`, `secondaires?` (avec `infobulle?`), `extra?`,
-  `controles?` (à la place des boutons, D02), `className?` (les cotes propres d'un écran restent dans sa feuille, en
-  `.x-entete.sc-page__entete`), `attributsTitre?` (`data-guide` d'une visite). H40, H42, H47 et D02 l'emploient.
+  **`AddModuleTile`** (`libelle?`, `vers` ou `onClick` (`CibleTuile`), `variante?`) : la grille d'un groupe (titre 11 px
+  capitales T4, effectif dit en texte aux lecteurs d'écran, écart 6) fermée par « + Ajouter un module » (pointillé
+  `--socle-pointille`, même hauteur que la tuile). Provisoires.
+- **`PageHead`** (= `EnTeteDePage`) : `titre`, `sousTitre?`, puis soit `primaire?`, `secondaires?` (avec `infobulle?`),
+  `extra?`, soit `controles` (à la place des boutons, D02) — exclusifs par le type, rien ne disparaît en silence ;
+  `className?` (les cotes propres d'un écran restent dans sa feuille, en `.x-entete.sc-page__entete`), `attributsTitre?`
+  (`data-guide` d'une visite). H40, H42, H47 et D02 l'emploient.
 - **`StatusPill`** = `PastilleEtat` ; **le catalogue des noms des fiches** est `src/socle/ui/noms.ts` (`Card` = `Carte`,
   `Button` = `Bouton`… tableau en tête du fichier ; `Sidebar`, `Header`, `AjmaniBar` depuis `src/socle/coquille`). Un alias
-  n'existe que si la brique suit la ligne du § 4 : `Empty` n'en a pas (voir `noms.ts`).
+  n'existe que si la brique suit la ligne du § 4 : `Empty` = `EtatVide` depuis la correction de l'état vide (table de la
+  section suivante ; `action` est demandé, `action={null}` pour un emplacement en lecture seule).
 
 Démonstration : section « Briques partagées » de `/dev/socle`. Garde : `npm run check:socle-briques`.
 

@@ -49,26 +49,39 @@ export interface ActionPage {
   infobulle?: string;
 }
 
-export interface PageHeadProps {
+export interface PageHeadBase {
   /** Le titre de la page : le seul `h1` de l'écran. */
   titre: string;
   sousTitre?: React.ReactNode;
-  /** Le bouton blanc plein de la page. Un seul, par construction. */
-  primaire?: ActionPage;
-  /** Les autres boutons (bordure grise, 31 px de haut comme H40), de gauche à droite, avant le primaire. */
-  secondaires?: ActionPage[];
-  /** Un contrôle posé avant les boutons (un segmenté, un sélecteur). Jamais un second bouton primaire. */
-  extra?: React.ReactNode;
-  /**
-   * « Des contrôles à la place des boutons » (D02 : un segmenté et un champ de recherche) : rendus seuls, dans
-   * `.sc-page__controles`, sans groupe d'actions. Exclusif de `primaire` et `secondaires`.
-   */
-  controles?: React.ReactNode;
   /** Une classe de l'écran sur le `<header>` : ses cotes propres (hauteur, alignement) vivent dans sa feuille. */
   className?: string;
   /** Des attributs de données posés sur le `h1` (`data-guide` d'une visite guidée). */
   attributsTitre?: Record<`data-${string}`, string>;
 }
+
+/** À droite du titre : les actions de la page (boutons), OU des contrôles à leur place. Le type refuse les deux à la fois : rien ne disparaît en silence. */
+export type PageHeadProps = PageHeadBase &
+  (
+    | {
+        /** Le bouton blanc plein de la page. Un seul, par construction. */
+        primaire?: ActionPage;
+        /** Les autres boutons (bordure grise, 31 px de haut comme H40), de gauche à droite, avant le primaire. */
+        secondaires?: ActionPage[];
+        /** Un contrôle posé avant les boutons (un segmenté, un sélecteur). Jamais un second bouton primaire. */
+        extra?: React.ReactNode;
+        controles?: undefined;
+      }
+    | {
+        /**
+         * « Des contrôles à la place des boutons » (D02 : un segmenté et un champ de recherche) : rendus seuls, dans
+         * `.sc-page__controles`, sans groupe d'actions. Exclusif de `primaire`, `secondaires` et `extra`.
+         */
+        controles: React.ReactNode;
+        primaire?: never;
+        secondaires?: never;
+        extra?: never;
+      }
+  );
 
 /** Nom de fiche de l'en-tête de page (le §3 du socle). */
 export type EnTeteDePageProps = PageHeadProps;

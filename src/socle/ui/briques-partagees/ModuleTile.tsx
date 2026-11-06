@@ -8,8 +8,9 @@ import { IconTile, type IconTileProps } from './IconTile';
 /**
  * LA TUILE DE MODULE (`ModuleTile`, STATUT §1.10 point 1) — partagée par les vues d'ensemble F10 à F70 (dont les
  * fiches ne sont pas encore reçues) et par D02. Une tuile = l'icône du module dans une `IconTile`, son nom, un
- * sous-texte facultatif, et à droite un accessoire (`CountBadge`, `StatusPill`, `LiveDot`). Un lien quand on lui
- * donne `vers`, un bouton quand on lui donne `onClick`.
+ * sous-texte facultatif, et à droite un accessoire (`CountBadge`, `StatusPill`, ou `LiveDot` avec `afficherLibelle` :
+ * un point seul ne porte pas l'état, §7.6). Un lien quand on lui donne `vers`, un bouton quand on lui donne `onClick` ;
+ * l'un des deux au moins, par le type (`CibleTuile`) : jamais un bouton qui ne fait rien.
  *
  * Deux variantes :
  *   · `ligne`    — la puce des épinglés de D02, mesurée sur son image : 34 px de haut, `IconTile` de 22 px dans une
@@ -22,28 +23,32 @@ import { IconTile, type IconTileProps } from './IconTile';
  */
 export type VarianteModuleTile = 'standard' | 'ligne';
 
-export interface ModuleTileProps {
+/**
+ * Où mène une tuile : une route (`vers` — un lien, qui peut aussi prévenir par `onClick`) ou une action seule
+ * (`onClick` — un bouton). Sans l'un ni l'autre, la tuile serait un bouton inerte : le type le refuse.
+ */
+export type CibleTuile = { vers: string; onClick?: () => void } | { vers?: undefined; onClick: () => void };
+
+export interface ModuleTileBase {
   nom: string;
   /** Le glyphe du module (lucide-react). */
   icone: React.ReactNode;
   famille?: Famille | 'garde';
   /** Une ligne sous le nom (variante standard) : « 3 à faire », « ouvert ce matin ». */
   sousTexte?: string;
-  /** À droite : un `CountBadge`, une `StatusPill`, un `LiveDot`. */
+  /** À droite : un `CountBadge`, une `StatusPill`, un `LiveDot` (avec `afficherLibelle`). */
   accessoire?: React.ReactNode;
   variante?: VarianteModuleTile;
   /** Le module ouvert. */
   actif?: boolean;
-  /** La route du module : la tuile est un lien. */
-  vers?: string;
-  /** Sans `vers` : la tuile est un bouton. */
-  onClick?: () => void;
   /** Réglages de la tuile d'icône (part de teinte, bordure) : D02 garde ses pixels. */
   tuile?: Pick<IconTileProps, 'part' | 'bordure'>;
   title?: string;
   'aria-label'?: string;
   className?: string;
 }
+
+export type ModuleTileProps = ModuleTileBase & CibleTuile;
 
 export function ModuleTile({ nom, icone, famille, sousTexte, accessoire, variante = 'standard', actif = false, vers, onClick, tuile, title, className, ...aria }: ModuleTileProps) {
   const { ts } = useSocleLangue();
@@ -81,16 +86,15 @@ export function ModuleTile({ nom, icone, famille, sousTexte, accessoire, variant
   );
 }
 
-export interface AddModuleTileProps {
+export interface AddModuleTileBase {
   /** Le libellé (défaut : « Ajouter un module » ; « Ajouter » en variante `ligne`, où la puce fait 132 px). */
   libelle?: string;
-  /** Mène à Tous les modules (D02) … */
-  vers?: string;
-  /** … ou à une action. */
-  onClick?: () => void;
   variante?: VarianteModuleTile;
   className?: string;
 }
+
+/** Mène à Tous les modules (D02, `vers`) ou à une action (`onClick`) : l'un des deux au moins (`CibleTuile`). */
+export type AddModuleTileProps = AddModuleTileBase & CibleTuile;
 
 /**
  * LA TUILE « + AJOUTER UN MODULE » (`AddModuleTile`) — pointillé `--socle-pointille` (#2E2E33, comme `Empty`), même
@@ -147,18 +151,23 @@ export function ModuleGroupGrid({ titre, effectif, children, colonnes = 3, onAjo
   const { ts } = useSocleLangue();
   const id = React.useId();
   const n = effectif ?? React.Children.toArray(children).filter(Boolean).length;
-  const avecAjout = Boolean(onAjouter) || Boolean(versAjouter);
   return (
     <section aria-labelledby={id} className={['sc-module-group', className].filter(Boolean).join(' ')}>
       <h3 id={id} className="sc-module-group__titre">
         <span className="sc-module-group__nom">{titre}</span>
-        <span className="sc-module-group__effectif sc-nombre" aria-label={n === 1 ? ts('briques.groupe.effectif.un') : ts('briques.groupe.effectif', { n })}>
-          {n}
+        {/* Le chiffre se voit ; les lecteurs d'écran lisent « 4 modules » en texte (un aria-label sur un span sans rôle n'est pas annoncé de façon fiable). */}
+        <span className="sc-module-group__effectif sc-nombre">
+          <span aria-hidden="true">{n}</span>
+          <span className="sr-only"> {n === 1 ? ts('briques.groupe.effectif.un') : ts('briques.groupe.effectif', { n })}</span>
         </span>
       </h3>
       <div className="sc-module-group__grille" style={{ '--sc-module-colonnes': colonnes } as React.CSSProperties}>
         {children}
-        {avecAjout && <AddModuleTile libelle={libelleAjouter} vers={versAjouter} onClick={onAjouter} variante={variante} />}
+        {versAjouter ? (
+          <AddModuleTile libelle={libelleAjouter} vers={versAjouter} onClick={onAjouter} variante={variante} />
+        ) : (
+          onAjouter && <AddModuleTile libelle={libelleAjouter} onClick={onAjouter} variante={variante} />
+        )}
       </div>
     </section>
   );
