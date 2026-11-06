@@ -470,23 +470,52 @@ Mots fr/en par `definirMots`. Gardes : `check:socle-controles|graphiques|situati
 
 ### LOT-06 · Créer et produire — `claude/refonte-creer` — 15 écrans
 
+**Mode PRÉPARATION (consigne du CO, 6 nov.)** : le socle v3 n'étant pas fusionné, aucun écran visuel n'est construit. Livré : la note [`preparation/LOT-06-creer.md`](preparation/LOT-06-creer.md) (module existant, données, écarts, écran par écran), la **logique pure des 15 écrans** dans `src/refonte/creer/` (17 fichiers, sans React ni brique du socle) et `npm run check:creer` (130 contrôles : cas des fiches écrits à la main, puis jeux fictifs de SIM aux volumes vide, peu, normal, beaucoup ; ajouté à `editions.yml`). Gardes sans navigateur de la CI : toutes vertes sur la branche (`typecheck`, `typecheck:business`, `lint`, les contrôles de `editions.yml`) ; `check:business` attend un build.
+
+La colonne « État » reste `à faire` : un écran n'est « fait » qu'une fois construit, capturé et comparé à son image.
+
 | ID | Écran | Type | État | Écart / note |
 |---|---|---|---|---|
-| F50 | Créer · Vue d'ensemble | nouveau | à faire | |
-| H15 | Créer · Stock | mixte | à faire | |
-| H16 | Créer · Chantiers | mixte | à faire | |
-| H17 | Créer · Visuels et marque | mixte | à faire | |
-| MR01 | Créer · Vidéo | mixte | à faire | |
-| MR02 | Créer · Ma page publique | mixte | à faire | |
-| MR03 | Créer · Tournées | mixte | à faire | |
-| MR04 | Créer · Matériel | mixte | à faire | |
-| MR05 | Créer · Catalogue produits | mixte | à faire | |
-| MR06 | Créer · Réservations | mixte | à faire | |
-| MR07 | Créer · Commandes | mixte | à faire | |
-| MR08 | Créer · Boutique en ligne | mixte | à faire | |
-| MR09 | Créer · Flotte de véhicules | mixte | à faire | |
-| MR10 | Créer · Photos de chantier | mixte | à faire | |
-| MR11 | Créer · Qualité et contrôles | mixte | à faire | |
+| F50 | Créer · Vue d'ensemble | nouveau | à faire | Logique prête : `ligneDeProduction.ts`. « Fabrication » n'existe pas dans le dépôt, « Bons d'intervention » = `InterventionsScreen` ; les 16 modules sont dans 5 familles du registre (question 1) |
+| H15 | Créer · Stock | mixte | à faire | Logique prête : `stock.ts`. Le module réel n'a ni emplacement, ni mouvements, ni commandes fournisseur par article (champs à ajouter) |
+| H16 | Créer · Chantiers | mixte | à faire | Logique prête : `chantiers.ts`. Le module réel (`AssemblyScreen`) n'a ni budget, ni poids d'étape, ni dates : nouveau modèle à brancher |
+| H17 | Créer · Visuels et marque | mixte | à faire | Logique prête : `marque.ts`. Le kit réel est un monogramme : logos, palette nommée et modèles à créer |
+| MR01 | Créer · Vidéo | mixte | à faire | Logique prête : `video.ts`. Deux modèles non reliés (`videoEdits`, `videoProductions`) ; pas de moteur de montage : frise en lecture |
+| MR02 | Créer · Ma page publique | mixte | à faire | Logique prête : `pagePublique.ts`. Le module réel est une configuration unique, sans sections ni version de travail |
+| MR03 | Créer · Tournées | mixte | à faire | Logique prête : `tournees.ts`. Aucun géocodage ni service de plan dans le dépôt (question 5) |
+| MR04 | Créer · Matériel | mixte | à faire | Logique prête : `materiel.ts`. Le module réel ne gère que des prêts par créneau |
+| MR05 | Créer · Catalogue produits | mixte | à faire | Logique prête : `catalogue.ts`. **Aucun module existant** : collection de produits à créer (question 2) |
+| MR06 | Créer · Réservations | mixte | à faire | Logique prête : `reservations.ts`. Ressource générique et détection de conflit à créer ; seul Matériel refuse un chevauchement |
+| MR07 | Créer · Commandes | mixte | à faire | Logique prête : `commandes.ts`. Les statuts réels (`new`…`delivered`) et ceux de la fiche se rangent dans les mêmes 4 étapes |
+| MR08 | Créer · Boutique en ligne | mixte | à faire | Logique prête : `boutique.ts`. Pas de visites en direct dans le réel (compteur quotidien) ; entonnoir 30 jours déjà dans `guichet.ts` |
+| MR09 | Créer · Flotte de véhicules | mixte | à faire | Logique prête : `flotte.ts`. Échéances km et jours déjà dans `ajouts.ts` ; énergie, niveau et conducteur à ajouter |
+| MR10 | Créer · Photos de chantier | mixte | à faire | Logique prête : `photos.ts`. Le réel : une photo par phase et par intervention ; dossier multi-photos à créer |
+| MR11 | Créer · Qualité et contrôles | mixte | à faire | Logique prête : `qualite.ts`. Le réel : listes de cases et note libre ; écarts, criticité, preuve et signature à créer |
+
+**Ce qui manque au socle v3 (pour le CO / LOT-00)** — à fournir avant la construction visuelle :
+
+1. *Briques partagées déjà annoncées au §1.10* : `ModuleTile` (41 px) et `ModuleGroupGrid` (F50), `PageHead`, `IconTile`, `IconButton`, `StatusPill`, `AvatarStack`, `SearchBox`, `AjmaniBar`, `SuggestionCompact` / `InlineSuggestion`, `FlagUrgent`.
+2. *Composants du §0.4 cités par le lot* : `Gauge` (demi-jauge 180°, MR09 et H16), `LiveDot` (MR01, MR02, MR06, MR07, MR08), `FlowLine` (MR03, MR07), `FilterChips` / `Chips` (H15, MR04, MR05, MR10), `Segmented` compact, `Progress` 4 px, `Ring` 26 à 58 px, `Tag`, la carte ludique `check` (MR02, MR03, MR04, MR09 : `CarteCases`), `Kbd`, `Check` 16 à 18 px.
+3. *Jetons* : police monospace, gris de décor pour les illustrations (point 15 de `04-ECARTS`), teinte de sélection `#D9A27A` (MR02), hachures orange et grises (MR06), pointillés verts et orange.
+4. *Mouvement* : `amn-grow`, `amn-slide`, `amn-bar`, `amnFlow` (pointillé qui s'écoule), `amnHalo`, toutes coupées par `prefers-reduced-motion`.
+5. *Compteurs de la barre latérale* : un point d'entrée pour que les modules déclarent un compteur (Stock : articles sous le seuil ; Chantiers : à surveiller ; Commandes : à expédier). Les calculs existent : `articlesASurveiller`, `chantiersASurveiller`, `compter().aExpedier`.
+6. *Mise en forme chiffrée* : le module de formats des graphiques du socle ne peut pas être importé hors de la liste de `check:socle-graphiques` ; `commun.ts` en garde une copie minimale (question 7).
+7. *Composants propres à chaque écran* (rubrique 5 des fiches : `LevelTube`, `SitePlan`, `BookSpread`, `EditTimeline`, `RouteMap`, `AssetTag`, `ProductMosaic`, `ResourceTimeline`, `OrderPipeline`, `PurchaseFunnel`, `VehicleCard`, `BeforeAfterSlider`, `InspectionSheet`, `ParetoChart`, `ProductionLine`, `WorkToken`…) : construits par le lot dans `src/refonte/creer/`, pas par le socle.
+
+**Questions pour le CO**
+
+1. *Familles du registre.* F50 annonce 16 modules « Créer et produire », mais 11 sont déclarés dans `outils`, `argent`, `echanger` ou `ecrire` et 2 n’existent pas (question 3). Faut-il les rattacher à `creer` (les fichiers de ces familles sont à d'autres lots) ou garder le hub comme simple vue transversale ?
+2. *MR05 Catalogue produits* n'existe pas : on crée la collection `products` (avec lien vers `stockItems`) ? Cela touche `SyncContext` et le contrat amn-api.
+3. *Noms des deux modules sans maquette* : « Fabrication » (aucun équivalent) et « Bons d'intervention » (= `InterventionsScreen`). Les garder, les renommer, ou masquer « Fabrication » tant qu'il n'existe pas ?
+4. *Modèles de données plus riches que le réel* (chantier avec budget et poids, contrôle avec écarts, page en sections, dossier photos) : quelle session les ajoute à `SYNCED_COLLECTIONS` et à amn-api, et quand ? La construction visuelle de H16, MR02, MR10 et MR11 en dépend.
+5. *Géocodage, plan et trafic (MR03)* : quel service, et hébergé où (clés côté serveur seulement) ? Sans cela, le plan reste schématique comme `ItinerairesScreen`.
+6. *Vidéo* : fusionner `videoEdits` et `videoProductions` en un seul objet (MR01 les réunit) ou garder deux sources et les relier ?
+7. *Formats chiffrés* : étendre la liste de `check:socle-graphiques` pour l'import du module de formats, ou le déplacer vers `src/lib` ?
+8. *Typographie* : les textes calculés suivent `check:langue` (apostrophes courbes), donc « Il n’en reste que 4. » diffère de la fiche (apostrophe droite) ; d'accord ?
+9. *Droit de publier* (MR01, MR02) : distinct du droit d'écrire ? La logique prévoit les deux cas (« Demander la publication »), la réponse relève de H19.
+10. *Fichiers (logos, photos, rushes)* : le dépôt n'a pas de stockage pour H17, MR04, MR05, MR10, MR01. Où les met-on avant de construire ces écrans ?
+11. *Dates de SIM* : les jeux sont à 10 h 15 le 30 oct., les images à 10 h 42 (suite de SIM, n° 1). La logique n'en dépend pas, mais la comparaison à ± 2 px, si.
+12. *Champs manquants des jeux fictifs* : liste en §6 de la note de préparation, à transmettre à SIM.
 
 ### LOT-07 · Outils et réglages — `claude/refonte-outils` — 16 écrans
 
