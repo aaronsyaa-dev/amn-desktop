@@ -3,12 +3,14 @@ import { CircleAlert, Download, Lock, RotateCcw, Search, Send, Undo2, Users, Wif
 import { useSocleLangue } from '../../i18n';
 import type { Famille } from '../../familles';
 import { Bouton } from '../Bouton';
+import { IconTile } from '../briques-partagees/IconTile';
 import { propsBouton } from './statique';
 
 /**
  * LE BLOC D'ÉTAT — la colonne centrée de « quand il n'y a rien » (H43, modèles 1, 3, 4, 5, et l'erreur de chargement).
  *
- * Une tuile d'icône de 48 px, un titre, un texte de 240 px au plus, et des boutons à 8 px l'un de l'autre.
+ * Une tuile d'icône de 48 px (`IconTile` du socle, 36 en compact ; sa teinte vient du ton, ci-dessous), un titre, un
+ * texte de 240 px au plus, et des boutons à 8 px l'un de l'autre.
  * LA RÈGLE : jamais de zone morte. `actions` est donc OBLIGATOIRE — un état sans bouton ne compile pas.
  *
  * `taille="compact"` : le `StateBlock` de la v3 (H43 en situation, au centre d'une carte de contenu) — tuile de 36 px
@@ -54,11 +56,7 @@ export function BlocEtat({ icone, ton = 'neutre', famille, titre, texte, actions
   const Titre = `h${niveauTitre}` as 'h3';
   return (
     <div role={annonce} data-ton={ton} data-famille={famille} data-taille={taille === 'compact' ? 'compact' : undefined} className={['sc-bloc-etat', className].filter(Boolean).join(' ')}>
-      {icone !== null && (
-        <span aria-hidden className="sc-bloc-etat__icone">
-          {icone}
-        </span>
-      )}
+      {icone !== null && <IconTile className="sc-bloc-etat__icone" taille={taille === 'compact' ? 36 : 48} icone={icone} />}
       <Titre className="sc-bloc-etat__titre">{titre}</Titre>
       {texte && <p className="sc-bloc-etat__texte">{texte}</p>}
       <div className="sc-bloc-etat__actions">{actions}</div>
