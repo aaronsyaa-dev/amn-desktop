@@ -120,10 +120,16 @@ function MouvementBloc() {
       <Carte titre={ts('mouvement.titre')} actions={<PastilleEtat etat={choisi ? 'info' : 'neutre'}>{ts(LIBELLES[niveau].titre)}</PastilleEtat>}>
         <p className="mb-3 max-w-2xl">{ts('mouvement.texte')}</p>
         <Segmente libelle={ts('mouvement.choix')} options={NIVEAUX_MOUVEMENT.map((n) => ({ cle: n, libelle: ts(LIBELLES[n].titre) }))} valeur={niveau} onChange={(cle) => ecrireMouvement(cle as NiveauMouvement)} />
-        <p aria-live="polite" className="mt-2 max-w-2xl">
-          {ts(LIBELLES[niveau].aide)}
-        </p>
-        {systeme && !choisi && <p className="mt-2 max-w-2xl">{ts('mouvement.systeme')}</p>}
+        <div className="mt-2 max-w-2xl">
+          <p aria-live="polite" className="sc-champ__aide">
+            {ts(LIBELLES[niveau].aide)}
+          </p>
+        </div>
+        {systeme && !choisi && (
+          <div className="mt-2 max-w-2xl">
+            <p className="sc-champ__aide">{ts('mouvement.systeme')}</p>
+          </div>
+        )}
         {choisi && (
           <div className="mt-3">
             <Bouton variante="discret" taille="petit" onClick={() => ecrireMouvement(null)}>

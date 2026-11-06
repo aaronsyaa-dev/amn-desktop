@@ -284,7 +284,8 @@ await dit('cotes lues dans modules.css : titre 28, champ 270 × 38, colonnes de 
   assert.match(css, /\.dm-recents \{ height: 190px; \}/);
   assert.match(css, /\.dm-puces \{[^}]*grid-template-columns: repeat\(2, 132px\)/);
   const briques = sansCommentaires(lire('src/socle/ui/briques-partagees/briques-partagees.css'));
-  assert.match(briques, /\.sc-module-tile\[data-variante='ligne'\] \{[^}]*height: 34px;[^}]*gap: 9px;[^}]*padding: 0 8px;[^}]*border-radius: 9px;[^}]*font-size: 12\.5px;[^}]*font-weight: 500/);
+  assert.match(briques, /\.sc-module-tile\[data-variante='ligne'\] \{[^}]*height: 34px;[^}]*gap: 9px;[^}]*padding: 0 8px;[^}]*border-radius: var\(--socle-rayon-controle\);[^}]*font-size: 12\.5px;[^}]*font-weight: 500/);
+  assert.match(lire('src/socle/noir.css'), /--socle-rayon-controle: 9px;/, 'le rayon 9 des puces de D02 est le jeton --socle-rayon-controle');
   assert.match(briques, /\.sc-icon-tile\[data-taille='22'\] \{ --sc-tuile: 22px; --sc-tuile-rayon: 6px;/);
   assert.match(briques, /\.sc-icon-tile\[data-taille='28'\] \{ --sc-tuile: 28px; --sc-tuile-rayon: 8px;/);
   assert.match(vue(), /<a class="sc-module-tile sc-focus" data-variante="ligne" title="[^"]*" aria-label="[^"]*" href="[^"]*"[^>]*><span aria-hidden="true" data-taille="22" data-famille="[a-z]+" data-part="10" data-bordure="true" class="sc-icon-tile">/, 'les épinglés : ModuleTile « ligne » et IconTile 22 (part 10, bordure)');
