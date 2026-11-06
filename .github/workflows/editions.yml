@@ -141,6 +141,8 @@ jobs:
         run: npm run check:navigation
       - name: Données fictives de la refonte — jeux reproductibles, recoupements, aucune donnée réelle
         run: npm run check:donnees
+      - name: Créer et produire (LOT-06) — logique des 15 écrans, sur cas écrits et sur les jeux fictifs
+        run: npm run check:creer
 
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi
