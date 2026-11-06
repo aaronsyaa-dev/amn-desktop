@@ -253,3 +253,41 @@ import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageH
   n'existe que si la brique suit la ligne du § 4 : `Empty` n'en a pas (voir `noms.ts`).
 
 Démonstration : section « Briques partagées » de `/dev/socle`. Garde : `npm run check:socle-briques`.
+
+## Mise à jour — alignement du § 4 (chantier s1b, 2026-11-06)
+
+Audit brique par brique de `01-SOCLE-DESIGN.md` § 4, mesuré dans le **CSS calculé** de `/dev/socle` (aperçu `scripts/apercu/ecrans/SOCLE-DEMO.tsx`, Chromium 1440 × 900 ; script Playwright jetable, effacé). Tout ce que la table ne cite pas était déjà à la valeur exacte (Card, Subcard, Button, IconButton, Kpi, StatusPill, Pill, Tag, FlagUrgent, Kbd, Avatar / AvatarStack / Sq, Progress, Ring, Donut, Check, Toggle, Field / Select, Tabs, Segmented, SearchBox, Table, Ticket, colonne de kanban, Suggestion, cartes ludiques) ; `check:socle-controles`, `check:socle-graphiques` et `check:socle-archetypes` tiennent désormais chaque valeur.
+
+| Brique | Spec § 4 | Mesuré avant | Corrigé |
+|---|---|---|---|
+| TimelineItem, filet vertical | `#222224` | `#2a2a2d` (`--socle-filet-vertical`) | oui : jeton à `#222224` |
+| Empty (`EtatVide`), pointillé | `#2E2E33` | `#28282b` (`--socle-bord-controle`) | oui : `--socle-pointille` |
+| Empty, rayon | 14 | 12 | oui : `--socle-rayon-carte` |
+| Empty, titre | 14 px / 600 | 15 px (surcharge de `situations.css`) | oui : 14 px, surcharge retirée |
+| Empty, texte | 12,5 px T4, 300 px au plus | 12,5 px T4, sans limite | oui : `max-width: 300px` |
+| Empty, icône | 44 px dans un carré arrondi | absente | oui : prop `icone` (`.sc-vide__icone`, 44 px, rayon 12, glyphe 20) |
+| Empty, action | toujours | facultative | oui : `action` demandé (`null` l'assume) |
+| Check, bordure | 1,5 px `#3A3A3E` | déclarée 1,5 px, rendue 1 px (Chromium arrondit une bordure de 1,5 px à 1 px en échelle 1) | non : la feuille dit 1,5 px, le rendu ne peut pas faire mieux |
+| `BlocEtat` (le bloc d'état de H43) | — (c'est `StateBlock`, fiche H43) | tuile 48 px, titre 15 px, texte 240 px | non : cotes mesurées sur l'image H43 (0,72 %), hors § 4 |
+
+Ajouts demandés par LOT-06 (point 2) : `Anneau` accepte `taille` de **26 à 80** (`tailleAnneau` borne, `epaisseurAnneau` donne 3 px à 26 → 8 px dès 72, `coteAnneau` règle la valeur centrée : 16 px, 13 px sous 72, 11 px sous 48, rien sous 40 — `children` l'y remet) ; `CaseACocher` prend `taille={16 | 18 | 24}` (16 px, coche de 11 px ; `'serie'` reste) ; `Segmente` prend `taille="compact"` (26 px : rembourrage 2, segments 12 px 3 × 9) ; `BoiteRecherche` prend `hauteur={38}` (le champ 270 × 38 de l'en-tête de D02). Une cible de 16 ou 26 px est sous les 34 px du § 7.6 : réservée aux rangées denses.
+
+### Les noms de mouvement des fiches (`amn-grow`, `amn-slide`, `amn-bar`, `amnFlow`, `amnHalo`)
+
+Les fiches des lots nomment les mouvements à l'anglaise ; `src/socle/mouvement.css` les fournit sans rien dupliquer (LOT-06, point 4) : trois **classes** qui partagent la règle de leur attribut, deux **noms de keyframes** pour une feuille d'écran qui anime elle-même un trait. Même coupure que le reste de la couche (`prefers-reduced-motion`, Mouvement « aucun » ; « réduit » garde un fondu court pour `amn-grow` et `amn-slide`, coupe `amn-bar`).
+
+| Nom de la fiche | Équivalent de la couche | Ce que c'est |
+|---|---|---|
+| `.amn-grow` | `data-mvt="entree"` | l'entrée d'une carte : 500 ms, monte de 6 px, décalage `--sc-mvt-rang` × 45 ms |
+| `.amn-slide` | `data-mvt="arrivee"` | l'arrivée d'une ligne : glisse de 8 px depuis la gauche, 450 ms |
+| `.amn-bar` | `data-mvt="pousse"` | une barre qui pousse depuis sa base : 700 ms, décalage `--sc-mvt-rang` × `--sc-mvt-barre-decalage` |
+| `amnFlow` | keyframes de `data-mvt="flux"` | un pointillé qui s'écoule (`stroke-dashoffset` recule de `--sc-mvt-flux-pas`), en boucle |
+| `amnHalo` | keyframes de `data-mvt="onde"` | une onde qui s'élargit (opacité .55 → 0, échelle 1 → 2,6), en boucle |
+
+Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement).
+
+### `Mono` et `src/socle/formats.ts` (chantier s1b)
+
+- `Mono` (`src/socle/ui/Mono.tsx`, exporté par `src/socle/ui`) : la donnée technique « en MONO » des fiches — `<Mono>10:42:07</Mono>`, `<Mono as="time" dateTime="…">`, `<Mono as="code">`, `taille` de 11 à 18 px (bornée) ; la couleur vient du parent. C'est `.sc-mono` de `noir.css` (`--socle-police-mono`, chiffres tabulaires, sans ligatures).
+- `src/socle/formats.ts` : `formaterNombre`, `formaterPourcent` (déjà en pour cent), `formaterRatio` (0 à 1), `formaterEuro`, `formaterMontant`, `formaterDate`, `formaterHeure`, `dateIso`, importables depuis tout code interne (`import { formaterEuro } from '../../socle/formats'`) — `check:socle-graphiques` interdit d'importer `src/socle/ui/graphiques/*` hors du socle ; ce module neutre réexporte les deux sources sans rien recopier.
+- Jetons ajoutés dans `noir.css` : `--socle-decor-1/2/3` (illustrations seulement), `--socle-hachure-attention` / `--socle-hachure-grise` (`background-image`), `--socle-pointille-ok` / `--socle-pointille-attention` (`border`) ; la teinte de sélection `#D9A27A` des fiches est `--socle-fam-creer`.

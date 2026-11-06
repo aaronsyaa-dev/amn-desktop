@@ -52,6 +52,20 @@
 
   Couleurs : jetons --socle-* seulement. Durées et distances : les jetons --sc-mvt-* ci-dessous, chacun avec la
   cote du §0.2 ; `couche-mouvement.ts` en garde la copie pour framer-motion (`check:socle-vivant` les compare).
+
+  ## Les noms des fiches (LOT-06 et les autres lots : `amn-grow`, `amn-slide`, `amn-bar`, `amnFlow`, `amnHalo`)
+
+  Les fiches nomment les mouvements à l'anglaise. Ce sont les MÊMES règles que ci-dessus, atteintes autrement :
+  trois classes, posées sur l'élément à la place de l'attribut, et deux noms de keyframes, pour une feuille d'écran
+  qui a besoin d'animer elle-même un trait (un pointillé qui s'écoule, une onde). Rien n'est recopié : chaque classe
+  partage la règle de son attribut (`:is([data-mvt='entree'], .amn-grow)`), et les keyframes de `flux` et `onde`
+  portent ces noms. Même coupure : `prefers-reduced-motion`, Mouvement « aucun », et « réduit » (fondus courts).
+
+    .amn-grow    = data-mvt="entree"   l'entrée d'une carte (500 ms, monte de 6 px, --sc-mvt-rang × 45 ms)
+    .amn-slide   = data-mvt="arrivee"  l'arrivée d'une ligne (glisse de 8 px, 450 ms)
+    .amn-bar     = data-mvt="pousse"   une barre qui pousse depuis sa base (700 ms, --sc-mvt-rang × décalage)
+    amnFlow      = les keyframes de data-mvt="flux"  (stroke-dashoffset qui recule de --sc-mvt-flux-pas, en boucle)
+    amnHalo      = les keyframes de data-mvt="onde"  (opacité .55 → 0, échelle 1 → 2,6, en boucle)
 */
 :root[data-ambiance='noir'] {
   --sc-mvt-courbe: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -93,7 +107,7 @@
 }
 
 /* ═══ Les entrées ═══ */
-:root[data-ambiance='noir'] [data-mvt='entree'],
+:root[data-ambiance='noir'] :is([data-mvt='entree'], .amn-grow),
 :root[data-ambiance='noir'] [data-mvt='cascade'] > * {
   animation: sc-mvt-entree var(--sc-mvt-entree) var(--sc-mvt-courbe) backwards;
   animation-delay: calc(min(var(--sc-mvt-rang, 0), 13) * var(--sc-mvt-entree-decalage));
@@ -113,7 +127,7 @@
 :root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(13) { --sc-mvt-rang: 12; }
 :root[data-ambiance='noir'] [data-mvt='cascade'] > :nth-child(n + 14) { --sc-mvt-rang: 13; }
 
-:root[data-ambiance='noir'] [data-mvt='arrivee'] { animation: sc-mvt-arrivee var(--sc-mvt-arrivee) var(--sc-mvt-courbe) backwards; }
+:root[data-ambiance='noir'] :is([data-mvt='arrivee'], .amn-slide) { animation: sc-mvt-arrivee var(--sc-mvt-arrivee) var(--sc-mvt-courbe) backwards; }
 :root[data-ambiance='noir'] [data-mvt='fondu'] { animation: sc-mvt-fondu var(--sc-mvt-fondu-court) ease-out backwards; }
 
 /* ═══ Les mesures qui se remplissent ═══ */
@@ -126,7 +140,7 @@
 :root[data-ambiance='noir'] [data-mvt='arc'] {
   animation: sc-mvt-arc var(--sc-mvt-anneau) var(--sc-mvt-courbe) var(--sc-mvt-anneau-depart) backwards;
 }
-:root[data-ambiance='noir'] [data-mvt='pousse'] {
+:root[data-ambiance='noir'] :is([data-mvt='pousse'], .amn-bar) {
   transform-box: fill-box;
   transform-origin: 50% 100%;
   animation: sc-mvt-pousse var(--sc-mvt-barre) var(--sc-mvt-courbe) backwards;
@@ -149,9 +163,9 @@
   background: currentColor;
   opacity: 0;
   pointer-events: none;
-  animation: sc-mvt-onde var(--sc-mvt-voyant) ease-out infinite;
+  animation: amnHalo var(--sc-mvt-voyant) ease-out infinite;
 }
-:root[data-ambiance='noir'] [data-mvt='flux'] { animation: sc-mvt-flux var(--sc-mvt-flux-duree, var(--sc-mvt-flux)) linear infinite; }
+:root[data-ambiance='noir'] [data-mvt='flux'] { animation: amnFlow var(--sc-mvt-flux-duree, var(--sc-mvt-flux)) linear infinite; }
 :root[data-ambiance='noir'] [data-mvt='balayage'] {
   border-radius: 50%;
   background: conic-gradient(from 0deg, transparent 0deg 300deg, var(--sc-mvt-balayage-couleur) 360deg);
@@ -179,15 +193,16 @@
 @keyframes sc-mvt-arc { from { stroke-dasharray: 0 var(--sc-mvt-tour); } }
 @keyframes sc-mvt-pousse { from { transform: scaleY(0); } }
 @keyframes sc-mvt-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes sc-mvt-onde { from { opacity: 0.55; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
-@keyframes sc-mvt-flux { to { stroke-dashoffset: calc(-1 * var(--sc-mvt-flux-pas, 10px)); } }
+/* Les deux boucles portent les noms des fiches (amnHalo = l'onde, amnFlow = le flux) : une feuille d'écran peut les nommer. */
+@keyframes amnHalo { from { opacity: 0.55; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+@keyframes amnFlow { to { stroke-dashoffset: calc(-1 * var(--sc-mvt-flux-pas, 10px)); } }
 @keyframes sc-mvt-balayage { to { transform: rotate(360deg); } }
 @keyframes sc-mvt-clignote { 50% { opacity: 0; } }
 
 /* ═══ Mouvement « réduit » : les fondus courts seulement ═══ */
-:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='entree'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] :is([data-mvt='entree'], .amn-grow),
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='cascade'] > *,
-:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='arrivee'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] :is([data-mvt='arrivee'], .amn-slide),
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='aire'],
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='point-final'] {
   animation: sc-mvt-fondu var(--sc-mvt-fondu-court) ease-out backwards;
@@ -195,7 +210,7 @@
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='remplit'],
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='anneau'],
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='arc'],
-:root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='pousse'],
+:root[data-ambiance='noir'][data-mouvement='reduit'] :is([data-mvt='pousse'], .amn-bar),
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='trace'],
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='flux'],
 :root[data-ambiance='noir'][data-mouvement='reduit'] [data-mvt='balayage'],
@@ -205,6 +220,7 @@
 
 /* ═══ Mouvement « aucun » : plus rien ne bouge ═══ */
 :root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt],
+:root[data-ambiance='noir'][data-mouvement='aucun'] :is(.amn-grow, .amn-slide, .amn-bar),
 :root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt='cascade'] > *,
 :root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt='onde']::after { animation: none; }
 :root[data-ambiance='noir'][data-mouvement='aucun'] [data-mvt-survol] { transition: none; }
@@ -214,6 +230,8 @@
 @media (prefers-reduced-motion: reduce) {
   :root[data-ambiance='noir'] [data-mvt],
   :root[data-ambiance='noir'][data-mouvement] [data-mvt],
+  :root[data-ambiance='noir'] :is(.amn-grow, .amn-slide, .amn-bar),
+  :root[data-ambiance='noir'][data-mouvement] :is(.amn-grow, .amn-slide, .amn-bar),
   :root[data-ambiance='noir'] [data-mvt='cascade'] > *,
   :root[data-ambiance='noir'][data-mouvement] [data-mvt='cascade'] > *,
   :root[data-ambiance='noir'] [data-mvt='onde']::after,

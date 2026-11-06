@@ -15,11 +15,19 @@ export interface CaseACocherProps {
   /** Le nom accessible : « Cocher : Appeler le notaire ». */
   libelle: string;
   lecture?: boolean;
-  /** 18 px (défaut) ; 24 px dans une série de jours. */
-  taille?: 'normale' | 'serie';
+  /** 18 px (défaut, ou `18`) ; 24 px dans une série de jours (`'serie'` ou `24`) ; 16 px dans une liste serrée (LOT-06). */
+  taille?: 'normale' | 'serie' | 16 | 18 | 24;
+}
+
+/** La valeur de `data-taille` : rien pour 18 px, `serie` pour 24, `16` pour 16. */
+export function attributTailleCase(taille: CaseACocherProps['taille']): 'serie' | '16' | undefined {
+  if (taille === 'serie' || taille === 24) return 'serie';
+  if (taille === 16) return '16';
+  return undefined;
 }
 
 export function CaseACocher({ coche, onChange, libelle, lecture = false, taille = 'normale' }: CaseACocherProps) {
+  const attribut = attributTailleCase(taille);
   return (
     <button
       type="button"
@@ -27,11 +35,11 @@ export function CaseACocher({ coche, onChange, libelle, lecture = false, taille 
       aria-checked={coche}
       aria-disabled={lecture || undefined}
       aria-label={libelle}
-      data-taille={taille === 'serie' ? 'serie' : undefined}
+      data-taille={attribut}
       onClick={() => !lecture && onChange?.(!coche)}
       className="sc-case sc-focus"
     >
-      {coche && <Check size={13} strokeWidth={3} aria-hidden />}
+      {coche && <Check size={attribut === '16' ? 11 : 13} strokeWidth={3} aria-hidden />}
     </button>
   );
 }

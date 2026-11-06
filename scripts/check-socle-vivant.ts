@@ -462,7 +462,7 @@ await dit('mots : fr et en, mêmes clés, mêmes {paramètres}, ni point d’exc
 
 await dit('la page de démo /dev/socle montre chaque composant du groupe dans sa section « vivant »', () => {
   const page = sansCommentaires(lire('src/refonte/systeme/demo/PageDemoSocle.tsx'));
-  assert.match(page, /'mouvement',\s*'vivant',\s*\] as const;/);
+  assert.match(page, /'mouvement',\s*'vivant',\s*'alignement',\s*\] as const;/, 'vivant puis alignement (s1b) ferment le sommaire');
   const section = page.slice(page.indexOf('function SectionVivant'));
   for (const c of ['LiveDot', 'Caret', 'Severity', 'FilterChips', 'Gauge', 'HeatCell', 'FlowLine', 'InlineSuggestion']) assert.match(section, new RegExp(`<${c}[\\s/>]`), c);
   for (const n of ['balayage', 'cascade', 'entree', 'arrivee']) assert.ok(section.includes(n), `la couche : ${n}`);
@@ -473,6 +473,30 @@ await dit('package.json et la CI : le script check:socle-vivant existe et tourne
   assert.match(pkg.scripts['check:socle-vivant'] ?? '', /scripts\/check-socle-vivant\.ts$/);
   assert.equal(pkg.scripts['check:socle-vivant'].replace('vivant', 'controles'), pkg.scripts['check:socle-controles']);
   assert.match(lire('.github/workflows/editions.yml'), /run: npm run check:socle-vivant/);
+});
+
+await dit('les noms des fiches (LOT-06) : .amn-grow = entree, .amn-slide = arrivee, .amn-bar = pousse (même règle, par :is), keyframes amnFlow = flux et amnHalo = onde ; coupés comme le reste (s1b)', () => {
+  assert.match(base, /:is\(\[data-mvt='entree'\], \.amn-grow\),\s*:root\[data-ambiance='noir'\] \[data-mvt='cascade'\] > \* \{[^}]*animation: sc-mvt-entree/);
+  assert.match(base, /:is\(\[data-mvt='arrivee'\], \.amn-slide\) \{ animation: sc-mvt-arrivee/);
+  assert.match(base, /:is\(\[data-mvt='pousse'\], \.amn-bar\) \{[^}]*transform-origin: 50% 100%;[^}]*animation: sc-mvt-pousse/);
+  assert.match(base, /\[data-mvt='flux'\] \{ animation: amnFlow var\(--sc-mvt-flux-duree, var\(--sc-mvt-flux\)\) linear infinite; \}/);
+  assert.match(base, /\[data-mvt='onde'\]::after \{[^}]*animation: amnHalo var\(--sc-mvt-voyant\) ease-out infinite;/);
+  assert.match(base, /@keyframes amnHalo \{ from \{ opacity: 0\.55; transform: scale\(1\); \} to \{ opacity: 0; transform: scale\(2\.6\); \} \}/);
+  assert.match(base, /@keyframes amnFlow \{ to \{ stroke-dashoffset: calc\(-1 \* var\(--sc-mvt-flux-pas, 10px\)\); \} \}/);
+  // Un seul jeu de keyframes : les anciens noms n'existent plus, aucune règle n'est écrite deux fois.
+  assert.doesNotMatch(couche, /@keyframes sc-mvt-(onde|flux)\b|animation: sc-mvt-(onde|flux)\b/, 'anciens noms de keyframes');
+  for (const c of ['amn-grow', 'amn-slide', 'amn-bar']) assert.equal((base.match(new RegExp(`\\.${c}\\b`, 'g')) ?? []).length, 1, `${c} : une seule règle dans la base`);
+  // Coupés : réduit (fondu court pour grow et slide, rien pour bar), aucun, et le système.
+  const fondus = /([^{}]*)\{\s*animation:\s*sc-mvt-fondu var\(--sc-mvt-fondu-court\) ease-out backwards;\s*\}/.exec(REDUIT)?.[1] ?? '';
+  assert.ok(fondus.includes('.amn-grow') && fondus.includes('.amn-slide'), 'grow et slide deviennent des fondus en « réduit »');
+  const coupes = /([^{}]*)\{\s*animation:\s*none;\s*\}/.exec(REDUIT)?.[1] ?? '';
+  assert.ok(coupes.includes('.amn-bar'), 'bar coupé en « réduit »');
+  assert.match(AUCUN, /\[data-mouvement='aucun'\] :is\(\.amn-grow, \.amn-slide, \.amn-bar\)/);
+  assert.match(SYSTEME, /:root\[data-ambiance='noir'\] :is\(\.amn-grow, \.amn-slide, \.amn-bar\),/);
+  assert.match(SYSTEME, /:root\[data-ambiance='noir'\]\[data-mouvement\] :is\(\.amn-grow, \.amn-slide, \.amn-bar\),/);
+  // Documentés en tête de la feuille et dans docs/refonte-socle.md.
+  assert.match(lire('src/socle/mouvement.css'), /\.amn-grow\s+= data-mvt="entree"[\s\S]*\.amn-slide\s+= data-mvt="arrivee"[\s\S]*\.amn-bar\s+= data-mvt="pousse"[\s\S]*amnFlow\s+= les keyframes de data-mvt="flux"[\s\S]*amnHalo\s+= les keyframes de data-mvt="onde"/);
+  assert.match(lire('docs/refonte-socle.md'), /amn-grow[^\n]*entree[\s\S]*amn-slide[^\n]*arrivee[\s\S]*amn-bar[^\n]*pousse[\s\S]*amnFlow[^\n]*flux[\s\S]*amnHalo[^\n]*onde/);
 });
 
 fin();

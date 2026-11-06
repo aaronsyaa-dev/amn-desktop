@@ -73,6 +73,7 @@
   --socle-fam-ecrire: #a79bdb;
   --socle-fam-argent: #8fbf7a;
   --socle-fam-echanger: #d98fa8;
+  /* La teinte de SÉLECTION des fiches (MR02 : `#D9A27A`) est cette valeur : employez `--socle-fam-creer`, pas de doublon. */
   --socle-fam-creer: #d9a27a;
   --socle-fam-outils: #9a9aa0;
   /* La Garde et la supervision : l'icône bouclier, jamais une pastille (01-SOCLE-DESIGN §1). */
@@ -112,7 +113,8 @@
   --socle-anneau-fond: #1e1e20;
   --socle-grille-graphique: #1e1e20;
   --socle-colonne-graphique: #2a2b31;
-  --socle-filet-vertical: #2a2a2d;
+  /* Le filet vertical d'une ligne de temps (§4 TimelineItem) : `#222224`, le même que les filets de la barre latérale (§1). */
+  --socle-filet-vertical: #222224;
   --socle-ligne-active: #1a1a1c;
   --socle-ligne-choisie: #262629;
   --socle-sous-element-actif: #242427;
@@ -166,6 +168,23 @@
   --socle-rayon-tag: 6px;
   --socle-rayon-ticket: 12px;
   --socle-rayon-kanban: 14px;
+
+  /* ── Gris de décor (04-ECARTS B15, validé par le dirigeant, STATUT §1.10 point 15) : les illustrations SEULEMENT
+     (photos, objets, véhicules, aperçus composés). JAMAIS pour un texte ni un état : `check:socle` les refuse en
+     `color`, comme les encres discrètes. ── */
+  --socle-decor-1: #121213;
+  --socle-decor-2: #17171a;
+  --socle-decor-3: #3e3e44;
+
+  /* ── Hachures et pointillés (LOT-06 : réservations, matériel, créneaux tenus ou en attente) : des motifs posés sur
+     les couleurs d'état, jamais une couleur de texte. Hachure : `background-image: var(--socle-hachure-attention)`
+     (orange, trait de 2 sur 8 à 135°) ou `var(--socle-hachure-grise)` (T4, le neutre). Pointillé : `border:
+     var(--socle-pointille-ok)` (vert) ou `var(--socle-pointille-attention)` (orange), 1 px. Le pointillé GRIS des
+     zones vides reste `--socle-pointille` (`#2e2e33`). ── */
+  --socle-hachure-attention: repeating-linear-gradient(135deg, color-mix(in srgb, var(--socle-etat-attention) 45%, transparent) 0 2px, transparent 2px 8px);
+  --socle-hachure-grise: repeating-linear-gradient(135deg, color-mix(in srgb, var(--socle-texte-3) 35%, transparent) 0 2px, transparent 2px 8px);
+  --socle-pointille-ok: 1px dashed var(--socle-etat-succes);
+  --socle-pointille-attention: 1px dashed var(--socle-etat-attention);
 
   /* ── v3 (01-SOCLE-DESIGN §0.2 et §0.4) ──
      Survols : bordure de carte `#303033`, ligne `rgba(255,255,255,.03)` (le bouton secondaire reprend `--socle-survol`).

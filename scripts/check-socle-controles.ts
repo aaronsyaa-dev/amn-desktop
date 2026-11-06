@@ -70,10 +70,10 @@ await dit('les boutons : primaire 8 × 15, secondaire 7 × 13 + bordure, 12,5 px
 
 const K = await chargerRendu<Record<string, any>>( // eslint-disable-line @typescript-eslint/no-explicit-any
   [
-    "import { Bouton, Carte, Saisie, Avatar, PileAvatars, PastilleEtat, BarreProgression, TuileKpi, CaseACocher, tonDeSante, teinteDe } from '../src/socle/ui';",
+    "import { Bouton, Carte, Saisie, Avatar, PileAvatars, PastilleEtat, BarreProgression, TuileKpi, CaseACocher, EtatVide, Mono, tailleMono, TAILLE_MONO_MIN, TAILLE_MONO_MAX, tonDeSante, teinteDe } from '../src/socle/ui';",
     "import { SousCarte, Tag, DrapeauUrgent, PastilleFiltre, Interrupteur, BoutonIcone, Selecteur, BoiteRecherche, Onglets, PanneauOnglet, Segmente, cleSuivante, IconeEtincelle, SuggestionAjmani, CarteCases, CarteAnneau, CarteSerie, CarteJalon } from '../src/socle/ui/controles';",
   ].join('\n'),
-  ['Bouton', 'Carte', 'Saisie', 'Avatar', 'PileAvatars', 'PastilleEtat', 'BarreProgression', 'TuileKpi', 'CaseACocher', 'tonDeSante', 'teinteDe', 'SousCarte', 'Tag', 'DrapeauUrgent', 'PastilleFiltre', 'Interrupteur', 'BoutonIcone', 'Selecteur', 'BoiteRecherche', 'Onglets', 'PanneauOnglet', 'Segmente', 'cleSuivante', 'IconeEtincelle', 'SuggestionAjmani', 'CarteCases', 'CarteAnneau', 'CarteSerie', 'CarteJalon'],
+  ['Bouton', 'Carte', 'Saisie', 'Avatar', 'PileAvatars', 'PastilleEtat', 'BarreProgression', 'TuileKpi', 'CaseACocher', 'EtatVide', 'Mono', 'tailleMono', 'TAILLE_MONO_MIN', 'TAILLE_MONO_MAX', 'tonDeSante', 'teinteDe', 'SousCarte', 'Tag', 'DrapeauUrgent', 'PastilleFiltre', 'Interrupteur', 'BoutonIcone', 'Selecteur', 'BoiteRecherche', 'Onglets', 'PanneauOnglet', 'Segmente', 'cleSuivante', 'IconeEtincelle', 'SuggestionAjmani', 'CarteCases', 'CarteAnneau', 'CarteSerie', 'CarteJalon'],
 );
 const { h, rendre } = K;
 
@@ -247,6 +247,146 @@ await dit('Case à cocher : ronde de 18 px, 24 px dans une série', () => {
   assert.match(/\.sc-case \{[^}]*\}/.exec(css)?.[0] ?? '', /width:\s*18px[\s\S]*height:\s*18px[\s\S]*border-radius:\s*99px/);
   assert.match(css, /\.sc-case\[data-taille='serie'\] \{ width: 24px; height: 24px; \}/);
   assert.match(rendre(h(K.CaseACocher, { coche: true, libelle: 'x', taille: 'serie' })), /data-taille="serie"/);
+});
+
+/* ── §4, brique par brique : les valeurs mesurées dans le CSS calculé de /dev/socle (aperçu SOCLE-DEMO, chantier s1b).
+      Une assertion par valeur ; celles qui ont été corrigées le disent. ── */
+const briques = sansCommentaires(lire('src/socle/ui/briques.css'));
+const controles = sansCommentaires(lire('src/socle/ui/controles/controles.css'));
+const regle = (css: string, selecteur: string): string => {
+  const i = css.indexOf(`\n${selecteur} {`) + 1;
+  assert.ok(i > 0, `règle ${selecteur} introuvable`);
+  return css.slice(i, css.indexOf('}', i) + 1);
+};
+
+await dit('§4 Card, Subcard, IconButton, Kpi : rayons, rembourrages et cotes', () => {
+  assert.match(regle(briques, ":root[data-ambiance='noir'] [data-socle='carte']"), /border-radius:\s*var\(--socle-rayon-carte\)[\s\S]*box-shadow:\s*inset 0 1px 0 rgba\(255, 255, 255, 0\.035\)/);
+  assert.match(briques, /\[data-socle='carte'\]:not\(\[data-sans-marge='true'\]\) \{ padding: 16px 18px; \}/);
+  assert.match(briques, /\[data-socle='carte'\]\[data-compacte='true'\]:not\(\[data-sans-marge='true'\]\) \{ padding: 14px 16px; \}/);
+  assert.equal(j.get('--socle-rayon-carte'), undefined, 'le rayon est une cote, pas une couleur');
+  assert.match(noir, /--socle-rayon-carte:\s*14px/);
+  assert.match(noir, /--socle-rayon-sous-carte:\s*11px/);
+  assert.match(regle(controles, '.sc-sous-carte'), /padding:\s*12px 14px[\s\S]*border-radius:\s*var\(--socle-rayon-sous-carte\)[\s\S]*background:\s*var\(--socle-sous-carte\)/);
+  assert.match(regle(controles, '.sc-bouton-icone'), /width:\s*34px[\s\S]*height:\s*34px[\s\S]*border:\s*1px solid var\(--socle-bord-bouton\)[\s\S]*border-radius:\s*var\(--socle-rayon-controle\)/);
+  assert.match(controles, /\.sc-bouton-icone svg \{ width: 15px; height: 15px; \}/);
+  assert.match(regle(briques, '.sc-kpi'), /min-height:\s*84px[\s\S]*padding:\s*14px 16px/);
+  assert.match(briques, /\.sc-kpi\[data-hauteur='92'\] \{ min-height: 92px; \}/);
+  assert.match(regle(briques, '.sc-kpi__label'), /color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*12px/);
+  assert.match(regle(briques, '.sc-kpi__valeur'), /font-size:\s*24px[\s\S]*font-weight:\s*600[\s\S]*letter-spacing:\s*-0\.02em/);
+  assert.match(regle(briques, '.sc-kpi__variation'), /font-size:\s*12px/);
+});
+
+await dit('§4 StatusPill, Pill, Tag, FlagUrgent, Kbd : fonds, bordures, tailles et rayons', () => {
+  assert.match(regle(briques, '.sc-etat'), /padding:\s*3px 9px[\s\S]*border-radius:\s*var\(--socle-rayon-pastille\)[\s\S]*font-size:\s*11\.5px/);
+  assert.match(briques, /\.sc-etat::before \{ content: ''; width: 6px; height: 6px;/);
+  assert.match(regle(briques, '.sc-etiquette'), /padding:\s*4px 10px[\s\S]*border:\s*1px solid var\(--socle-bord-pilule\)[\s\S]*border-radius:\s*var\(--socle-rayon-pastille\)[\s\S]*background:\s*var\(--socle-pilule\)[\s\S]*font-size:\s*11\.5px/);
+  assert.match(regle(controles, '.sc-tag'), /padding:\s*2px 8px[\s\S]*border-radius:\s*var\(--socle-rayon-tag\)[\s\S]*background:\s*var\(--socle-tag\)[\s\S]*color:\s*var\(--socle-texte-2\)[\s\S]*font-size:\s*11px/);
+  assert.match(noir, /--socle-rayon-tag:\s*6px/);
+  assert.match(regle(controles, '.sc-urgent'), /border-radius:\s*var\(--socle-rayon-tag\)[\s\S]*background:\s*color-mix\(in srgb, var\(--socle-etat-critique\) 13%, transparent\)[\s\S]*color:\s*var\(--socle-etat-critique\)[\s\S]*font-size:\s*11px[\s\S]*font-weight:\s*600/);
+  assert.match(regle(briques, '.sc-kbd'), /border:\s*1px solid var\(--socle-bord-kbd\)[\s\S]*border-radius:\s*5px[\s\S]*background:\s*var\(--socle-kbd\)[\s\S]*color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*11px/);
+  assert.match(briques, /\[data-socle='bouton'\] \.sc-kbd \{[^}]*opacity: 0\.6/);
+});
+
+await dit('§4 Avatar, AvatarStack, Sq, Progress, Check, Toggle : cotes et couleurs', () => {
+  assert.match(briques, /\.sc-avatar\[data-forme='carre'\] \{ border-radius: 9px; \}/);
+  assert.match(regle(briques, ".sc-avatar[data-en-ligne='true']::after"), /width:\s*8px[\s\S]*height:\s*8px[\s\S]*background:\s*var\(--socle-etat-succes\)[\s\S]*box-shadow:\s*0 0 0 2px/);
+  assert.match(briques, /\.sc-pile \.sc-avatar \+ \.sc-avatar \{ margin-left: -7px; \}/);
+  assert.match(briques, /\.sc-pile \.sc-avatar \{ box-shadow: 0 0 0 2px/);
+  assert.match(regle(briques, '.sc-barre'), /height:\s*5px[\s\S]*border-radius:\s*99px[\s\S]*background:\s*var\(--socle-piste\)/);
+  assert.match(briques, /\.sc-barre\[data-hauteur='4'\] \{ height: 4px; \}/);
+  assert.match(briques, /\.sc-barre\[data-hauteur='8'\] \{ height: 8px; \}/);
+  assert.match(regle(briques, '.sc-barre > span'), /background:\s*linear-gradient\(90deg, var\(--socle-fam-outils\), var\(--socle-texte-1\)\)/);
+  assert.equal(j.get('--socle-piste'), '#252528');
+  assert.equal(j.get('--socle-fam-outils'), '#9a9aa0');
+  for (const t of ['succes', 'attention', 'critique']) assert.match(briques, new RegExp(`\\.sc-barre\\[data-ton='${t}'\\] > span \\{ background: var\\(--socle-etat-${t}\\); \\}`));
+  assert.match(regle(briques, '.sc-case'), /width:\s*18px[\s\S]*height:\s*18px[\s\S]*border:\s*1\.5px solid var\(--socle-case-vide\)[\s\S]*border-radius:\s*99px/);
+  assert.match(briques, /\.sc-case\[aria-checked='true'\] \{ border-color: var\(--socle-primaire\); background: var\(--socle-primaire\); \}/);
+  // Corrigé (s1b, LOT-06) : 16 px, coche de 11 px.
+  assert.match(briques, /\.sc-case\[data-taille='16'\] \{ width: 16px; height: 16px; \}/);
+  assert.match(briques, /\.sc-case\[data-taille='16'\] svg \{ width: 11px; height: 11px; \}/);
+  const petite = rendre(h(K.CaseACocher, { coche: true, libelle: 'x', taille: 16 }));
+  assert.match(petite, /data-taille="16"/);
+  assert.match(petite, /<svg[^>]*width="11"/);
+  assert.match(rendre(h(K.CaseACocher, { coche: false, libelle: 'x', taille: 24 })), /data-taille="serie"/);
+  assert.doesNotMatch(rendre(h(K.CaseACocher, { coche: false, libelle: 'x', taille: 18 })), /data-taille/);
+  assert.match(regle(controles, '.sc-interrupteur'), /width:\s*34px[\s\S]*height:\s*20px[\s\S]*background:\s*var\(--socle-toggle-inactif\)/);
+  assert.match(regle(controles, '.sc-interrupteur > span'), /width:\s*14px[\s\S]*height:\s*14px[\s\S]*background:\s*var\(--socle-texte-3\)/);
+  assert.match(controles, /\.sc-interrupteur\[aria-checked='true'\] \{ background: var\(--socle-toggle-actif\); \}/);
+  assert.match(controles, /\.sc-interrupteur\[aria-checked='true'\] > span \{ background: var\(--socle-texte-1\);/);
+});
+
+await dit('§4 Field, Tabs, Segmented (et compact), SearchBox (34 et 38) : cotes', () => {
+  assert.match(controles, /\.sc-champ \{ display: flex; flex-direction: column; gap: 6px; \}/);
+  assert.match(regle(controles, '.sc-champ__etiquette'), /color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*12px/);
+  assert.match(regle(controles, '.sc-champ__aide'), /color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*11\.5px/);
+  const champ = /\.sc-champ__controle,\s*\.sc-selecteur \{[^}]*\}/.exec(controles)?.[0] ?? '';
+  assert.match(champ, /height:\s*40px[\s\S]*border:\s*1px solid var\(--socle-bord-champ\)[\s\S]*border-radius:\s*var\(--socle-rayon-champ\)[\s\S]*font-size:\s*13\.5px/);
+  assert.match(noir, /--socle-rayon-champ:\s*10px/);
+  assert.match(regle(controles, '.sc-onglets'), /gap:\s*26px/);
+  assert.match(regle(controles, '.sc-onglet'), /color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*13px/);
+  assert.match(controles, /\.sc-onglet\[aria-selected='true'\] \{ color: var\(--socle-texte-1\); font-weight: 600; \}/);
+  assert.match(controles, /\.sc-onglet\[aria-selected='true'\]::after \{[^}]*height: 2px; background: var\(--socle-primaire\); \}/);
+  assert.match(regle(controles, '.sc-onglet__compteur'), /background:\s*var\(--socle-onglet-compteur\)/);
+  assert.match(regle(controles, '.sc-segmente'), /padding:\s*3px[\s\S]*border:\s*1px solid var\(--socle-bord-controle\)[\s\S]*border-radius:\s*var\(--socle-rayon-champ\)[\s\S]*background:\s*var\(--socle-segment-fond\)/);
+  assert.match(controles, /\.sc-segment\[aria-checked='true'\] \{ background: var\(--socle-segment-actif\); color: var\(--socle-texte-1\); \}/);
+  assert.match(regle(controles, '.sc-segment'), /font-weight:\s*500/);
+  // Ajouté (s1b, LOT-06) : le segmenté compact, 26 px.
+  assert.match(controles, /\.sc-segmente\[data-taille='compact'\] \{ padding: 2px; border-radius: var\(--socle-rayon-controle\); \}/);
+  assert.match(controles, /\.sc-segmente\[data-taille='compact'\] \.sc-segment \{ padding: 3px 9px; border-radius: 6px; font-size: 12px; line-height: 14px; \}/);
+  const compact = rendre(h(K.Segmente, { libelle: 'Niveau', valeur: 'a', onChange: () => undefined, taille: 'compact', options: [{ cle: 'a', libelle: 'A' }, { cle: 'b', libelle: 'B' }] }));
+  assert.match(compact, /role="radiogroup"[^>]*data-taille="compact"/);
+  assert.doesNotMatch(rendre(h(K.Segmente, { libelle: 'Niveau', valeur: 'a', onChange: () => undefined, options: [{ cle: 'a', libelle: 'A' }] })), /data-taille/);
+  assert.match(regle(controles, '.sc-boite-recherche'), /height:\s*34px[\s\S]*border:\s*1px solid var\(--socle-bord-controle\)[\s\S]*border-radius:\s*var\(--socle-rayon-champ\)[\s\S]*background:\s*var\(--socle-champ\)/);
+  assert.match(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x' })), /<svg[^>]*width="14"/, 'loupe de 14 px');
+  // Ajouté (s1b, D02) : la variante de 38 px.
+  assert.match(controles, /\.sc-boite-recherche\[data-hauteur='38'\] \{ height: 38px; padding: 0 12px; \}/);
+  assert.match(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x', hauteur: 38 })), /data-hauteur="38"/);
+  assert.doesNotMatch(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x', hauteur: 38, grande: true })), /data-hauteur/, 'grande l’emporte');
+  assert.doesNotMatch(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x' })), /data-hauteur/);
+});
+
+await dit('§4 Empty (EtatVide) : pointillé #2e2e33, rayon 14, icône 44 px, titre 14 / 600, texte 12,5 T4 de 300 px au plus, toujours une action (corrigé s1b)', () => {
+  assert.match(regle(briques, '.sc-vide'), /border:\s*1px dashed var\(--socle-pointille\)[\s\S]*border-radius:\s*var\(--socle-rayon-carte\)/);
+  assert.equal(j.get('--socle-pointille'), '#2e2e33');
+  assert.match(regle(briques, '.sc-vide__icone'), /width:\s*44px[\s\S]*height:\s*44px[\s\S]*border-radius:\s*12px/);
+  assert.match(regle(briques, '.sc-vide__titre'), /color:\s*var\(--socle-texte-1\)[\s\S]*font-size:\s*14px[\s\S]*font-weight:\s*600/);
+  assert.match(regle(briques, '.sc-vide__texte'), /max-width:\s*300px[\s\S]*color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*12\.5px/);
+  assert.doesNotMatch(sansCommentaires(lire('src/socle/ui/situations/situations.css')), /\.sc-vide__(titre|texte) \{/, 'plus de surcharge de l’état vide dans situations.css');
+  const r = rendre(h(K.EtatVide, { titre: 'Rien ici', texte: 'Ajoutez un premier élément.', icone: h('svg', null), action: h('button', { type: 'button' }, 'Ajouter') }));
+  assert.match(r, /<span aria-hidden="true" class="sc-vide__icone"><svg><\/svg><\/span>/);
+  assert.match(r, /<p class="sc-vide__titre">Rien ici<\/p>/);
+  assert.match(r, /<button type="button">Ajouter<\/button>/);
+  assert.doesNotMatch(rendre(h(K.EtatVide, { texte: 'x', action: null })), /sc-vide__icone|sc-vide__titre/);
+  assert.match(sansCommentaires(lire('src/socle/ui/Etats.tsx')), /action: React\.ReactNode;/, 'l’action est demandée (jamais oubliée)');
+});
+
+await dit('§4 Suggestion et cartes ludiques : cotes', () => {
+  assert.match(regle(controles, '.sc-suggestion'), /padding:\s*16px 18px[\s\S]*border:\s*1px solid var\(--socle-bord-suggestion\)[\s\S]*border-radius:\s*var\(--socle-rayon-carte\)[\s\S]*linear-gradient\(180deg, var\(--socle-suggestion-haut\), var\(--socle-suggestion-bas\)\)/);
+  assert.match(regle(controles, '.sc-suggestion__entete'), /font-size:\s*12px[\s\S]*font-weight:\s*600/);
+  assert.match(regle(controles, '.sc-etincelle'), /color:\s*var\(--socle-etat-succes\)/);
+  assert.match(regle(controles, '.sc-suggestion__titre'), /color:\s*var\(--socle-texte-1\)[\s\S]*font-size:\s*13px[\s\S]*font-weight:\s*600/);
+  assert.match(regle(controles, '.sc-suggestion__texte'), /color:\s*var\(--socle-texte-2\)[\s\S]*font-size:\s*12\.5px/);
+  assert.match(rendre(h(K.SuggestionAjmani, { titre: 'T', texte: 'x', primaire: { libelle: 'Oui', onClick: () => undefined } })), /<svg[^>]*width="12" height="12"/, 'étincelle de 12 px');
+  assert.match(controles, /\.sc-ludique__lignes li \{ display: flex; min-height: 33px;/);
+  assert.match(controles, /\.sc-ludique__serie li \{/);
+  assert.match(rendre(h(K.CarteAnneau, { titre: 'T', texte: 'x', valeur: 0.5, centre: '50 %' })), /<svg width="72" height="72"/);
+  assert.equal((rendre(h(K.CarteAnneau, { titre: 'T', texte: 'x', valeur: 0.5, centre: '50 %' })).match(/stroke-width="8"/g) ?? []).length, 2);
+});
+
+await dit('Mono (§0.4) : en ligne, .sc-mono (police monospace du socle, chiffres tabulaires), 11 à 18 px bornés, time avec dateTime (s1b)', () => {
+  assert.equal(K.TAILLE_MONO_MIN, 11);
+  assert.equal(K.TAILLE_MONO_MAX, 18);
+  assert.deepEqual([K.tailleMono(undefined), K.tailleMono(9), K.tailleMono(11), K.tailleMono(12.5), K.tailleMono(18), K.tailleMono(24), K.tailleMono(Number.NaN)], [undefined, 11, 11, 12.5, 18, 18, undefined]);
+  assert.equal(rendre(h(K.Mono, null, '10:42:07')), '<span data-socle="mono" class="sc-mono">10:42:07</span>');
+  assert.match(rendre(h(K.Mono, { taille: 24, className: 'x' }, '3')), /<span data-socle="mono" class="sc-mono x" style="font-size:18px">3<\/span>/);
+  assert.match(rendre(h(K.Mono, { as: 'time', dateTime: '2026-10-30T10:42:07', taille: 11 }, '10:42:07')), /<time data-socle="mono" class="sc-mono" style="font-size:11px" dateTime="2026-10-30T10:42:07">/);
+  assert.match(rendre(h(K.Mono, { as: 'code' }, 'FAC-0142')), /^<code /);
+  assert.doesNotMatch(sansCommentaires(lire('src/socle/ui/Mono.tsx')), /#[0-9a-f]{6}|color:|font-family/i, 'ni couleur ni police écrites ici : .sc-mono de noir.css');
+  const mono = /\.sc-mono \{[^}]*\}/.exec(sansCommentaires(noir))?.[0] ?? '';
+  assert.match(mono, /font-family:\s*var\(--socle-police-mono\)/);
+  assert.match(mono, /font-variant-numeric:\s*tabular-nums/);
+  assert.match(mono, /font-variant-ligatures:\s*none/);
+  assert.match(noir, /--socle-police-mono:\s*ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;/);
 });
 
 await dit('aucun avatar, personnage ni image dans les composants du groupe', () => {

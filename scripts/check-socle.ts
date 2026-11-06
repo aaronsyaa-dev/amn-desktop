@@ -449,16 +449,45 @@ await dit('le bouton plein (#ededed sur #0c0c0d) et le focus tiennent leurs cont
 function couleursDeTexte(css: string): string[] {
   return [...sansCommentaires(css).matchAll(/(?:^|[;{\s])color\s*:\s*([^;}]+)/g)].map((m) => m[1].trim());
 }
+/* Les encres « discret » : jamais une couleur de texte (les feuilles du socle ; les écrans posent `color` sur un point ou un filet décoratif, par leur propre garde). */
 const INTERDITS_EN_TEXTE = /trait-discret|trait-tres-discret|#77777c|#5f5f64|#777777|#5f5f5f/i;
+/* Les gris de décor (B15) et les motifs (hachures, pointillés d'état) : jamais une couleur de texte, nulle part dans l'édition interne. */
+const DECOR_EN_TEXTE = /socle-decor-|socle-hachure-|socle-pointille-(ok|attention)|#121213|#17171a|#3e3e44/i;
 
-await dit('« discret » et « très discret » ne sont jamais la couleur d’un texte (feuilles et classes)', () => {
-  const css = ['src/socle/noir.css', 'src/socle/ui/briques.css', 'src/socle/coquille/coquille.css'];
+await dit('« discret », « très discret », les gris de décor et les hachures ne sont jamais la couleur d’un texte (feuilles et classes)', () => {
+  const socle = fichiersSous('src/socle').filter((f) => f.endsWith('.css'));
+  const css = [...new Set([...socle, 'src/socle/noir.css', 'src/socle/ui/briques.css', 'src/socle/coquille/coquille.css'])];
   for (const f of css) for (const c of couleursDeTexte(lireSrc(f))) assert.ok(!INTERDITS_EN_TEXTE.test(c), `${f} : color: ${c}`);
-  const sources = [...fichiersSous('src/socle'), ...fichiersSous('src/refonte/coquille'), ...fichiersSous('src/refonte/accueil')].filter((f) => /\.tsx?$/.test(f));
+  const toutes = [...socle, ...fichiersSous('src/refonte').filter((f) => f.endsWith('.css'))];
+  for (const f of toutes) for (const c of couleursDeTexte(lireSrc(f))) assert.ok(!DECOR_EN_TEXTE.test(c), `${f} : color: ${c} (gris de décor ou motif)`);
+  const sources = [...fichiersSous('src/socle'), ...fichiersSous('src/refonte')].filter((f) => /\.tsx?$/.test(f));
   for (const f of sources) {
     const src = lireSrc(f).replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.ok(!/text-\[var\(--socle-trait|text-\[#(77777c|5f5f64)\]|color:\s*['"]?(#77777c|#5f5f64|var\(--socle-trait)/i.test(src), `${f} pose une encre « discret » en texte`);
+    assert.ok(!/text-\[var\(--socle-(trait|decor|hachure)|text-\[#(77777c|5f5f64|121213|17171a|3e3e44)\]|color:\s*['"]?(#77777c|#5f5f64|#121213|#17171a|#3e3e44|var\(--socle-(trait|decor|hachure))/i.test(src), `${f} pose une encre « discret » ou un gris de décor en texte`);
   }
+});
+
+await dit('gris de décor (B15), hachures et pointillés d’état, teinte de sélection : présents, valeurs exactes, jamais un doublon (s1b)', () => {
+  assert.equal(brut('--socle-decor-1'), '#121213');
+  assert.equal(brut('--socle-decor-2'), '#17171a');
+  assert.equal(brut('--socle-decor-3'), '#3e3e44');
+  // Commentés « jamais pour un texte ni un état », juste avant les trois jetons.
+  assert.match(noir, /JAMAIS pour un texte ni un état[\s\S]{0,200}--socle-decor-1: #121213;/);
+  // Aucun gris de décor ne sert d'encre : il n'est pas plus clair que le plancher T4 sur aucun fond (sinon on le lirait).
+  for (const n of ['--socle-decor-1', '--socle-decor-2', '--socle-decor-3']) assert.ok(rapport(hexOf(n), hexOf('--socle-fond-page')) < 4.5, `${n} serait lisible en texte`);
+  const sans = sansCommentaires(noir);
+  assert.match(sans, /--socle-hachure-attention:\s*repeating-linear-gradient\(135deg, color-mix\(in srgb, var\(--socle-etat-attention\) 45%, transparent\) 0 2px, transparent 2px 8px\);/);
+  assert.match(sans, /--socle-hachure-grise:\s*repeating-linear-gradient\(135deg, color-mix\(in srgb, var\(--socle-texte-3\) 35%, transparent\) 0 2px, transparent 2px 8px\);/);
+  assert.match(sans, /--socle-pointille-ok:\s*1px dashed var\(--socle-etat-succes\);/);
+  assert.match(sans, /--socle-pointille-attention:\s*1px dashed var\(--socle-etat-attention\);/);
+  assert.match(sans, /--socle-pointille:\s*#2e2e33;/, 'le pointillé gris des zones vides reste');
+  // Les hachures sont faites des couleurs d'état ou de T4 : aucune couleur écrite en dur dans un motif.
+  for (const [, nom, valeur] of sans.matchAll(/(--socle-(?:hachure|pointille)-[\w-]+):\s*([^;]+);/g)) assert.ok(!/#[0-9a-f]{3,8}|rgba?\(/i.test(valeur), `${nom} écrit une couleur en dur`);
+  // La teinte de sélection #D9A27A des fiches = --socle-fam-creer, documentée là, sans jeton en double.
+  assert.match(noir, /teinte de SÉLECTION[^\n]*#D9A27A[^\n]*--socle-fam-creer[^\n]*\n\s*--socle-fam-creer: #d9a27a;/);
+  const d9 = [...sans.matchAll(/(--[\w-]+):\s*#d9a27a;/gi)].map((m) => m[1]);
+  assert.deepEqual(d9.sort(), ['--color-fam-creer', '--color-fam-creer-texte', '--socle-fam-creer']);
+  assert.ok(!/--socle-selection/.test(sans), 'pas de jeton de sélection en double');
 });
 
 function fichiersSous(dir: string): string[] {

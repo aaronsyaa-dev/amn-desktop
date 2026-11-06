@@ -496,12 +496,12 @@ await dit('semaine : 46 px par heure, blocs teintés 14 % avec filet de 3 px, au
   for (const m of css.matchAll(/\.sc-semaine__[\w-]+\s*\{[^}]*font-size:\s*([\d.]+)px/g)) assert.ok(Number(m[1]) >= 10.5, `texte de ${m[1]} px sous le plancher de 10,5`);
 });
 
-await dit('ligne de temps : heure 42 px (12 px T4), pastille de 26 px, filet vertical #2a2a2d, titre 13,5 px / 500, détail 12 px T4', () => {
+await dit('ligne de temps : heure 42 px (12 px T4), pastille de 26 px, filet vertical #222224 (§4), titre 13,5 px / 500, détail 12 px T4', () => {
   const l = bloc('.sc-ligne-temps');
   assert.match(l, /--sc-heure-largeur:\s*42px/);
   assert.match(l, /--sc-pastille:\s*26px/);
   assert.match(css, /\.sc-ligne-temps:not\(\[data-dernier='true'\]\)::before \{[^}]*background:\s*var\(--socle-filet-vertical\)/);
-  assert.equal(noir.get('--socle-filet-vertical'), '#2a2a2d');
+  assert.equal(noir.get('--socle-filet-vertical'), '#222224', 'le filet vertical du §4 TimelineItem (mesuré à #2a2a2d avant le chantier s1b)');
   assert.match(bloc('.sc-ligne-temps__heure'), /font-size:\s*12px/);
   assert.match(bloc('.sc-ligne-temps__heure'), /color:\s*var\(--socle-texte-3\)/);
   assert.match(bloc('.sc-ligne-temps__titre'), /font-size:\s*13\.5px[^}]*font-weight:\s*500/);

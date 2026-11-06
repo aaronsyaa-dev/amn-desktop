@@ -23,7 +23,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { assert, chargerRendu, creerEssais, jetons, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
+import { assert, charger, chargerRendu, creerEssais, jetons, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
 
 const { dit, fin } = creerEssais('Graphiques du socle — courbe, barres, donut, anneau, formats français\n');
 
@@ -62,7 +62,7 @@ interface Modules {
 
 const M = (await chargerRendu<Modules & Record<string, unknown>>(
   [
-    "import { Courbe, MiniCourbe, Barres, Donut, Anneau, formaterNombre, formaterPourcent, formaterEuro } from '../src/socle/ui/graphiques';",
+    "import { Courbe, MiniCourbe, Barres, Donut, Anneau, formaterNombre, formaterPourcent, formaterEuro, tailleAnneau, epaisseurAnneau, coteAnneau, TAILLE_ANNEAU_MIN, TAILLE_ANNEAU_MAX } from '../src/socle/ui/graphiques';",
     "import { calculerEchelle, positionner, repartirPourcents, arcsDonut, pasEtiquettes, indicesEtiquetes, resumer, cheminLigne, TAILLE_AXE } from '../src/socle/ui/graphiques/calculs';",
     "import { couleurTon } from '../src/socle/ui/graphiques/tons';",
     "import { AnneauProgression } from '../src/socle/ui/Indicateurs';",
@@ -73,6 +73,7 @@ const M = (await chargerRendu<Modules & Record<string, unknown>>(
     'Courbe', 'MiniCourbe', 'Barres', 'Donut', 'Anneau', 'AnneauProgression', 'formaterNombre', 'formaterPourcent', 'formaterEuro',
     'calculerEchelle', 'positionner', 'repartirPourcents', 'arcsDonut', 'pasEtiquettes', 'indicesEtiquetes', 'resumer', 'cheminLigne',
     'TAILLE_AXE', 'couleurTon', 'formatCentsCompact', 'traduireSocle', 'DICTIONNAIRES_SOCLE',
+    'tailleAnneau', 'epaisseurAnneau', 'coteAnneau', 'TAILLE_ANNEAU_MIN', 'TAILLE_ANNEAU_MAX',
   ],
 )) as unknown as Modules & { h: (t: unknown, p?: Record<string, unknown> | null, ...c: unknown[]) => unknown; rendre: (e: unknown) => string };
 
@@ -588,6 +589,35 @@ await dit('Anneau : un ton d’état colore le trait ; centre libre possible', (
   assert.match(centre, /sc-anneau__centre">3\/7</);
 });
 
+await dit('Anneau : de 26 à 58 px (LOT-06), épaisseur proportionnée (3 à 6), valeur centrée 13 px puis 11 px, muette sous 40 ; borné à [26, 80] (s1b)', () => {
+  const G = M as unknown as { tailleAnneau: (t?: number) => number; epaisseurAnneau: (t: number) => number; coteAnneau: (t: number) => string; TAILLE_ANNEAU_MIN: number; TAILLE_ANNEAU_MAX: number };
+  assert.equal(G.TAILLE_ANNEAU_MIN, 26);
+  assert.equal(G.TAILLE_ANNEAU_MAX, 80);
+  assert.deepEqual([G.tailleAnneau(10), G.tailleAnneau(26), G.tailleAnneau(58), G.tailleAnneau(100), G.tailleAnneau(Number.NaN), G.tailleAnneau(undefined)], [26, 26, 58, 80, 72, 72]);
+  assert.deepEqual([26, 34, 40, 48, 58, 64, 72, 76, 80].map(G.epaisseurAnneau), [3, 4, 4, 5, 6, 7, 8, 8, 8]);
+  assert.deepEqual([26, 39, 40, 47, 48, 71, 72, 80].map(G.coteAnneau), ['muet', 'muet', 'petit', 'petit', 'moyen', 'moyen', 'grand', 'grand']);
+  const petit = rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 26 });
+  assert.match(petit, /<svg width="26" height="26" viewBox="0 0 26 26"/);
+  assert.equal(compter(petit, /stroke-width="3"/g), 2);
+  assert.match(petit, /data-cote="muet"/);
+  assert.doesNotMatch(petit, /sc-anneau__centre/, 'rien d’écrit au centre sous 40 px');
+  assert.match(petit, new RegExp(`aria-valuetext="50${NBSP}%"`), 'la valeur reste dite en mots');
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 26, children: '3' }), /sc-anneau__centre">3</, 'children force un centre');
+  const moyen = rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 58 });
+  assert.match(moyen, /width="58"/);
+  assert.equal(compter(moyen, /stroke-width="6"/g), 2);
+  assert.match(moyen, /data-cote="moyen"/);
+  assert.match(moyen, new RegExp(`sc-anneau__centre">50${NBSP}%<`));
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 44 }), /data-cote="petit"/);
+  assert.doesNotMatch(rend(M.Anneau, { valeur: 0.5, libelle: 'x' }), /data-cote/, '72 px : rien de plus qu’avant');
+  assert.match(rend(M.Anneau, { valeur: 0.5, libelle: 'x', taille: 200 }), /width="80" height="80"/);
+  const feuille = sansCommentaires(lire(`${REP}/graphiques.css`));
+  assert.match(feuille, /--sc-g-anneau-valeur-moyen:\s*13px/);
+  assert.match(feuille, /--sc-g-anneau-valeur-petit:\s*11px/);
+  assert.match(feuille, /\.sc-g-anneau\[data-cote='moyen'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-moyen\); \}/);
+  assert.match(feuille, /\.sc-g-anneau\[data-cote='petit'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-petit\); \}/);
+});
+
 await dit('AnneauProgression : défaut inchangé — 44 px, épaisseur 4, aucun style en ligne sur le trait ni sur la piste', () => {
   const html = rend(M.AnneauProgression, { valeur: 0.5, libelle: 'Avancement', children: '1/2' });
   assert.match(html, /<svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">/);
@@ -703,6 +733,30 @@ await dit('les graphiques n’importent que le socle, src/lib, src/i18n et les b
   for (const f of dehors) assert.ok(permis.has(f), `${f} importe les graphiques du socle`);
   const pkg = JSON.parse(lire('package.json')) as { dependencies?: Record<string, string> };
   assert.ok(!Object.keys(pkg.dependencies ?? {}).some((d) => /chart|d3|recharts|victory|nivo|visx/i.test(d)), 'aucune bibliothèque de graphiques');
+});
+
+await dit('src/socle/formats.ts (LOT-06, point 6) : les formats importables depuis tout code interne, identiques à leurs sources, sans copie', async () => {
+  type Formats = Record<string, (...a: never[]) => string> & { ESPACE_INSECABLE: string; ESPACE_FINE: string; TIRET_ABSENT: string };
+  const F = await charger<Formats>('src/socle/formats.ts');
+  for (const nom of ['formaterNombre', 'formaterPourcent', 'formaterEuro', 'formaterRatio', 'formaterMontant', 'formaterDate', 'formaterHeure', 'dateIso']) assert.equal(typeof F[nom], 'function', `${nom} exporté`);
+  assert.equal(F.ESPACE_INSECABLE, NBSP);
+  assert.equal(F.ESPACE_FINE, FINE);
+  assert.equal(F.TIRET_ABSENT, '—');
+  for (const v of [0, 3.8, 999, 1234567.5, -1234.5, Number.NaN]) {
+    assert.equal((F.formaterNombre as (n: number) => string)(v), M.formaterNombre(v), `formaterNombre(${v})`);
+    assert.equal((F.formaterPourcent as (n: number) => string)(v), M.formaterPourcent(v), `formaterPourcent(${v})`);
+    assert.equal((F.formaterEuro as (n: number) => string)(v), M.formaterEuro(v), `formaterEuro(${v})`);
+  }
+  assert.equal((F.formaterRatio as (n: number) => string)(0.78), `78${NBSP}%`);
+  assert.equal(sansBlancs((F.formaterMontant as (n: number) => string)(1250)), sansBlancs(`1 250 €`));
+  assert.equal((F.formaterHeure as (d: Date) => string)(new Date(2031, 2, 12, 10, 42)), '10:42');
+  assert.match((F.formaterDate as (d: Date) => string)(new Date(2031, 2, 12)), /^12 mars$/);
+  // Le module ne recopie rien : il réexporte ses deux sources, et rien d'autre.
+  const src = sansCommentaires(lire('src/socle/formats.ts'));
+  assert.deepEqual([...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./ui/archetypes/logique/formats', './ui/graphiques/format']);
+  assert.ok(!/function |=>/.test(src), 'aucune fonction écrite ici');
+  // Et un fichier interne qui l'importe ne tombe pas sous l'interdiction des graphiques (le chemin ne nomme pas « graphiques »).
+  assert.ok(!/socle\/(ui\/)?graphiques/.test("import { formaterEuro } from '../../socle/formats';"));
 });
 
 await dit('mots : fr et en portent les mêmes clés et les mêmes {paramètres}, sans point d’exclamation', () => {

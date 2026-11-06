@@ -76,6 +76,8 @@ export interface BoiteRechercheProps {
   placeholder?: string;
   /** 42 px, rayon 12 (panneau « Tous les modules ») au lieu de 34 px, rayon 10. */
   grande?: boolean;
+  /** 34 px (défaut) ou 38 px (le champ de l'en-tête de page de D02, 270 × 38) : même rayon, mêmes couleurs. Sans effet avec `grande`. */
+  hauteur?: 34 | 38;
   raccourci?: string;
   autoFocus?: boolean;
   className?: string;
@@ -84,10 +86,10 @@ export interface BoiteRechercheProps {
 }
 
 /** Le champ de recherche : loupe, texte, bouton d'effacement quand il y a un texte, raccourci éventuel. */
-export function BoiteRecherche({ valeur, onChange, libelle, placeholder, grande = false, raccourci, autoFocus, className = '', inputRef, onKeyDown }: BoiteRechercheProps) {
+export function BoiteRecherche({ valeur, onChange, libelle, placeholder, grande = false, hauteur = 34, raccourci, autoFocus, className = '', inputRef, onKeyDown }: BoiteRechercheProps) {
   const { ts } = useSocleLangue();
   return (
-    <div role="search" data-grande={grande || undefined} className={`sc-boite-recherche ${className}`.trim()}>
+    <div role="search" data-grande={grande || undefined} data-hauteur={!grande && hauteur === 38 ? '38' : undefined} className={`sc-boite-recherche ${className}`.trim()}>
       <Search aria-hidden size={grande ? 15 : 14} />
       <input
         ref={inputRef}

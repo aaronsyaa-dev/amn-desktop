@@ -85,6 +85,7 @@ import {
   LiveDot,
   MiniCourbe,
   Modale,
+  Mono,
   Onglets,
   Page,
   PanneauOnglet,
@@ -196,6 +197,7 @@ export const SECTIONS = [
   'mouvement',
   'vivant',
   'briques',
+  'alignement',
 ] as const;
 export type IdSection = (typeof SECTIONS)[number];
 
@@ -256,7 +258,7 @@ function ChoixEtat<T extends string>({ libelle, options, valeur, onChange }: { l
 /* ─────────────────────────────  1. Les jetons  ───────────────────────────── */
 
 type GenreEchantillon = 'fond' | 'bord' | 'encre' | 'decor' | 'famille' | 'etat' | 'avatar';
-type CleRole = 'role.t1' | 'role.t2' | 'role.t3' | 'role.t4' | 'role.decor1' | 'role.decor2';
+type CleRole = 'role.t1' | 'role.t2' | 'role.t3' | 'role.t4' | 'role.decor1' | 'role.decor2' | 'role.decor3';
 
 interface Jeton {
   jeton: string;
@@ -318,6 +320,10 @@ const GROUPES_JETONS: { cle: 'fonds' | 'bordures' | 'encres' | 'decor' | 'famill
     jetons: [
       { jeton: '--socle-trait-discret', role: 'role.decor1' },
       { jeton: '--socle-trait-tres-discret', role: 'role.decor2' },
+      // Les gris de décor (B15, s1b) : illustrations seulement, jamais un texte ni un état (check:socle).
+      { jeton: '--socle-decor-1', role: 'role.decor3' },
+      { jeton: '--socle-decor-2', role: 'role.decor3' },
+      { jeton: '--socle-decor-3', role: 'role.decor3' },
     ],
   },
   { cle: 'familles', genre: 'famille', jetons: FAMILLES.map((f) => ({ jeton: `--socle-fam-${f}` })) },
@@ -1766,9 +1772,9 @@ function SectionVivant() {
         </div>
         <div className="sd-rangee">
           <Cas legende={tm('vivant.mono')}>
-            <p className="sd-journal sc-mono">
+            <Mono as="p" className="sd-journal" taille={12}>
               <span>10:42:07</span> <Severity niveau="info" /> <span>{tm('vivant.mono.journal')}</span>
-            </p>
+            </Mono>
           </Cas>
         </div>
       </Bloc>
@@ -1926,6 +1932,123 @@ function SectionVivant() {
             </Cas>
           </div>
         </Bloc>
+      </Bloc>
+    </Section>
+  );
+}
+
+/* ─────────────────────────────  17. Alignement § 4 (chantier s1b)  ───────────────────────────── */
+
+const TAILLES_ANNEAU = [26, 34, 40, 48, 58, 72] as const;
+const TAILLES_CASE = [16, 18, 24] as const;
+const TAILLES_MONO = [11, 12.5, 14, 18] as const;
+/** Les motifs : hachures (en fond) et pointillés d'état (en bordure), posés par leur jeton. */
+const MOTIFS = [
+  { cle: 'hachureAttention', jeton: '--socle-hachure-attention', genre: 'fond' },
+  { cle: 'hachureGrise', jeton: '--socle-hachure-grise', genre: 'fond' },
+  { cle: 'pointilleOk', jeton: '--socle-pointille-ok', genre: 'bord' },
+  { cle: 'pointilleAttention', jeton: '--socle-pointille-attention', genre: 'bord' },
+] as const;
+
+function SectionAlignement() {
+  const { tm } = useMotsDemo();
+  const [niveau, setNiveau] = useState('a');
+  const [niveauCompact, setNiveauCompact] = useState('a');
+  const [recherche, setRecherche] = useState('');
+  const [cases, setCases] = useState<Record<number, boolean>>({ 16: true, 18: false, 24: true });
+  const niveaux = [
+    { cle: 'a', libelle: tm('alignement.niveau.a') },
+    { cle: 'b', libelle: tm('alignement.niveau.b') },
+    { cle: 'c', libelle: tm('alignement.niveau.c') },
+  ];
+  return (
+    <Section id="alignement">
+      <Bloc titre={tm('alignement.anneau')}>
+        <div className="sd-rangee">
+          {TAILLES_ANNEAU.map((t, i) => (
+            <Cas key={t} legende={tm('alignement.px', { n: t })}>
+              <Anneau valeur={(i + 2) / 8} libelle={tm('alignement.anneau.libelle')} taille={t} ton={i % 2 ? 'succes' : 'neutre'} />
+            </Cas>
+          ))}
+          <Cas legende={tm('alignement.anneau.centre')}>
+            <Anneau valeur={0.5} libelle={tm('alignement.anneau.libelle')} taille={34} ton="info">
+              3
+            </Anneau>
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('alignement.case')}>
+        <div className="sd-rangee">
+          {TAILLES_CASE.map((t) => (
+            <Cas key={t} legende={tm('alignement.px', { n: t })}>
+              <CaseACocher coche={cases[t]} taille={t} libelle={tm('alignement.case.libelle', { n: t })} onChange={(v) => setCases((c) => ({ ...c, [t]: v }))} />
+            </Cas>
+          ))}
+        </div>
+      </Bloc>
+      <Bloc titre={tm('alignement.segmente')}>
+        <div className="sd-rangee">
+          <Cas legende={tm('alignement.segmente.normal')}>
+            <Segmente libelle={tm('alignement.segmente.libelle')} options={niveaux} valeur={niveau} onChange={setNiveau} />
+          </Cas>
+          <Cas legende={tm('alignement.segmente.compact')}>
+            <Segmente libelle={tm('alignement.segmente.libelle')} options={niveaux} valeur={niveauCompact} onChange={setNiveauCompact} taille="compact" />
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('alignement.recherche')}>
+        <div className="sd-rangee">
+          <Cas legende={tm('alignement.px', { n: 34 })}>
+            <div className="sd-etroit">
+              <BoiteRecherche valeur={recherche} onChange={setRecherche} libelle={tm('alignement.recherche.libelle')} placeholder={tm('alignement.recherche.libelle')} raccourci="/" />
+            </div>
+          </Cas>
+          <Cas legende={tm('alignement.px', { n: 38 })}>
+            <div className="sd-etroit">
+              <BoiteRecherche valeur={recherche} onChange={setRecherche} libelle={tm('alignement.recherche.libelle')} placeholder={tm('alignement.recherche.libelle')} raccourci="/" hauteur={38} />
+            </div>
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('alignement.mono')}>
+        <div className="sd-rangee">
+          {TAILLES_MONO.map((t) => (
+            <Cas key={t} legende={tm('alignement.px', { n: t })}>
+              <Mono taille={t}>10:42:07</Mono>
+            </Cas>
+          ))}
+          <Cas legende={tm('alignement.mono.time')}>
+            <Mono as="time" dateTime="10:42:07" taille={12.5}>
+              10:42:07
+            </Mono>
+          </Cas>
+          <Cas legende={tm('alignement.mono.code')}>
+            <Mono as="code" taille={12}>
+              FAC-0142
+            </Mono>
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('alignement.motifs')}>
+        <div className="sd-rangee">
+          {MOTIFS.map((m) => (
+            <Cas key={m.cle} legende={tm(`alignement.motif.${m.cle}`)}>
+              <span
+                role="img"
+                aria-label={tm(`alignement.motif.${m.cle}`)}
+                className="sd-motif"
+                data-genre={m.genre}
+                style={{ '--sd-motif': `var(${m.jeton})` } as React.CSSProperties}
+              />
+            </Cas>
+          ))}
+        </div>
+        <p className="sd-note">{tm('alignement.motifs.note')}</p>
+      </Bloc>
+      <Bloc titre={tm('alignement.vide')}>
+        <div className="sd-etroit">
+          <EtatVide icone={<FolderOpen />} titre={tm('alignement.vide.titre')} texte={tm('alignement.vide.texte')} action={<Bouton variante="secondaire" icone={<Plus />} onClick={SANS_ACTION}>{tm('alignement.vide.action')}</Bouton>} />
+        </div>
       </Bloc>
     </Section>
   );
@@ -2159,6 +2282,7 @@ export function PageDemoSocle() {
         <SectionMouvement />
         <SectionVivant />
         <SectionBriques />
+        <SectionAlignement />
       </div>
     </div>
   );
