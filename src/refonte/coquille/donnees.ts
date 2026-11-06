@@ -1,11 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useLangue, libelleNav } from '../../i18n';
-import { useCollection } from '../../state/SyncContext';
-import { useInvoices, isOverdue, isoDay } from '../../state/useInvoices';
-import { useAppointments, appointmentEnd } from '../../state/useAppointments';
 import { useAttention } from '../../state/useAttention';
-import { useActivity } from '../../state/ActivityContext';
 import { useRegards } from '../../state/RegardsContext';
 import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { useNavAlleges } from '../../state/useNavAlleges';
@@ -14,7 +10,6 @@ import { toutesLesSections } from '../../data/spaces';
 import type { NavItem } from '../../data/navigation';
 import { cheminLePlusPrecis } from '../../lib/cheminCourant';
 import type { AttentionItem } from '../../lib/attention';
-import { useCyber } from '../../bureaux/donnees/cyber';
 import { traduireSocle } from '../../socle/i18n';
 import type { FamilleLaterale, ModuleLateral, MiettePain, PersonneEnLigne } from '../../socle/coquille';
 import { REGISTRE_MODULES, vueDuRegistre } from '../modules/registre';
@@ -24,6 +19,7 @@ import { routeEnsemble } from '../systeme/ensemble';
 import { choisirEpingles, choisirLesVisibles, placesDeModules } from './visibles';
 import { libelleDuLieu } from './lieu';
 import { libellePageSysteme, motsPagesSysteme, pageSysteme } from './pagesSysteme';
+import { useCompteursDeclares } from './compteurs';
 import type { PageCoquille } from './page';
 
 /**
@@ -36,15 +32,16 @@ import type { PageCoquille } from './page';
  * `toutesLesSections()` le sait déjà). La famille où l'on est montre au plus
  * cinq lignes (§0.1) — « Vue d'ensemble » comprise —, l'entrée courante toujours.
  *
- * Les compteurs sont les mêmes que ceux de l'Accueil : activité non vue, ce
- * qui reste de la journée (agenda, priorités), les tâches qu'on m'a confiées,
- * les factures en retard. Un compteur à zéro ne s'affiche pas.
+ * Les compteurs (« ce qui attend », par adresse) sont DÉCLARÉS par les lots
+ * (`src/refonte/compteurs/<famille>.ts`, ramassés par `compteurs.ts`) : ceux
+ * de Ma journée (activité non vue, agenda, tâches, relances, priorités) en sont
+ * la première déclaration. Un compteur à zéro ne s'affiche pas.
  *
  * Les ÉPINGLÉS sont les favoris de la personne (`useNavFavorites`, sur ce poste :
  * ceux qu'elle épingle depuis Tous les modules), rangés à leur entrée du
  * registre, sans le module ouvert. CYBER (toujours là) mène aux écrans du bureau
- * Cyber (`/cyber`) ; son compteur est celui de la console Cyber : les alertes
- * ouvertes du SOC (`useCyber().alertes`), rien quand la source n'a pas répondu.
+ * Cyber (`/cyber`) ; son compteur est déclaré par `compteurs/cyber.ts` (les
+ * alertes ouvertes du SOC), absent tant que la source n'a pas répondu.
  *
  * Le fil d'Ariane et la famille dépliée d'une page hors registre viennent de ce
  * qu'elle dit d'elle (`page.ts`, `pagesSysteme.ts`) ; ceux d'une page du
@@ -77,32 +74,19 @@ export interface DonneesCoquille {
 /** Où mène Cyber : l'accueil du bureau Cyber (ses écrans vivent dans la coquille de son bureau). */
 export const ROUTE_CYBER = '/cyber';
 
-interface LigneTache {
-  status?: string;
-  assigneeEmail?: string;
-}
-interface JourPriorites {
-  email: string;
-  day: string;
-  items?: { doneAt: string | null }[];
-}
-
 export function useDonneesCoquille(pathname: string, pageDeclaree: PageCoquille | null): DonneesCoquille {
   const { langue } = useLangue();
   const { user } = useAuth();
   const moi = (user?.email ?? '').toLowerCase();
   const alleges = useNavAlleges();
   const { favorites } = useNavFavorites();
-  const { invoices } = useInvoices();
-  const { appointments } = useAppointments();
-  const taches = useCollection<LigneTache>('tasks');
-  const priorites = useCollection<JourPriorites>('dailyPriorities');
-  const { unseen } = useActivity();
   const { autres, montree } = useRegards();
   const profils = useProfilesOptionnel();
   const { items: attention, checkedAt } = useAttention();
-  const cyberModele = useCyber();
-  const alertesCyber = cyberModele.pret ? cyberModele.alertes.length : null;
+  /* ── Les compteurs, par adresse : ce que les lots déclarent ── */
+  const compteurs = useCompteursDeclares();
+  // Cyber : `null` tant que rien n'est déclaré (la source n'a pas répondu), jamais un zéro inventé.
+  const alertesCyber = Object.hasOwn(compteurs, ROUTE_CYBER) ? compteurs[ROUTE_CYBER] : null;
 
   const nomDe = useCallback(
     (e: string) => {
@@ -119,8 +103,6 @@ export function useDonneesCoquille(pathname: string, pageDeclaree: PageCoquille 
   return useMemo(() => {
     const dire = (l: Libelle) => l[langue];
     const ts = (cle: Parameters<typeof traduireSocle>[1], params?: Record<string, string | number>) => traduireSocle(langue, cle, params);
-    const maintenant = new Date();
-    const aujourdhui = isoDay(maintenant);
 
     /* ── Ce que la page dit d'elle : déclaré par la page, sinon la table des pages système ── */
     const page = pageDeclaree ?? pageSysteme(pathname, motsPagesSysteme(langue));
@@ -128,15 +110,6 @@ export function useDonneesCoquille(pathname: string, pageDeclaree: PageCoquille 
     const famillePage = page && page.famille !== undefined ? page.famille : undefined;
     const sousPage = page?.sousPage ?? null;
     const parPage = famillePage !== undefined;
-
-    /* ── Les compteurs, par adresse ── */
-    const compteurs: Record<string, number> = {
-      ...unseen,
-      '/agenda': appointments.filter((a) => a.status === 'scheduled' && isoDay(new Date(a.startAt)) === aujourdhui && appointmentEnd(a) > maintenant).length,
-      '/tasks': taches.filter((t) => (t.status === 'todo' || t.status === 'doing') && (t.assigneeEmail ?? '').toLowerCase() === moi).length,
-      '/relances': invoices.filter((f) => isOverdue(f, aujourdhui, invoices)).length,
-      '/priorites': priorites.filter((d) => d.day === aujourdhui && d.email.toLowerCase() === moi).flatMap((d) => d.items ?? []).filter((p) => !p.doneAt).length,
-    };
 
     /* ── Les familles, d'après le registre ── */
     const ouverts = new Map(catalogue.map((i) => [i.key, i]));
@@ -250,5 +223,5 @@ export function useDonneesCoquille(pathname: string, pageDeclaree: PageCoquille 
       catalogue,
       compteurs,
     };
-  }, [langue, catalogue, cheminCourant, unseen, appointments, taches, invoices, priorites, moi, autres, montree, nomDe, pathname, attention, checkedAt, pageDeclaree, favorites, alertesCyber]);
+  }, [langue, catalogue, cheminCourant, compteurs, moi, autres, montree, nomDe, pathname, attention, checkedAt, pageDeclaree, favorites, alertesCyber]);
 }

@@ -9,7 +9,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { assert, chargerRendu, creerEssais, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
+import * as esbuild from 'esbuild';
+import { assert, charger, chargerRendu, creerEssais, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
 
 const { dit, fin } = creerEssais('Coquille v3 (LOT-00)');
 
@@ -457,6 +458,152 @@ await dit('FournisseurAujourdhui : monté une fois dans la coque interne (AppLay
   assert.match(cliente, /export function FournisseurAujourdhui\(\{ children \}: \{ children\?: React\.ReactNode \}\): React\.ReactElement \{\s*return <>\{children\}<\/>;/);
   assert.doesNotMatch(cliente, /from '[^']*(socle|refonte)\//, 'la face cliente n’importe rien du socle ni de la refonte');
   assert.match(lire('src/refonte/coquille/aujourdhui/Fournisseur.tsx'), /useCalculAujourdhui\(true\)[^]*<ContexteAujourdhui\.Provider value=\{aujourdhui\}>/);
+});
+
+/* ── Les compteurs de la barre latérale : déclarés par les lots, ramassés seuls (demande de LOT-06, point 5) ── */
+
+/** `import.meta.glob` est un mot de Vite : ici, on le remplace par les imports du dossier, comme Vite le fait. */
+const globVite: esbuild.Plugin = {
+  name: 'import-meta-glob',
+  setup(b) {
+    b.onLoad({ filter: /[\\/]src[\\/].*\.tsx?$/ }, (a) => {
+      const src = fs.readFileSync(a.path, 'utf8');
+      if (!src.includes('import.meta.glob')) return undefined;
+      const tetes: string[] = [];
+      const code = src.replace(/import\.meta\.glob(?:<[^>]*>)?\(\s*'([^']+)'\s*,\s*\{\s*eager:\s*true\s*\}\s*\)/g, (_m, motif: string) => {
+        const dossier = path.resolve(path.dirname(a.path), path.dirname(motif));
+        const fichiers = fs.readdirSync(dossier).filter((f) => f.endsWith(path.extname(motif))).sort();
+        const paires = fichiers.map((f, i) => {
+          tetes.push(`import * as __glob${i} from ${JSON.stringify(path.join(dossier, f))};`);
+          return `${JSON.stringify(`./${path.relative(path.dirname(a.path), path.join(dossier, f)).replace(/\\/g, '/')}`)}: __glob${i}`;
+        });
+        return `({ ${paires.join(', ')} })`;
+      });
+      return { contents: `${tetes.join('\n')}\n${code}`, loader: a.path.endsWith('x') ? 'tsx' : 'ts' };
+    });
+  },
+};
+
+/** Comme `charger`, avec le glob de Vite réécrit et les feuilles de style / polices vidées (les aperçus les importent). */
+async function chargerVite<T>(code: string): Promise<T> {
+  const construit = await esbuild.build({
+    stdin: { contents: code, resolveDir: path.join(racine, 'scripts'), loader: 'tsx' },
+    bundle: true,
+    write: false,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2022',
+    charset: 'utf8',
+    jsx: 'automatic',
+    tsconfig: path.join(racine, 'tsconfig.json'),
+    define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env.DEV': 'false', __AMN_EDITION__: '"internal"', __AMN_VERSION__: '"0.0.0"' },
+    loader: { '.css': 'empty', '.woff': 'empty', '.woff2': 'empty', '.png': 'empty', '.svg': 'empty' },
+    plugins: [globVite],
+    logLevel: 'silent',
+  });
+  return (await import(`data:text/javascript;charset=utf-8;base64,${Buffer.from(construit.outputFiles[0].text, 'utf8').toString('base64')}`)) as T;
+}
+
+const DOSSIER_COMPTEURS = 'src/refonte/compteurs';
+type ModuleCompteurs = {
+  COMPTEURS_DECLARES: { declarations: { chemin: string; famille: string; useCompteurs: () => Record<string, number> }[]; ecartes: { chemin: string; raison: string }[] };
+  ramasserCompteurs: (f: { chemin: string; declaration: unknown }[]) => ModuleCompteurs['COMPTEURS_DECLARES'];
+  fusionnerCompteurs: (parts: Record<string, number>[]) => Record<string, number>;
+  useCompteursDe: (d: { famille: string; useCompteurs: () => Record<string, number> }[]) => Record<string, number>;
+  declarerCompteurs: (d: unknown) => unknown;
+  verifierDeclaration: (v: unknown) => string | null;
+};
+
+await dit('compteurs déclarables : ramassés seuls dans src/refonte/compteurs (glob de Vite, repli vide sous esbuild), dans l’ordre des chemins ; jour.ts porte les compteurs d’avant, cyber.ts celui de Cyber', async () => {
+  const sans = await charger<ModuleCompteurs>('src/refonte/coquille/compteurs.ts');
+  assert.deepEqual(sans.COMPTEURS_DECLARES, { declarations: [], ecartes: [] }, 'sans Vite : rien, et rien ne casse');
+  const avec = await chargerVite<ModuleCompteurs>("export * from '../src/refonte/coquille/compteurs'; export * from '../src/refonte/coquille/declarerCompteurs';");
+  const fichiers = fs.readdirSync(path.join(racine, DOSSIER_COMPTEURS)).filter((f) => f.endsWith('.ts')).sort();
+  assert.deepEqual(avec.COMPTEURS_DECLARES.ecartes, [], 'aucun fichier du dossier n’est écarté');
+  assert.deepEqual(avec.COMPTEURS_DECLARES.declarations.map((d) => d.chemin), fichiers.map((f) => `compteurs/${f}`), 'tous les fichiers, dans l’ordre des chemins');
+  assert.deepEqual(avec.COMPTEURS_DECLARES.declarations.map((d) => d.famille), ['cyber', 'jour']);
+  for (const d of avec.COMPTEURS_DECLARES.declarations) assert.equal(typeof d.useCompteurs, 'function', d.chemin);
+  for (const f of fichiers) {
+    const src = sansCommentaires(lire(`${DOSSIER_COMPTEURS}/${f}`));
+    assert.match(src, /export default declarerCompteurs\(\{ famille: '[a-z]+', useCompteurs \}\);/, `${f} exporte par défaut declarerCompteurs(...)`);
+    assert.match(src, /from '\.\.\/coquille\/declarerCompteurs'/, `${f} importe declarerCompteurs sans passer par compteurs.ts (pas de cycle)`);
+  }
+  // Les chiffres d’avant, mot pour mot : la première déclaration reprend le calcul que la coquille faisait en dur.
+  const jour = sansCommentaires(lire(`${DOSSIER_COMPTEURS}/jour.ts`));
+  for (const re of [
+    /\.\.\.unseen,/,
+    /'\/agenda': appointments\.filter\(\(a\) => a\.status === 'scheduled' && isoDay\(new Date\(a\.startAt\)\) === aujourdhui && appointmentEnd\(a\) > maintenant\)\.length,/,
+    /'\/tasks': taches\.filter\(\(t\) => \(t\.status === 'todo' \|\| t\.status === 'doing'\) && \(t\.assigneeEmail \?\? ''\)\.toLowerCase\(\) === moi\)\.length,/,
+    /'\/relances': invoices\.filter\(\(f\) => isOverdue\(f, aujourdhui, invoices\)\)\.length,/,
+    /'\/priorites': priorites\.filter\(\(d\) => d\.day === aujourdhui && d\.email\.toLowerCase\(\) === moi\)\.flatMap\(\(d\) => d\.items \?\? \[\]\)\.filter\(\(p\) => !p\.doneAt\)\.length,/,
+  ]) assert.match(jour, re, `jour.ts : ${re}`);
+  const cyber = sansCommentaires(lire(`${DOSSIER_COMPTEURS}/cyber.ts`));
+  assert.match(cyber, /const alertes = modele\.pret \? modele\.alertes\.length : null;/, 'Cyber : rien tant que la source n’a pas répondu');
+  assert.match(cyber, /if \(alertes !== null\) compteurs\['\/cyber'\] = alertes;/);
+  const donnees = sansCommentaires(lire('src/refonte/coquille/donnees.ts'));
+  assert.match(donnees, /const compteurs = useCompteursDeclares\(\);/, 'la coquille lit les déclarations');
+  assert.match(donnees, /const alertesCyber = Object\.hasOwn\(compteurs, ROUTE_CYBER\) \? compteurs\[ROUTE_CYBER\] : null;/, 'absent → null (pas de pastille), 0 → 0');
+  for (const re of [/'\/agenda':/, /'\/tasks':/, /'\/relances':/, /'\/priorites':/, /useCyber\(/, /useActivity\(/, /\.\.\.unseen/]) assert.doesNotMatch(donnees, re, `plus de compteur en dur dans donnees.ts (${re})`);
+});
+
+await dit('ramasserCompteurs / fusionnerCompteurs (purs) : une déclaration inconnue ou mal formée est écartée avec sa raison, les autres restent ; l’ordre est celui des chemins ; les adresses s’additionnent', async () => {
+  const m = await charger<ModuleCompteurs>({ code: "export * from '../src/refonte/coquille/compteurs'; export * from '../src/refonte/coquille/declarerCompteurs';" });
+  const ok = (famille: string, compteurs: Record<string, number>) => m.declarerCompteurs({ famille, useCompteurs: () => compteurs });
+  const r = m.ramasserCompteurs([
+    { chemin: 'compteurs/jour.ts', declaration: ok('jour', { '/agenda': 3 }) },
+    { chemin: 'compteurs/creer.ts', declaration: ok('creer', { '/stock': 6 }) },
+    { chemin: 'compteurs/zz-faux.ts', declaration: { famille: 'inconnue', useCompteurs: () => ({}) } },
+    { chemin: 'compteurs/vide.ts', declaration: undefined },
+    { chemin: 'compteurs/sans-hook.ts', declaration: { famille: 'argent' } },
+    { chemin: 'compteurs/texte.ts', declaration: 'bonjour' },
+  ]);
+  assert.deepEqual(r.declarations.map((d) => [d.chemin, d.famille]), [['compteurs/creer.ts', 'creer'], ['compteurs/jour.ts', 'jour']], 'triées par chemin, les fautives en moins');
+  assert.deepEqual(r.ecartes.map((e) => e.chemin), ['compteurs/sans-hook.ts', 'compteurs/texte.ts', 'compteurs/vide.ts', 'compteurs/zz-faux.ts']);
+  for (const e of r.ecartes) assert.ok(e.raison.length > 10, `${e.chemin} : une raison`);
+  assert.equal(m.verifierDeclaration(ok('garde', {})), null);
+  assert.equal(m.verifierDeclaration(ok('cyber', {})), null);
+  assert.match(m.verifierDeclaration({ famille: 'soc', useCompteurs: () => ({}) }) ?? '', /famille inconnue : soc/);
+  assert.deepEqual(m.fusionnerCompteurs([{ '/a': 1, '/b': 2 }, { '/b': 3, '/c': 0 }, { '/d': Number.NaN, '/e': Number.POSITIVE_INFINITY }]), { '/a': 1, '/b': 5, '/c': 0 });
+  assert.deepEqual(m.fusionnerCompteurs([]), {});
+});
+
+await dit('useCompteursDe : chaque hook déclaré est appelé à chaque rendu, dans l’ordre des déclarations (règle des hooks), et la fusion nourrit la barre', async () => {
+  const m = await charger<ModuleCompteurs & { h: (...a: unknown[]) => unknown; rendre: (el: unknown) => string; useState: <T>(v: T) => [T, (v: T) => void] }>({
+    code: "import { createElement as h, useState } from 'react'; import { renderToStaticMarkup } from 'react-dom/server.browser'; export const rendre = (el) => renderToStaticMarkup(el); export { h, useState }; export * from '../src/refonte/coquille/compteurs';",
+  });
+  const appels: string[] = [];
+  const decl = (famille: string, compteurs: Record<string, number>) => ({
+    famille,
+    useCompteurs: () => {
+      appels.push(famille);
+      const [v] = m.useState(compteurs); // un vrai hook, pour que l’ordre compte
+      return v;
+    },
+  });
+  const liste = [decl('jour', { '/agenda': 3, '/tasks': 2 }), decl('creer', { '/stock': 6, '/tasks': 1 }), decl('cyber', { '/cyber': 5 })];
+  const Barre = () => {
+    const c = m.useCompteursDe(liste);
+    return m.h('pre', null, JSON.stringify(c));
+  };
+  const html = m.rendre(m.h(Barre));
+  assert.equal(html, '<pre>{&quot;/agenda&quot;:3,&quot;/tasks&quot;:3,&quot;/stock&quot;:6,&quot;/cyber&quot;:5}</pre>');
+  assert.deepEqual(appels, ['jour', 'creer', 'cyber'], 'dans l’ordre, une fois chacun par rendu');
+  assert.equal(m.rendre(m.h(() => m.h('i', null, JSON.stringify(m.useCompteursDe([]))))), '<i>{}</i>', 'sans déclaration : aucune pastille, rien ne casse');
+});
+
+await dit('l’aperçu ApercuBureau (données fictives) rend toujours la coquille : barre, carte « Aujourd’hui », compteurs de la maquette, Cyber, en-tête, barre Ajmani', async () => {
+  const m = await chargerVite<{ h: (...a: unknown[]) => unknown; rendre: (el: unknown) => string; ApercuBureau: unknown }>(
+    "import { createElement as h } from 'react'; import { renderToStaticMarkup } from 'react-dom/server.browser'; export const rendre = (el) => renderToStaticMarkup(el); export { h }; export { ApercuBureau } from './apercu/coquille';",
+  );
+  const r = m.rendre(m.h(m.ApercuBureau, { famille: 'jour', sousPage: 'accueil', fil: ['Ma journée', 'Démarrage'], ajmani: 'Demandez à Ajmani' }));
+  assert.match(r, /<section aria-labelledby="sc-aujourdhui"[\s\S]*5 sur 8 faites · série 6 j[\s\S]*Rendez-vous Menna[\s\S]*11:00 · dans 18 min/);
+  assert.match(r, /data-section="espace"[\s\S]*data-section="surveillance"[\s\S]*data-section="epingles"/);
+  assert.match(r, /data-cle="cyber">[\s\S]*?<span class="sc-compteur" data-pastille="true" title="5 alertes ouvertes">5</);
+  assert.match(r, /aria-current="page"[^>]*><span class="sc-module__nom">Accueil</);
+  assert.match(r, /Ma journée<\/a><\/li><li aria-current="page"><span>Démarrage<\/span>/);
+  assert.match(r, /Demandez à Ajmani/);
+  const apercu = sansCommentaires(lire('scripts/apercu/coquille.tsx'));
+  assert.doesNotMatch(apercu, /useCompteursDeclares|useDonneesCoquille|useAujourdhui|refonte\/coquille/, 'l’aperçu reste sur ses données fictives, sans les hooks de l’application');
 });
 
 await dit('chiffres tabulaires sur les nombres seulement (C11) : le corps et la coquille en chiffres normaux, les nombres du socle tabulaires', () => {
