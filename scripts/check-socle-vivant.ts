@@ -49,8 +49,9 @@ const C = await chargerRendu<{
   dureeFlux: (d?: number) => number;
   niveauVivant: (n: Niveau, s: boolean) => Niveau;
   entreeMotion: (r: number, n: Niveau) => Record<string, unknown>;
-}>("import { COTES_MOUVEMENT, COURBE_MOUVEMENT, rangMouvement, styleRang, entreeCarte, arriveeLigne, decalageBarres, dureeFlux, niveauVivant, entreeMotion } from '../src/socle/couche-mouvement';", [
-  'COTES_MOUVEMENT', 'COURBE_MOUVEMENT', 'rangMouvement', 'styleRang', 'entreeCarte', 'arriveeLigne', 'decalageBarres', 'dureeFlux', 'niveauVivant', 'entreeMotion',
+  CLASSES_MOUVEMENT: Record<string, string>;
+}>("import { COTES_MOUVEMENT, COURBE_MOUVEMENT, rangMouvement, styleRang, entreeCarte, arriveeLigne, decalageBarres, dureeFlux, niveauVivant, entreeMotion, CLASSES_MOUVEMENT } from '../src/socle/couche-mouvement';", [
+  'COTES_MOUVEMENT', 'COURBE_MOUVEMENT', 'rangMouvement', 'styleRang', 'entreeCarte', 'arriveeLigne', 'decalageBarres', 'dureeFlux', 'niveauVivant', 'entreeMotion', 'CLASSES_MOUVEMENT',
 ]);
 
 await dit('mouvement.css : les cotes du §0.2, valeur pour valeur', () => {
@@ -494,6 +495,10 @@ await dit('les noms des fiches (LOT-06) : .amn-grow = entree, .amn-slide = arriv
   assert.match(AUCUN, /\[data-mouvement='aucun'\] :is\(\.amn-grow, \.amn-slide, \.amn-bar\)/);
   assert.match(SYSTEME, /:root\[data-ambiance='noir'\] :is\(\.amn-grow, \.amn-slide, \.amn-bar\),/);
   assert.match(SYSTEME, /:root\[data-ambiance='noir'\]\[data-mouvement\] :is\(\.amn-grow, \.amn-slide, \.amn-bar\),/);
+  // couche-mouvement.ts porte les trois classes et l'attribut de chacune : la feuille partage bien chaque règle, et son en-tête ne dit plus « pas une classe ».
+  assert.deepEqual(C.CLASSES_MOUVEMENT, { 'amn-grow': 'entree', 'amn-slide': 'arrivee', 'amn-bar': 'pousse' });
+  for (const [classe, attribut] of Object.entries(C.CLASSES_MOUVEMENT)) assert.match(base, new RegExp(`:is\\(\\[data-mvt='${attribut}'\\], \\.${classe}\\)`), `${classe} partage la règle de ${attribut}`);
+  assert.doesNotMatch(lire('src/socle/mouvement.css'), /pas une classe/, 'l’en-tête de la feuille nie les classes des fiches');
   // Documentés en tête de la feuille et dans docs/refonte-socle.md.
   assert.match(lire('src/socle/mouvement.css'), /\.amn-grow\s+= data-mvt="entree"[\s\S]*\.amn-slide\s+= data-mvt="arrivee"[\s\S]*\.amn-bar\s+= data-mvt="pousse"[\s\S]*amnFlow\s+= les keyframes de data-mvt="flux"[\s\S]*amnHalo\s+= les keyframes de data-mvt="onde"/);
   assert.match(lire('docs/refonte-socle.md'), /amn-grow[^\n]*entree[\s\S]*amn-slide[^\n]*arrivee[\s\S]*amn-bar[^\n]*pousse[\s\S]*amnFlow[^\n]*flux[\s\S]*amnHalo[^\n]*onde/);

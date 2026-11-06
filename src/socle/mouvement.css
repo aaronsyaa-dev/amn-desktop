@@ -9,11 +9,12 @@
 
   ## Comment s'en servir
 
-  Un attribut, pas une classe : `data-mvt="<nom>"` sur l'élément qui bouge, `data-mvt-survol="<nom>"`
-  sur celui qui réagit au survol. Les briques du socle le posent elles-mêmes (BarreProgression,
+  Un attribut : `data-mvt="<nom>"` sur l'élément qui bouge, `data-mvt-survol="<nom>"` sur celui qui
+  réagit au survol (ou, pour trois mouvements, l'une des classes des fiches, plus bas : `.amn-grow`,
+  `.amn-slide`, `.amn-bar`). Les briques du socle le posent elles-mêmes (BarreProgression,
   AnneauProgression, Anneau, Courbe, MiniCourbe, Barres, Donut, et les composants « vivant ») ; un
   écran le pose sur ses propres éléments, ou passe par `src/socle/couche-mouvement.ts`
-  (`entreeCarte(rang)`, `rangMouvement`, `decalageBarres`…).
+  (`entreeCarte(rang)`, `rangMouvement`, `decalageBarres`, `CLASSES_MOUVEMENT`…).
 
     entree       une carte apparaît et monte de 6 px : 500 ms, décalage --sc-mvt-rang × 45 ms (14 cartes au plus)
     cascade      sur un conteneur : chacun de ses enfants entre comme une carte, dans l'ordre (rang posé ici)

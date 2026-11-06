@@ -295,7 +295,7 @@ Les fiches des lots nomment les mouvements à l'anglaise ; `src/socle/mouvement.
 | `amnFlow` | keyframes de `data-mvt="flux"` | un pointillé qui s'écoule (`stroke-dashoffset` recule de `--sc-mvt-flux-pas`), en boucle |
 | `amnHalo` | keyframes de `data-mvt="onde"` | une onde qui s'élargit (opacité .55 → 0, échelle 1 → 2,6), en boucle |
 
-Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement).
+Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement). Côté code, `CLASSES_MOUVEMENT` (`src/socle/couche-mouvement.ts`, avec le type `ClasseMouvement`) porte les trois classes et l'attribut de chacune ; `check:socle-vivant` le compare à la feuille.
 
 ### `Mono` et `src/socle/formats.ts` (chantier s1b)
 
