@@ -3,7 +3,7 @@
 > Tenu par le CO. Une session ne modifie que **la section de son lot** dans « 7. Écrans » (une ligne par écran) ; tout le reste est au CO. Règles : [`REGLES.md`](REGLES.md).
 
 - Branche d'intégration : **`claude/refonte-vivante`** (décision du 31 oct., §1.1). Base `main` @ `630ef45`.
-- Dernière mise à jour : 2026-11-01, soir. **Le design passe en v3** (141 écrans redessinés, validés par le dirigeant dans leur ensemble) : voir §1.10.
+- Dernière mise à jour : 2026-11-06. Design v3 validé (§1.10). G09 Écran de veille ajouté à LOT-00 : **142 écrans**. S0 finit le socle v3 en mode ULTRA ; S7 est créée ; prompts de préparation dans [`PROMPTS-6NOV.md`](PROMPTS-6NOV.md) (§1.12).
 - LOT-00 (socle v2) est fusionné (`488cdcc`), avec les 4 commits de S5. **Le socle v3 s'y ajoute avant la construction visuelle des lots** (S0 a ses consignes). D'ici là, chaque lot prépare et construit sa logique : §5.
 - Fusionnés aussi le 1er nov. : T1 (API d'essai, bac à sable, contrôle de fidélité) et les données fictives de SIM (100 jeux, `4fe559b`), avec `check:donnees` en CI (87 contrôles).
 - Gardes locales sur `refonte-vivante` : `typecheck`, `typecheck:business`, `lint` et les 55 contrôles sans navigateur de `editions.yml` verts.
@@ -217,13 +217,72 @@ Les points 1 à 8 (§1.5) restent des décisions par défaut, sauf le n° 1 (ban
 3. **Les jeux calculés** (trésorerie prévisionnelle H09, bilan de la semaine H04, cockpit client G08, configuration du tableau de bord H25) : sous forme de **valeurs attendues pour les tests**, pas de seconde implémentation. Le calcul reste à la session du lot (DS pour H09, S2 pour H04, G08 et H25), qui le compare aux attendus de SIM.
 4. **Volumes « beaucoup » de Cyber** en situation, dès que LOT-10 a un écran.
 
+### 1.12 Mises à jour du 6 nov.
+
+**Dossier.** Le zip v3 léger du 6 nov. remplace la copie du CO (hors dépôt). Il ajoute **G09 Écran de veille** à LOT-00 : **142 écrans, LOT-00 en compte 9**. Les images partent avec le zip de chaque lot, que Harun donne aux sessions.
+
+**S0** est en mode ULTRA (Fable 5.1, effort max) pour finir le socle v3. C'est la priorité absolue. Sa branche `claude/refonte-socle` (`de625f8`, 4 nov.) contient déjà :
+
+- les 9 écrans en v3, dont G09 (0 % de pixels hors ± 2 px) ;
+- la couche de mouvement, la police monospace, `LiveDot`, `Caret`, `Severity`, `Gauge`, `HeatCell`, `FlowLine`, `FilterChips` et `InlineSuggestion` ;
+- la barre latérale v3 avec la carte « Aujourd'hui » et Cyber, l'en-tête, la barre Ajmani v3 ;
+- `usePageCoquille` ;
+- les 4 commits de S5, repris.
+
+**Ce que le CO attend encore du socle v3 avant de le fusionner :**
+
+1. **`ModuleTile`, `ModuleGroupGrid` et `AddModuleTile`**, ainsi que les briques citées par dix lots ou plus : `PageHead`, `IconTile`, `SuggestionCompact`, `FlagUrgent`, et `IconButton`, `StatusPill`, `SearchBox`, `AvatarStack`, `AjmaniBar` si les briques existantes ne les couvrent pas sous ces noms. Aucun lot ne les construit (§1.10).
+2. **Le mécanisme de substitution d'écran** (§1.3) : remplacer l'écran d'une route interne existante, et monter une page qui n'est pas un module (hubs `/ensemble/<famille>`, pages L*) sans la compter dans les 101.
+3. **Un seul calcul pour « Aujourd'hui »** (tâches faites sur prévues, série, prochain rendez-vous, présence), exporté pour N01, et **un seul calcul pour la pastille de La Garde** (`usePoulsGarde`), exporté pour LOT-08.
+4. **`check:coquille`** adapté à la barre latérale v3.
+5. **La liste exacte des composants disponibles** avec leurs chemins, envoyée au CO : c'est le signal de fusion.
+
+**Réponses du CO aux questions de S0** (par délégation de Harun) :
+
+| Question de S0 | Décision |
+|---|---|
+| Basculer la coquille, donc G09, par défaut ? | **Oui**, dans le socle v3, dès que le passage de T1 sur `claude/refonte-socle` est propre (paquet client identique, gardes navigateur coquille éteinte puis allumée) (§1.9) |
+| Créer un vrai verrouillage menant à G06 ? | **Non dans LOT-00** : cela touche l'authentification. Le délai reste enregistré sans effet, « Espace verrouillé » ne s'affiche pas (écart actuel gardé). S6 étudiera le verrouillage dans sa phase sécurité, en privé. |
+| Masquer les notifications natives pendant la veille ? | **Oui** : pendant la veille, une notification native n'affiche que « AMN Business · nouvelle notification », sans contenu. C'est le but de G09 : aucun nom ni montant visible depuis la salle. |
+| 1. G05 : envoi réel des relances (N3, 10 s pour annuler) ? | **Non au premier jet** : Ajmani prépare, la personne envoie (écart « Préparer les n relances » gardé). |
+| 2. G06 : compte mémorisé sur le poste ? | **Non au premier jet** (aucune adresse gardée en local). |
+| 3. D02 : lignes de 21 px ou cibles de 34 px ; « 101 » | **Cibles de 34 px** (règle d'accessibilité §7.6, qui l'emporte), la colonne défile dans sa carte ; pas d'équilibrage, l'ordre du registre fait foi ; **un seul total** : celui de D02, repris tel quel par la barre, H47 et G06. |
+| 4. Sources manquantes | Aucune nouvelle source dans LOT-00. Chacune revient au lot qui la possède : devis prérempli à LOT-04, contacts par client à LOT-02, note épinglée à LOT-03, automatisations et modèles des métiers (L04) à LOT-07. Créneaux du référent et historique des ouvertures : écarts gardés. |
+| 5. H40 : émetteurs du bruit, du silence et du résumé ; rendez-vous dans « L'essentiel » | Pas d'émetteur nouveau dans LOT-00 (écarts gardés). Rendez-vous dans « L'essentiel » **comme la fiche** (pour le contenu d'un écran, la fiche l'emporte). |
+| 6. H43 : exporter les pièces d'`EnSituation.tsx` | **Oui**, et les montrer sur `/dev/socle` : les lots en ont besoin pour leurs états. |
+| 7. Hauteur des pages sous `AppLayout` | **Dans la coquille, une seule fois**, pas page par page. |
+
+**S7** est créée (LOT-06, en mode préparation). Elle a déjà poussé `claude/refonte-creer` (`e402d0e`) : la logique pure des 15 écrans, `check:creer` et sa note `docs/refonte/preparation/LOT-06-creer.md`. **Ce dossier, `docs/refonte/preparation/LOT-xx-<nom>.md`, devient la règle pour toutes les notes de préparation**, et S3 y déplace la sienne.
+
+**T1** a comparé les 8 écrans v2 de LOT-00 (`0a1751c`, `docs/qualite/fidelite/ECARTS-LOT-00.md`) ; S0 en a corrigé une partie dans le socle v3.
+
+**Réglages par session** (recommandés par Harun, relus par le CO) :
+
+| Session | Réglage | Avis du CO |
+|---|---|---|
+| CO, S2 (LOT-01), S3 (LOT-08), DS (LOT-04) | Opus 5.5, effort élevé | ✓ (au-dessus du dossier pour S2 et DS, sans inconvénient) |
+| S0 (socle v3) | Fable 5.1, effort max (ULTRA) | ✓ |
+| S6, sécurité (phases 0 à 3) | Opus 5.5, effort max, pas de Fable | ✓ |
+| S6, LOT-10 Cyber | Opus 5.5, effort élevé | ✓ |
+| **S6, LOT-07 Outils** | Sonnet 5.5, effort élevé | **À relever en Opus 5.5, effort élevé** : c'est ce que conseille le dossier, pour les surfaces sensibles (accès H19, connecteurs H21 dont WhatsApp et SMS, coffre-fort H24). |
+| S1 (LOT-02, LOT-09), S5 (LOT-03, LOT-05), S7 (LOT-06), T1, SIM | Sonnet 5.5, effort élevé | ✓ |
+| F1 (non cité) | — | Sonnet 5.5, effort élevé |
+
+**Règles qui ne changent pas** : des branches seulement, jamais de push sur `main`, **jamais de tag `v*`, aucune release, aucun déploiement client**, aucun secret dans le code.
+
+**Ordre de lancement après la fusion du socle v3**, inchangé : S2 et S3 d'abord ; puis S1, S5, DS et S7 en parallèle ; S6 dès la fin de sa phase 1 ; S1 pour LOT-09 en dernier.
+
+**SIM** doit encore : aligner ses dates sur 10 h 42 (mardi 3 nov. pour Cyber) ; livrer le chargeur vers l'API d'essai avec S3 ; fournir les valeurs attendues des écrans calculés (§1.11).
+
+Les prompts de préparation du 6 nov. sont dans [`PROMPTS-6NOV.md`](PROMPTS-6NOV.md).
+
 ## 2. Les lots
 
-Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en parallèle, une branche chacun ; **LOT-09 en dernier**. Les chiffres viennent de `03-INDEX.md` : 8 + 16 + 13 + 9 + 17 + 10 + 15 + 16 + 12 + 11 + 14 = **141**. (Le tableau du fichier 00 compte G05 dans LOT-05 ; l'index et les prompts le rangent dans LOT-00. Le CO suit l'index.)
+Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en parallèle, une branche chacun ; **LOT-09 en dernier**. Les chiffres viennent de `03-INDEX.md` : 9 + 16 + 13 + 9 + 17 + 10 + 15 + 16 + 12 + 11 + 14 = **142**. (Le tableau du fichier 00 compte G05 dans LOT-05 ; l'index et les prompts le rangent dans LOT-00. Le CO suit l'index.)
 
 | Vague | Lot | Écrans (re-habillage / mixte / nouveau) | Branche | Session | Modèle · effort | Dépend de | État |
 |---|---|---|---|---|---|---|---|
-| 1 | **LOT-00** Système et démarrage | 8 (0 / 7 / 1) | `claude/refonte-socle` | S0 | Opus 5.5, élevé | aucune | **v2 fusionné** (`488cdcc`) ; socle v3 en cours |
+| 1 | **LOT-00** Système et démarrage | 9 (0 / 7 / 2) | `claude/refonte-socle` | S0 | Opus 5.5, élevé | aucune | **v2 fusionné** (`488cdcc`) ; socle v3 en cours |
 | 2 | **LOT-01** Ma journée | 16 (0 / 12 / 4) | `claude/refonte-journee` | S2 | Sonnet 5.5, élevé | socle v3 fusionné | à faire |
 | 2 | **LOT-02** Mes contacts et clients | 13 (0 / 12 / 1) | `claude/refonte-contacts` | S1 | Sonnet 5.5, élevé | socle v3 fusionné | à faire |
 | 2 | **LOT-03** Écrire et retenir | 9 (0 / 8 / 1) | `claude/refonte-ecrire` | S5 | Sonnet 5.5, élevé | socle v3 fusionné | à faire |
@@ -291,12 +350,12 @@ Ordre : **LOT-00 d'abord, fusionné** ; puis les lots 01 à 08 et **10** en para
 
 | Session | Peut travailler maintenant ? | Sur quoi | Ce qui lui manque |
 |---|---|---|---|
-| **S0** | **oui, priorité 1** | Socle v3 (§1.10) sur `claude/refonte-socle`, repartie de `refonte-vivante` : mouvement, composants §0.4, barre latérale v3 et carte « Aujourd'hui » (`useAujourdhui`), Cyber dans SURVEILLANCE, `ModuleTile` et briques partagées, mécanisme de substitution, `check:coquille`, puis allumage de la coquille | rien (consignes données) |
+| **S0** | **oui, priorité absolue** (ULTRA) | Finir le socle v3 sur `claude/refonte-socle` : ce qui reste est listé au §1.12 (`ModuleTile` et briques partagées, substitution, calculs « Aujourd'hui » et pastille exportés, `check:coquille`, pièces de H43, veille sans contenu de notification, bascule après T1). Puis envoyer la liste des composants au CO | rien (réponses au §1.12) |
 | **S2** | préparation et logique | LOT-01 `claude/refonte-journee` : note de préparation ; règles de calcul des séries, paliers, défis et jalons (L01, L07, H02, H04), à protéger telles quelles (§1.10) | zip v3 de LOT-01 ; socle v3 pour construire |
 | **S1** | préparation et logique | LOT-02 `claude/refonte-contacts` : note de préparation ; modèles du pipeline et des relances | zip v3 de LOT-02 ; socle v3 |
 | **S5** | préparation et logique | LOT-03 `claude/refonte-ecrire` puis LOT-05 `claude/refonte-echanger` : notes de préparation ; G07 en boîte des clients (§1.10 point 10) | zips v3 de LOT-03 et LOT-05 ; jeux Écrire et Échanger : fusionnés ; socle v3 |
 | **DS** | préparation et logique | LOT-04 `claude/refonte-argent` : note de préparation ; calculs d'argent ; banque en lecture seule | zip v3 de LOT-04 ; socle v3 |
-| **S7** | dès sa création | LOT-06 `claude/refonte-creer` : note de préparation, logique du stock et des chantiers | **la session elle-même** (Sonnet 5.5, effort élevé) ; zip v3 de LOT-06 ; jeux Créer : fusionnés ; socle v3 |
+| **S7** | **oui** (créée le 6 nov.) | LOT-06 `claude/refonte-creer` : préparation déjà poussée (`e402d0e`) ; la compléter (prompt du 6 nov.) | socle v3 pour construire |
 | **S3** | préparation et logique | LOT-08 `claude/refonte-garde` : mettre sa note `preparation-garde.md` à jour sur les fiches v3 ; règle de la pastille (N02 §6.2) et calculs d'état par organisation (§1.8) | zip v3 de LOT-08 ; jeux La Garde : fusionnés ; socle v3 |
 | **S6** | **oui** | Phase 1 sécurité (privée). Puis LOT-07 `claude/refonte-outils` et LOT-10 `claude/refonte-cyber`, dont les connecteurs de H21 (WhatsApp, SMS) qu'attendent G07 et H13 | fin de la phase 1 ; zips v3 de LOT-07 et LOT-10 ; socle v3 |
 | **T1** | **oui** | Passage 2 sur `refonte-vivante` (paquet client identique, gardes navigateur coquille éteinte puis allumée) ; adapter l'outil de fidélité aux images v3 (dates fictives du 30 oct. 10:42, mardi 3 nov. pour Cyber) | rien (images lot par lot) |
@@ -326,17 +385,17 @@ Dépendances croisées à surveiller :
 
 ## 6. Ce qui manque au CO
 
-- Les zips v3 par lot, avec les images, pour les sessions et pour T1.
-- La création de S7.
+- **La liste des composants de S0** : c'est le signal de fusion du socle v3.
+- **Le passage de T1 sur `claude/refonte-socle`** : il conditionne la bascule de la coquille.
 - La fin de la phase 1 de S6.
 
-## 7. Écrans (141)
+## 7. Écrans (142)
 
 Une ligne par écran, par lot. **Chaque session ne modifie que la section de son lot** (état : `à faire`, `en cours`, `fait`, `écart`, avec la raison en note). Les sections sont séparées pour que les branches ne se gênent pas à la fusion. Le CO tient les autres sections.
 
-Total : 141 écrans = 0 re-habillage + 105 mixtes + 36 nouveaux (types de l'index v3). Captures et comparaisons à ± 2 px : faites par T1 (colonne « Écart / note »).
+Total : 142 écrans = 0 re-habillage + 105 mixtes + 37 nouveaux (types de l'index v3 du 6 nov.). Captures et comparaisons à ± 2 px : faites par T1 (colonne « Écart / note »).
 
-### LOT-00 · Système et démarrage — `claude/refonte-socle` — 8 écrans
+### LOT-00 · Système et démarrage — `claude/refonte-socle` — 9 écrans
 
 8 sur 8 faits par S0, **fusionné** (`488cdcc`, rapport [`rapports/LOT-00.md`](rapports/LOT-00.md)). Aucune capture, l'app n'ayant pas été lancée : T1 les fera au passage 2.
 
@@ -350,6 +409,7 @@ Total : 141 écrans = 0 re-habillage + 105 mixtes + 36 nouveaux (types de l'inde
 | D02 | Système · Tous les modules | mixte | fait | Comptes par famille tirés du registre (14 / 7 / 12 / 12 / 15 / 7 / 19 / 15), pas de la maquette (12 / 14 / 9 / 18 / 10 / 16 / 14 / 8). Total 101 et niveaux 16 / 62 / 23 conformes |
 | G06 | Système · Connexion | mixte | fait | `/login`. « Demandez un accès » affiche un texte, sans flux de demande ; « 12 organisations » est une constante de présentation à valider |
 | G05 | Échanger · Ajmani, barre ⌘J ouverte | mixte | fait | Prépare un brouillon de relance, n'envoie rien ; « Décrire » passe à l'assistant existant |
+| G09 | Système · Écran de veille | nouveau | fait dans le socle v3 (non fusionné) | Ajouté le 6 nov. Capture comparée : 0 % hors ± 2 px. Verrouillage : écart gardé (§1.12). Bascule avec la nouvelle coquille |
 
 Questions de S0 et réponses du CO :
 

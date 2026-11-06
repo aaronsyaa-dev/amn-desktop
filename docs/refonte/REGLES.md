@@ -14,6 +14,8 @@ cliente ne doit **jamais** changer pendant ce chantier.
   (ex. `claude/refonte-s1-navigation`).
 - Push autorisé sur **ta** branche seulement. Jamais `main`, pas de PR, pas de
   fusion toi-même : le CO fusionne.
+- **Jamais de tag `v*`, aucune release, aucun déploiement client.**
+- **Notes de préparation** : `docs/refonte/preparation/LOT-xx-<nom>.md`, sur ta branche (modèle : `LOT-06-creer.md`).
 - Ne lance pas l'app (ni `npm start`, ni `start:business`, ni `build:web`), ni
   aucun serveur. Aucune donnée réelle (Syraagensy, NWSY), aucun secret.
 - **Exception, T1 seulement** (qualité et contrôle image / écran) : `build:web`
