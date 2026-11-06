@@ -71,17 +71,10 @@
 .sc-bloc-etat[data-ton='attention'] { --sc-ton: var(--socle-etat-attention); }
 .sc-bloc-etat[data-ton='neutre'] { --sc-ton: var(--socle-texte-2); }
 .sc-bloc-etat[data-ton='critique'] { --sc-ton: var(--socle-etat-critique); }
-.sc-bloc-etat__icone {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--sc-ton) 13%, transparent);
-  color: var(--sc-ton);
-}
+/* La tuile est l'`IconTile` du socle (48 → rayon 14, glyphe 20 ; 36 → rayon 10, glyphe 16 : briques-partagees.css) : elle
+   prend la teinte du bloc par la variable de la brique — la famille, ou le gris T3 du neutre standard (cote de H43) ;
+   les tons d'état et l'aplat du neutre compact lui sont passés en `ton` par BlocEtat.tsx. Rien n'est redéfini ici. */
+.sc-bloc-etat__icone { --sc-tuile-teinte: var(--sc-ton); }
 .sc-bloc-etat__titre {
   margin: 10px 0 0;
   color: var(--socle-texte-1);
@@ -331,11 +324,9 @@
 
 /* ══ v3 (H43 en situation) : les tailles compactes et les pièces posées dans la vraie page ══ */
 
-/* Le bloc d'état compact (`taille="compact"`, le StateBlock v3) : tuile 36 (rayon 10, glyphe 16), titre 13,5 px,
-   texte 12 px T4 (300 px au plus), boutons de 25 px. La tuile neutre est un aplat #1a1a1c, pas un gris teinté (T1 H43.2). */
-.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__icone { width: 36px; height: 36px; border-radius: 10px; }
-.sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__icone svg { width: 16px; height: 16px; }
-.sc-bloc-etat[data-taille='compact'][data-ton='neutre'] .sc-bloc-etat__icone { background: var(--socle-tag); }
+/* Le bloc d'état compact (`taille="compact"`, le StateBlock v3) : tuile 36 (rayon 10, glyphe 16 — l'`IconTile` de 36 px,
+   et l'aplat #1a1a1c du neutre, pas un gris teinté (T1 H43.2), est son `ton="neutre"`), titre 13,5 px, texte 12 px T4
+   (300 px au plus), boutons de 25 px. */
 .sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__titre { margin-top: 10px; font-size: 13.5px; line-height: 17px; }
 .sc-bloc-etat[data-taille='compact'] .sc-bloc-etat__icone + .sc-bloc-etat__titre { margin-top: 10px; }
 .sc-bloc-etat[data-taille='compact'] > .sc-bloc-etat__titre:first-child { margin-top: 0; }

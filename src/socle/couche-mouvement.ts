@@ -57,6 +57,13 @@ export type AnimationMouvement =
 /** Les noms que comprend `data-mvt-survol`. */
 export type SurvolMouvement = 'carte' | 'bouton' | 'ligne' | 'noeud';
 
+/**
+ * Les trois classes que les fiches nomment à l'anglaise (LOT-06), et l'attribut dont chacune partage la règle dans
+ * `mouvement.css` (`:is([data-mvt='entree'], .amn-grow)`) : `check:socle-vivant` compare les deux. Même coupure.
+ */
+export const CLASSES_MOUVEMENT = { 'amn-grow': 'entree', 'amn-slide': 'arrivee', 'amn-bar': 'pousse' } as const satisfies Record<string, AnimationMouvement>;
+export type ClasseMouvement = keyof typeof CLASSES_MOUVEMENT;
+
 type StyleRang = React.CSSProperties & { '--sc-mvt-rang'?: number };
 
 /** Le rang d'entrée, borné de 0 à 13 : au-delà de la 14e carte, plus de décalage supplémentaire. */

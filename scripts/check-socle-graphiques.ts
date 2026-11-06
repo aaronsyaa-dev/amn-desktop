@@ -616,6 +616,8 @@ await dit('Anneau : de 26 à 58 px (LOT-06), épaisseur proportionnée (3 à 6),
   assert.match(feuille, /--sc-g-anneau-valeur-petit:\s*11px/);
   assert.match(feuille, /\.sc-g-anneau\[data-cote='moyen'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-moyen\); \}/);
   assert.match(feuille, /\.sc-g-anneau\[data-cote='petit'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-petit\); \}/);
+  // Muet avec un centre forcé par `children` : la plus petite cote, pas les 16 px de l'anneau de 72.
+  assert.match(feuille, /\.sc-g-anneau\[data-cote='muet'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-petit\); \}/, 'un centre donné sous 40 px prend 11 px');
 });
 
 await dit('AnneauProgression : défaut inchangé — 44 px, épaisseur 4, aucun style en ligne sur le trait ni sur la piste', () => {
@@ -708,6 +710,9 @@ await dit('animation d’entrée : la couche de mouvement commune (§0.2) — da
   assert.match(sansCommentaires(lire('src/index.css')), /:root\[data-mouvement='aucun'\] \*[\s\S]*?animation-duration:\s*0\.01ms !important/);
 });
 
+/** Ce qu'un fichier hors du socle n'a pas le droit d'importer : le groupe des graphiques et ses mots (le balayeur ci-dessous et la preuve sur `src/socle/formats.ts` lisent la même règle). */
+const IMPORT_GRAPHIQUES = /socle\/(ui\/)?graphiques|socle\/mots\/graphiques/;
+
 await dit('les graphiques n’importent que le socle, src/lib, src/i18n et les bibliothèques ; aucun fichier partagé ne les importe', () => {
   for (const f of composants) {
     for (const [, spec] of sansCommentaires(lire(f)).matchAll(/from\s+'([^']+)'/g)) {
@@ -726,7 +731,7 @@ await dit('les graphiques n’importent que le socle, src/lib, src/i18n et les b
       if (e.isDirectory()) {
         if (rel === 'src/socle') continue;
         marcher(rel);
-      } else if (/\.(tsx?|css)$/.test(e.name) && /socle\/(ui\/)?graphiques|socle\/mots\/graphiques/.test(lire(rel))) dehors.push(rel);
+      } else if (/\.(tsx?|css)$/.test(e.name) && IMPORT_GRAPHIQUES.test(lire(rel))) dehors.push(rel);
     }
   })('src');
   const permis = new Set(['src/refonte/accueil/Ambiance.tsx']);
@@ -751,12 +756,24 @@ await dit('src/socle/formats.ts (LOT-06, point 6) : les formats importables depu
   assert.equal(sansBlancs((F.formaterMontant as (n: number) => string)(1250)), sansBlancs(`1 250 €`));
   assert.equal((F.formaterHeure as (d: Date) => string)(new Date(2031, 2, 12, 10, 42)), '10:42');
   assert.match((F.formaterDate as (d: Date) => string)(new Date(2031, 2, 12)), /^12 mars$/);
+  // « — » pour une valeur illisible, des deux côtés du module (ratio, montant, date, heure) ; jamais « -0 € » ; `dateIso` rend « ».
+  for (const v of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    assert.equal((F.formaterRatio as (n: number) => string)(v), F.TIRET_ABSENT, `formaterRatio(${v})`);
+    assert.equal((F.formaterMontant as (n: number) => string)(v), F.TIRET_ABSENT, `formaterMontant(${v})`);
+  }
+  assert.equal(sansBlancs((F.formaterMontant as (n: number) => string)(-0)), sansBlancs('0 €'));
+  for (const d of ['pas une date', Number.NaN]) {
+    assert.equal((F.formaterDate as (d: string | number) => string)(d), F.TIRET_ABSENT, `formaterDate(${d})`);
+    assert.equal((F.formaterHeure as (d: string | number) => string)(d), F.TIRET_ABSENT, `formaterHeure(${d})`);
+    assert.equal((F.dateIso as (d: string | number) => string)(d), '', `dateIso(${d})`);
+  }
   // Le module ne recopie rien : il réexporte ses deux sources, et rien d'autre.
   const src = sansCommentaires(lire('src/socle/formats.ts'));
   assert.deepEqual([...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./ui/archetypes/logique/formats', './ui/graphiques/format']);
   assert.ok(!/function |=>/.test(src), 'aucune fonction écrite ici');
-  // Et un fichier interne qui l'importe ne tombe pas sous l'interdiction des graphiques (le chemin ne nomme pas « graphiques »).
-  assert.ok(!/socle\/(ui\/)?graphiques/.test("import { formaterEuro } from '../../socle/formats';"));
+  // Et un fichier interne qui l'importe ne tombe pas sous l'interdiction des graphiques : la règle même du balayeur, appliquée à cet import.
+  assert.ok(!IMPORT_GRAPHIQUES.test("import { formaterEuro } from '../../socle/formats';"), 'socle/formats passe le balayeur');
+  assert.ok(IMPORT_GRAPHIQUES.test("import { formaterEuro } from '../../socle/ui/graphiques/format';"), 'le balayeur refuse bien le groupe');
 });
 
 await dit('mots : fr et en portent les mêmes clés et les mêmes {paramètres}, sans point d’exclamation', () => {

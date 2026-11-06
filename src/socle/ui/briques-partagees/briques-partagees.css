@@ -60,8 +60,12 @@
 }
 /* La barre latérale §0.1 : la pastille de Cyber (21 px de large au moins, 11,5 / 500, fond `--socle-lateral-compteur`). */
 .sc-count-badge[data-variante='laterale'] {
+  display: inline-flex;
   flex: none;
   min-width: 21px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
   padding: 0 6px;
   border-radius: var(--socle-rayon-pastille);
   background: var(--socle-lateral-compteur);
@@ -96,7 +100,7 @@
   gap: 9px;
   padding: 0 8px;
   border: 1px solid var(--socle-bord-sous-carte);
-  border-radius: 9px;
+  border-radius: var(--socle-rayon-controle);
   background: var(--socle-sous-carte);
   color: var(--socle-texte-1);
   font-size: 12.5px;
@@ -117,6 +121,8 @@
 .sc-module-tile__nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-module-tile[data-variante='standard'] .sc-module-tile__nom { line-height: 16px; }
 .sc-module-tile__sous { overflow: hidden; color: var(--socle-texte-3); font-size: 11.5px; font-weight: 400; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+/* Sur le fond du module ouvert, T4 tombe sous AA (4,39:1) : le sous-texte y passe en T3 (5,80:1) — `check:socle-briques` calcule les deux. */
+.sc-module-tile[aria-current='page'] .sc-module-tile__sous { color: var(--socle-texte-2); }
 .sc-module-tile__acc { display: inline-flex; flex: none; align-items: center; gap: 6px; margin-left: auto; }
 
 /* ── « + Ajouter un module » : pointillé `--socle-pointille`, même hauteur et même rayon que la tuile, icône + 14, libellé T3 ── */
@@ -140,7 +146,7 @@
   transition: background-color var(--sc-mvt-survol, 160ms) ease-out, border-color var(--sc-mvt-survol, 160ms) ease-out;
 }
 .sc-add-module-tile__libelle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-add-module-tile[data-variante='ligne'] { height: 34px; border-radius: 9px; }
+.sc-add-module-tile[data-variante='ligne'] { height: 34px; border-radius: var(--socle-rayon-controle); }
 .sc-add-module-tile:hover { border-color: var(--socle-bord-survol); background: var(--socle-ligne-survol); color: var(--socle-texte-1); }
 @media (prefers-reduced-motion: reduce) {
   .sc-add-module-tile { transition: none; }

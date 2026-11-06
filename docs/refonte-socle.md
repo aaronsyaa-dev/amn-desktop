@@ -234,23 +234,31 @@ import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageH
 - **`IconTile`** (`icone`, `taille` 22 | 26 | 28 | 36 | 38 | 42 | 44 | 48, `famille?` dont `garde`, `ton?` neutre | succes |
   attention | critique | info, `part?` 10 | 13 | 14 | 18, `bordure?`, `libelle?`) : le carré arrondi teinté de la famille à
   13 % (§ 4) ou neutre (`--socle-tag`). Rayon et glyphe suivent la taille. `part` et `bordure` reproduisent les images de
-  D02 (10 %, bordure à 22 %) et de H41 (14 %, 18 % pour l'aperçu) ; `BlocEtat`, D02 et H41 l'emploient sans changer un pixel.
+  D02 (10 %, bordure à 22 %) et de H41 (14 %, 18 % pour l'aperçu) ; D02 et H41 l'emploient sans changer un pixel, et
+  `BlocEtat` lui passe son ton (`attention`, `critique`, `neutre` en compact) ou sa teinte (famille, gris T3 du neutre
+  standard) par la variable `--sc-tuile-teinte` de la brique, sans redéfinir une cote ni un fond dans `situations.css`.
 - **`CountBadge`** (`n`, `libelle?`, `variante?` standard | laterale | texte, `critique?`) : 16 px, fond
-  `--socle-pastille-compte`, 10,5 / 600 ; la pastille de Cyber (`laterale`) et le chiffre seul des épinglés (`texte`) de
-  la barre latérale ; rien à zéro, « 99+ » au-delà, le chiffre dit en mots (lecteur d'écran et info-bulle).
+  `--socle-pastille-compte`, 10,5 / 600 ; la pastille de Cyber (`laterale`, qui pose son propre `display` : 21 × 16 où
+  qu'elle soit) et le chiffre seul des épinglés (`texte`) de la barre latérale ; rien à zéro, « 99+ » au-delà, le chiffre
+  dit en mots (lecteur d'écran et info-bulle ; « 1 alerte critique » au singulier).
 - **`ModuleTile`** (`nom`, `icone`, `famille?`, `sousTexte?`, `accessoire?`, `variante?` standard | ligne, `actif?`,
-  `vers?` ou `onClick`, `tuile?`) : un lien ou un bouton, focus visible. `ligne` = la puce des épinglés de D02 (34 px) ;
-  `standard` = 41 px (tuile 26, nom 13 T2, sous-texte 11,5 T4, survol de ligne, `aria-current` du module ouvert),
-  **provisoire** jusqu'aux fiches F10 à F70.
+  `vers` ou `onClick` — l'un des deux au moins, par le type `CibleTuile` —, `tuile?`) : un lien ou un bouton, focus
+  visible. `ligne` = la puce des épinglés de D02 (34 px, rayon `--socle-rayon-controle`) ; `standard` = 41 px (tuile 26,
+  nom 13 T2, sous-texte 11,5 T4 — T3 sur le module ouvert, pour tenir AA sur `--socle-ligne-choisie` —, survol de ligne,
+  `aria-current` du module ouvert), **provisoire** jusqu'aux fiches F10 à F70. Un `LiveDot` en accessoire porte
+  `afficherLibelle` : un point seul ne dit pas l'état (§ 7.6).
 - **`ModuleGroupGrid`** (`titre`, `effectif?`, `colonnes?`, `onAjouter?` ou `versAjouter?`, enfants `ModuleTile`) et
-  **`AddModuleTile`** (`libelle?`, `vers?` ou `onClick`, `variante?`) : la grille d'un groupe (titre 11 px capitales T4,
-  écart 6) fermée par « + Ajouter un module » (pointillé `--socle-pointille`, même hauteur que la tuile). Provisoires.
-- **`PageHead`** (= `EnTeteDePage`) : `titre`, `sousTitre?`, `primaire?`, `secondaires?` (avec `infobulle?`), `extra?`,
-  `controles?` (à la place des boutons, D02), `className?` (les cotes propres d'un écran restent dans sa feuille, en
-  `.x-entete.sc-page__entete`), `attributsTitre?` (`data-guide` d'une visite). H40, H42, H47 et D02 l'emploient.
+  **`AddModuleTile`** (`libelle?`, `vers` ou `onClick` (`CibleTuile`), `variante?`) : la grille d'un groupe (titre 11 px
+  capitales T4, effectif dit en texte aux lecteurs d'écran, écart 6) fermée par « + Ajouter un module » (pointillé
+  `--socle-pointille`, même hauteur que la tuile). Provisoires.
+- **`PageHead`** (= `EnTeteDePage`) : `titre`, `sousTitre?`, puis soit `primaire?`, `secondaires?` (avec `infobulle?`),
+  `extra?`, soit `controles` (à la place des boutons, D02) — exclusifs par le type, rien ne disparaît en silence ;
+  `className?` (les cotes propres d'un écran restent dans sa feuille, en `.x-entete.sc-page__entete`), `attributsTitre?`
+  (`data-guide` d'une visite). H40, H42, H47 et D02 l'emploient.
 - **`StatusPill`** = `PastilleEtat` ; **le catalogue des noms des fiches** est `src/socle/ui/noms.ts` (`Card` = `Carte`,
   `Button` = `Bouton`… tableau en tête du fichier ; `Sidebar`, `Header`, `AjmaniBar` depuis `src/socle/coquille`). Un alias
-  n'existe que si la brique suit la ligne du § 4 : `Empty` n'en a pas (voir `noms.ts`).
+  n'existe que si la brique suit la ligne du § 4 : `Empty` = `EtatVide` depuis la correction de l'état vide (table de la
+  section suivante ; `action` est demandé, `action={null}` pour un emplacement en lecture seule).
 
 Démonstration : section « Briques partagées » de `/dev/socle`. Garde : `npm run check:socle-briques`.
 
@@ -266,7 +274,10 @@ Audit brique par brique de `01-SOCLE-DESIGN.md` § 4, mesuré dans le **CSS calc
 | Empty, titre | 14 px / 600 | 15 px (surcharge de `situations.css`) | oui : 14 px, surcharge retirée |
 | Empty, texte | 12,5 px T4, 300 px au plus | 12,5 px T4, sans limite | oui : `max-width: 300px` |
 | Empty, icône | 44 px dans un carré arrondi | absente | oui : prop `icone` (`.sc-vide__icone`, 44 px, rayon 12, glyphe 20) |
-| Empty, action | toujours | facultative | oui : `action` demandé (`null` l'assume) |
+| Empty, action | toujours | facultative | oui : `action` demandé (`null` l'assume) ; alias `Empty` dans `noms.ts` |
+| Kpi, hauteur | 84 à 92 | jusqu'à 94 : la variation passait sous la valeur dès que les deux ne tenaient pas côte à côte | oui : une seule ligne (`flex-wrap: nowrap`), variation en ellipse ; la phrase entière reste dans l'infobulle et pour les lecteurs d'écran |
+| Ring muet (< 40 px) avec un centre donné | — | centre à 16 px, la cote de 72 px | oui : 11 px, la plus petite cote |
+| Segmented désactivé (fieldset) | état visible (§ 7.6) | aucun état, survol actif | oui : `.sc-segment:disabled` comme le sélecteur (60 %, curseur « interdit »), survol épargné |
 | Check, bordure | 1,5 px `#3A3A3E` | déclarée 1,5 px, rendue 1 px (Chromium arrondit une bordure de 1,5 px à 1 px en échelle 1) | non : la feuille dit 1,5 px, le rendu ne peut pas faire mieux |
 | `BlocEtat` (le bloc d'état de H43) | — (c'est `StateBlock`, fiche H43) | tuile 48 px, titre 15 px, texte 240 px | non : cotes mesurées sur l'image H43 (0,72 %), hors § 4 |
 
@@ -284,12 +295,12 @@ Les fiches des lots nomment les mouvements à l'anglaise ; `src/socle/mouvement.
 | `amnFlow` | keyframes de `data-mvt="flux"` | un pointillé qui s'écoule (`stroke-dashoffset` recule de `--sc-mvt-flux-pas`), en boucle |
 | `amnHalo` | keyframes de `data-mvt="onde"` | une onde qui s'élargit (opacité .55 → 0, échelle 1 → 2,6), en boucle |
 
-Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement).
+Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement). Côté code, `CLASSES_MOUVEMENT` (`src/socle/couche-mouvement.ts`, avec le type `ClasseMouvement`) porte les trois classes et l'attribut de chacune ; `check:socle-vivant` le compare à la feuille.
 
 ### `Mono` et `src/socle/formats.ts` (chantier s1b)
 
-- `Mono` (`src/socle/ui/Mono.tsx`, exporté par `src/socle/ui`) : la donnée technique « en MONO » des fiches — `<Mono>10:42:07</Mono>`, `<Mono as="time" dateTime="…">`, `<Mono as="code">`, `taille` de 11 à 18 px (bornée) ; la couleur vient du parent. C'est `.sc-mono` de `noir.css` (`--socle-police-mono`, chiffres tabulaires, sans ligatures).
-- `src/socle/formats.ts` : `formaterNombre`, `formaterPourcent` (déjà en pour cent), `formaterRatio` (0 à 1), `formaterEuro`, `formaterMontant`, `formaterDate`, `formaterHeure`, `dateIso`, importables depuis tout code interne (`import { formaterEuro } from '../../socle/formats'`) — `check:socle-graphiques` interdit d'importer `src/socle/ui/graphiques/*` hors du socle ; ce module neutre réexporte les deux sources sans rien recopier.
+- `Mono` (`src/socle/ui/Mono.tsx`, exporté par `src/socle/ui`) : la donnée technique « en MONO » des fiches — `<Mono>10:42:07</Mono>`, `<Mono as="time" dateTime="…">`, `<Mono as="code">`, `taille` de 11 à 18 px (bornée, ±Infinity compris ; la borne l'emporte sur un `style.fontSize` de l'appelant ; NaN hérite du parent) ; la couleur vient du parent. C'est `.sc-mono` de `noir.css` (`--socle-police-mono`, chiffres tabulaires, sans ligatures).
+- `src/socle/formats.ts` : `formaterNombre`, `formaterPourcent` (déjà en pour cent), `formaterRatio` (0 à 1), `formaterEuro`, `formaterMontant`, `formaterDate`, `formaterHeure`, `dateIso`, importables depuis tout code interne (`import { formaterEuro } from '../../socle/formats'`) — `check:socle-graphiques` interdit d'importer `src/socle/ui/graphiques/*` hors du socle ; ce module neutre réexporte les deux sources sans rien recopier. Une valeur illisible (NaN, ±Infinity, date invalide) donne « — » sur chaque export (jamais « NaN € », « 0 % » pour un ratio inconnu ni une exception), sauf `dateIso` qui rend « » ; jamais « -0 € ».
 - Jetons ajoutés dans `noir.css` : `--socle-decor-1/2/3` (illustrations seulement), `--socle-hachure-attention` / `--socle-hachure-grise` (`background-image`), `--socle-pointille-ok` / `--socle-pointille-attention` (`border`) ; la teinte de sélection `#D9A27A` des fiches est `--socle-fam-creer`.
 
 ## « Aujourd'hui » et compteurs de la barre latérale (socle v3, chantier s2)
@@ -361,6 +372,6 @@ export default declarerSubstitutions('jour', [
 
 ## Mise à jour — réglages des écrans LOT-00 (2026-11-06)
 
-Les trois surfaces de réglages que LOT-00 possède dans les Paramètres passent par la porte `MouvementSection` de `@edition/socle` (`src/edition/socle.internal.tsx` ; le jumeau client rend `null`) et sont chacune la sienne, sur une `Carte` du socle : **Mouvement** (un `Segmente` à trois niveaux, l'aide du niveau choisi, « Suivre le système » quand un choix est écrit), **Écran de veille** (`src/refonte/systeme/veille/EcranDeVeilleSection.tsx` : un `Interrupteur` dans l'en-tête, « Veille après » en `Segmente`, « Verrouiller l'espace après » en `Selecteur`, coupés ensemble quand l'écran est éteint), **Nouvelle coquille** (`src/refonte/coquille/CoquilleSection.tsx` : l'état en pastille, les quatre points, un `Interrupteur`). Ancres : `reglages-mouvement`, `reglages-ecran-de-veille`, `reglages-coquille`.
+Les trois surfaces de réglages que LOT-00 possède dans les Paramètres passent par la porte `MouvementSection` de `@edition/socle` (`src/edition/socle.internal.tsx` ; le jumeau client rend `null`) et sont chacune la sienne, sur une `Carte` du socle : **Mouvement** (un `Segmente` à trois niveaux, l'aide du niveau choisi, « Suivre le système » quand un choix est écrit), **Écran de veille** (`src/refonte/systeme/veille/EcranDeVeilleSection.tsx` : un `Interrupteur` dans l'en-tête, « Veille après » en `Segmente`, « Verrouiller l'espace après » en `Selecteur`, coupés ensemble quand l'écran est éteint — et visiblement : `.sc-segment:disabled` comme `.sc-selecteur:disabled`, estompés à 60 % avec le curseur « interdit »), **Nouvelle coquille** (`src/refonte/coquille/CoquilleSection.tsx` : l'état en pastille, les quatre points, un `Interrupteur`). Ancres : `reglages-mouvement`, `reglages-ecran-de-veille`, `reglages-coquille`.
 
 Un écran qui envoie aux Paramètres passe la rubrique dans l'état de navigation : `navigate('/settings', { state: { section: 'notifications' } })` (H40 « Réglages »). `SettingsScreen` (partagé, non modifié) expose un `id="reglages-<rubrique>"` par rubrique ; la porte interne (`ancreDeReglages`, `ANCRES_REGLAGES`) fait défiler jusqu'à elle, sans glissement quand le mouvement est réduit. Une rubrique inconnue ne fait rien. Aperçu : `npm run apercu -- REGLAGES-LOT-00`. Gardes : `check:socle` (trois surfaces distinctes, H40 → Notifications, G09 inactif pendant la veille, aucun archétype du §5 en gabarit d'écran), `check:systeme-veille`.

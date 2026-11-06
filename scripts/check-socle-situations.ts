@@ -290,13 +290,16 @@ const marge = (corps: string, propriete: string): number[] => {
   return [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
 };
 
-await dit('tuile d’icône 48 × 48 (rayon 14, fond = la couleur du ton à 13 %), colonne centrée, texte ≤ 240 px, boutons à 8 px', () => {
+await dit('tuile d’icône 48 × 48 (rayon 14, fond = la couleur du ton à 13 %) : l’IconTile du socle, teintée par --sc-ton ; colonne centrée, texte ≤ 240 px, boutons à 8 px', () => {
+  // La tuile est la brique partagée : situations.css ne lui donne que sa teinte, ses cotes et son fond viennent de briques-partagees.css.
   const icone = bloc('.sc-bloc-etat__icone');
-  assert.equal(px(icone, 'width'), 48);
-  assert.equal(px(icone, 'height'), 48);
-  assert.equal(px(icone, 'border-radius'), 14);
-  assert.match(icone, /background:\s*color-mix\(in srgb, var\(--sc-ton\) 13%, transparent\)/);
-  assert.match(icone, /color:\s*var\(--sc-ton\)/);
+  assert.match(icone, /--sc-tuile-teinte:\s*var\(--sc-ton\)/, 'la tuile prend la teinte du bloc par la variable de la brique');
+  assert.doesNotMatch(icone, /width|height|border-radius|background|color:/, 'ses cotes et son fond sont ceux de l’IconTile du socle');
+  const briques = sansCommentaires(lire('src/socle/ui/briques-partagees/briques-partagees.css'));
+  assert.match(briques, /\.sc-icon-tile\[data-taille='48'\] \{ --sc-tuile: 48px; --sc-tuile-rayon: 14px; --sc-tuile-glyphe: 20px; \}/, '48 × 48, rayon 14, glyphe 20');
+  assert.match(briques, /\.sc-icon-tile \{[^}]*--sc-tuile-part: 13%;[^}]*background: color-mix\(in srgb, var\(--sc-tuile-teinte\) var\(--sc-tuile-part\), transparent\);\s*color: var\(--sc-tuile-teinte\);/, 'fond = la teinte à 13 %, glyphe de la teinte');
+  assert.match(rendre(h(S.EtatHorsConnexion, { onReessayer: sansAction })), /data-taille="48" data-ton="attention" class="sc-icon-tile sc-bloc-etat__icone"/, 'un ton d’état est passé à la brique');
+  assert.match(rendre(h(S.EtatAucunResultat, { terme: V.terme, onEffacer: sansAction })), /data-taille="48" class="sc-icon-tile sc-bloc-etat__icone"/, 'le neutre standard reste le gris T3 teinté à 13 %, par --sc-ton');
   const racine = bloc('.sc-bloc-etat');
   assert.match(racine, /flex-direction:\s*column/);
   assert.match(racine, /align-items:\s*center/);
@@ -378,10 +381,12 @@ await dit('boîte de confirmation 276 × 148 (19 px de marge, rayon 14, 400 px e
 
 await dit('tailles compactes v3 : bloc d’état (tuile 36, titre 13,5, texte 12), confirmation 300 px, toast 318 px à barre dans le pied, lignes de 31 px', () => {
   const c = "[data-taille='compact']";
-  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__icone`), 'width'), 36);
-  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__icone`), 'height'), 36);
-  assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__icone`), 'border-radius'), 10);
-  assert.match(bloc(`.sc-bloc-etat${c}[data-ton='neutre'] .sc-bloc-etat__icone`), /background:\s*var\(--socle-tag\)/, 'la tuile neutre est un aplat #1a1a1c (écart T1 H43.2)');
+  // La tuile compacte est l'IconTile de 36 px (rayon 10, glyphe 16) ; son neutre est l'aplat --socle-tag : le `ton="neutre"` de la brique, passé par BlocEtat.
+  const briques = sansCommentaires(lire('src/socle/ui/briques-partagees/briques-partagees.css'));
+  assert.match(briques, /\.sc-icon-tile\[data-taille='36'\] \{ --sc-tuile: 36px; --sc-tuile-rayon: 10px; --sc-tuile-glyphe: 16px; \}/, '36 × 36, rayon 10, glyphe 16');
+  assert.match(briques, /\.sc-icon-tile\[data-ton='neutre'\] \{ background: var\(--socle-tag\); color: var\(--socle-texte-2\); \}/, 'la tuile neutre est un aplat #1a1a1c (écart T1 H43.2)');
+  assert.match(rendre(h(S.EtatAucunResultat, { terme: V.terme, onEffacer: sansAction, taille: 'compact' })), /data-taille="36" data-ton="neutre" class="sc-icon-tile sc-bloc-etat__icone"/, 'en compact, le neutre passe l’aplat à la brique');
+  assert.doesNotMatch(css, /\.sc-bloc-etat\[data-taille='compact'\][^{]*\.sc-bloc-etat__icone(\s+svg)?\s*\{/, 'plus de cote locale pour la tuile compacte');
   assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__titre`), 'font-size'), 13.5);
   assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__texte`), 'font-size'), 12);
   assert.equal(px(bloc(`.sc-bloc-etat${c} .sc-bloc-etat__texte`), 'max-width'), 300);

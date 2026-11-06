@@ -202,6 +202,8 @@
 }
 .sc-g-anneau[data-cote='moyen'] .sc-anneau__centre { font-size: var(--sc-g-anneau-valeur-moyen); }
 .sc-g-anneau[data-cote='petit'] .sc-anneau__centre { font-size: var(--sc-g-anneau-valeur-petit); }
+/* Muet (sous 40 px) avec un centre donné par l'appelant : la plus petite cote, jamais celle de 72 px. */
+.sc-g-anneau[data-cote='muet'] .sc-anneau__centre { font-size: var(--sc-g-anneau-valeur-petit); }
 
 /*
   ── Les entrées : la couche de mouvement commune (src/socle/mouvement.css, §0.2) ──

@@ -255,7 +255,7 @@ button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
 .sc-kpi__valeur {
   display: flex;
   max-width: 100%;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
   gap: 0 8px;
   font-size: 24px;
@@ -264,7 +264,9 @@ button.sc-kpi:hover { border-color: var(--color-socle-bord-fort); }
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.sc-kpi__variation { min-width: 0; color: var(--socle-texte-3); font-size: 12px; font-weight: 500; letter-spacing: 0; line-height: 1.35; }
+/* La tuile fait 84 à 92 px (§4), jamais plus : la variation reste sur la ligne de la valeur et s'ellipse si la place manque
+   (la phrase entière est dans l'infobulle de la tuile et lue par les lecteurs d'écran). */
+.sc-kpi__variation { min-width: 0; overflow: hidden; color: var(--socle-texte-3); font-size: 12px; font-weight: 500; letter-spacing: 0; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .sc-kpi__variation[data-ton='succes'] { color: var(--socle-etat-succes); }
 .sc-kpi__variation[data-ton='attention'] { color: var(--socle-etat-attention); }
 .sc-kpi__variation[data-ton='critique'] { color: var(--socle-etat-critique); }

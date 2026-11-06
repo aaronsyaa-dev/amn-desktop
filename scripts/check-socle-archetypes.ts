@@ -298,16 +298,26 @@ await dit('kanban : déplacer un ticket — autre colonne, même colonne, colonn
   assert.equal(K.indexDepot([], 5), 0);
 });
 
-await dit('formats : à la française — espace avant % et €, virgule décimale, heure sur deux chiffres', () => {
+await dit('formats : à la française — espace avant % et €, virgule décimale, heure sur deux chiffres ; « — » pour une valeur illisible, jamais « -0 € »', () => {
   assert.equal(norm(F.formaterPourcent(0.78)), '78 %');
   assert.equal(norm(F.formaterPourcent(1.4)), '100 %', 'borné à 100 %');
-  assert.equal(norm(F.formaterPourcent(Number.NaN)), '0 %');
+  // Un ratio ou un montant qui n'est pas un nombre fini se lit « — » (jamais « 0 % » pour un inconnu, jamais « NaN € »).
+  for (const v of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+    assert.equal(F.formaterPourcent(v), '—', `formaterPourcent(${v})`);
+    assert.equal(F.formaterMontant(v), '—', `formaterMontant(${v})`);
+  }
   assert.equal(norm(F.formaterMontant(1250)), '1 250 €');
   assert.equal(norm(F.formaterMontant(1250.5)), '1 250,50 €');
+  assert.equal(norm(F.formaterMontant(-0)), '0 €');
   assert.equal(F.formaterHeure(new Date(2031, 0, 1, 9, 5)), '09:05');
   assert.equal(F.formaterDate(new Date(2031, 0, 3), { weekday: 'long' }), new Intl.DateTimeFormat('fr-FR', { weekday: 'long' }).format(new Date(2031, 0, 3)));
   assert.notEqual(F.formaterDate(new Date(2031, 0, 3), { weekday: 'long' }, 'en-US'), F.formaterDate(new Date(2031, 0, 3), { weekday: 'long' }), 'la langue vient de l’argument');
-  assert.equal(F.dateIso('pas une date'), '');
+  // Une date illisible ne lève rien : « — » à l'écran, « » dans <time dateTime>.
+  for (const d of ['pas une date', Number.NaN]) {
+    assert.equal(F.formaterDate(d), '—', `formaterDate(${d})`);
+    assert.equal(F.formaterHeure(d), '—', `formaterHeure(${d})`);
+    assert.equal(F.dateIso(d), '', `dateIso(${d})`);
+  }
 });
 
 await dit('la logique est sans React ni import : elle se charge seule', () => {

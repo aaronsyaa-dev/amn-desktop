@@ -218,8 +218,10 @@
 /* ── Segmenté : conteneur #141415 / #28282b, rayon 10, 3 px ; actif #242427 T1 500 ── */
 .sc-segmente { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--socle-bord-controle); border-radius: var(--socle-rayon-champ); background: var(--socle-segment-fond); }
 .sc-segment { padding: 5px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--socle-texte-3); font-family: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
-.sc-segment:hover { color: var(--socle-texte-courant); }
+.sc-segment:hover:not(:disabled) { color: var(--socle-texte-courant); }
 .sc-segment[aria-checked='true'] { background: var(--socle-segment-actif); color: var(--socle-texte-1); }
+/* Désactivé (un fieldset coupé) : l'état se voit, comme sur le sélecteur voisin, et le survol ne répond plus. */
+.sc-segment:disabled { cursor: not-allowed; opacity: 0.6; }
 /* Compact (LOT-06) : 26 px de haut — rembourrage 2, segments 12 px, 3 × 9, rayon 9 ; mêmes couleurs. */
 .sc-segmente[data-taille='compact'] { padding: 2px; border-radius: var(--socle-rayon-controle); }
 .sc-segmente[data-taille='compact'] .sc-segment { padding: 3px 9px; border-radius: 6px; font-size: 12px; line-height: 14px; }

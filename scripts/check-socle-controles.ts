@@ -274,6 +274,9 @@ await dit('§4 Card, Subcard, IconButton, Kpi : rayons, rembourrages et cotes', 
   assert.match(regle(briques, '.sc-kpi__label'), /color:\s*var\(--socle-texte-3\)[\s\S]*font-size:\s*12px/);
   assert.match(regle(briques, '.sc-kpi__valeur'), /font-size:\s*24px[\s\S]*font-weight:\s*600[\s\S]*letter-spacing:\s*-0\.02em/);
   assert.match(regle(briques, '.sc-kpi__variation'), /font-size:\s*12px/);
+  // 84 à 92 px, jamais plus : la variation ne passe pas sous la valeur, elle s'ellipse (une seconde ligne ferait 94 px).
+  assert.match(regle(briques, '.sc-kpi__valeur'), /flex-wrap:\s*nowrap/, 'la valeur et sa variation sur une ligne');
+  assert.match(regle(briques, '.sc-kpi__variation'), /min-width:\s*0;\s*overflow:\s*hidden[\s\S]*text-overflow:\s*ellipsis;\s*white-space:\s*nowrap/, 'la variation s’ellipse');
 });
 
 await dit('§4 StatusPill, Pill, Tag, FlagUrgent, Kbd : fonds, bordures, tailles et rayons', () => {
@@ -330,6 +333,10 @@ await dit('§4 Field, Tabs, Segmented (et compact), SearchBox (34 et 38) : cotes
   assert.match(regle(controles, '.sc-segmente'), /padding:\s*3px[\s\S]*border:\s*1px solid var\(--socle-bord-controle\)[\s\S]*border-radius:\s*var\(--socle-rayon-champ\)[\s\S]*background:\s*var\(--socle-segment-fond\)/);
   assert.match(controles, /\.sc-segment\[aria-checked='true'\] \{ background: var\(--socle-segment-actif\); color: var\(--socle-texte-1\); \}/);
   assert.match(regle(controles, '.sc-segment'), /font-weight:\s*500/);
+  // Désactivé (un fieldset coupé, Réglages › Écran de veille) : l'état se voit comme sur `.sc-selecteur:disabled`, et le survol ne colore plus le segment.
+  assert.match(controles, /\.sc-segment:disabled \{ cursor: not-allowed; opacity: 0\.6; \}/, 'un segment désactivé se voit');
+  assert.match(controles, /\.sc-segment:hover:not\(:disabled\) \{ color: var\(--socle-texte-courant\); \}/, 'le survol épargne un segment désactivé');
+  assert.doesNotMatch(controles, /\.sc-segment:hover \{/, 'pas de survol sans :not(:disabled)');
   // Ajouté (s1b, LOT-06) : le segmenté compact, 26 px.
   assert.match(controles, /\.sc-segmente\[data-taille='compact'\] \{ padding: 2px; border-radius: var\(--socle-rayon-controle\); \}/);
   assert.match(controles, /\.sc-segmente\[data-taille='compact'\] \.sc-segment \{ padding: 3px 9px; border-radius: 6px; font-size: 12px; line-height: 14px; \}/);
@@ -377,8 +384,12 @@ await dit('Mono (§0.4) : en ligne, .sc-mono (police monospace du socle, chiffre
   assert.equal(K.TAILLE_MONO_MIN, 11);
   assert.equal(K.TAILLE_MONO_MAX, 18);
   assert.deepEqual([K.tailleMono(undefined), K.tailleMono(9), K.tailleMono(11), K.tailleMono(12.5), K.tailleMono(18), K.tailleMono(24), K.tailleMono(Number.NaN)], [undefined, 11, 11, 12.5, 18, 18, undefined]);
+  // ±Infinity est hors bornes comme 100 ou -5 : ramené, pas hérité.
+  assert.deepEqual([K.tailleMono(Number.POSITIVE_INFINITY), K.tailleMono(Number.NEGATIVE_INFINITY)], [18, 11]);
   assert.equal(rendre(h(K.Mono, null, '10:42:07')), '<span data-socle="mono" class="sc-mono">10:42:07</span>');
   assert.match(rendre(h(K.Mono, { taille: 24, className: 'x' }, '3')), /<span data-socle="mono" class="sc-mono x" style="font-size:18px">3<\/span>/);
+  // La borne l'emporte sur un style de l'appelant (la clé garde sa place dans l'objet, la valeur est celle de la borne) ; le reste du style passe.
+  assert.match(rendre(h(K.Mono, { taille: 14, style: { fontSize: 40, color: 'red' } }, '3')), /style="font-size:14px;color:red"/, 'style.fontSize ne contourne pas la borne');
   assert.match(rendre(h(K.Mono, { as: 'time', dateTime: '2026-10-30T10:42:07', taille: 11 }, '10:42:07')), /<time data-socle="mono" class="sc-mono" style="font-size:11px" dateTime="2026-10-30T10:42:07">/);
   assert.match(rendre(h(K.Mono, { as: 'code' }, 'FAC-0142')), /^<code /);
   assert.doesNotMatch(sansCommentaires(lire('src/socle/ui/Mono.tsx')), /#[0-9a-f]{6}|color:|font-family/i, 'ni couleur ni police écrites ici : .sc-mono de noir.css');
