@@ -201,22 +201,7 @@
 .sc-famille__veille { color: var(--socle-texte-3); font-size: 11.5px; font-weight: 400; }
 .sc-famille__etat[data-etat='inconnu'] .sc-voyant { --sc-v-c: var(--socle-texte-3); }
 
-.sc-compteur {
-  flex: none;
-  color: var(--socle-texte-2);
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 16px;
-  text-align: right;
-}
-.sc-compteur[data-pastille] {
-  min-width: 21px;
-  padding: 0 6px;
-  border-radius: var(--socle-rayon-pastille);
-  background: var(--socle-lateral-compteur);
-  color: var(--socle-texte-courant);
-  text-align: center;
-}
+/* Le compteur de Cyber : `CountBadge` du socle, variante `laterale` (21 px de large au moins, 11,5 / 500, fond `--socle-lateral-compteur`). */
 
 /* La famille ouverte : au plus cinq lignes sur un filet, le repère blanc en face du module courant. */
 .sc-sous {
@@ -274,7 +259,7 @@
 .sc-epingle:hover { background: var(--socle-lateral-survol); color: var(--socle-texte-1); }
 .sc-epingle__icone { flex: none; color: var(--socle-texte-3); }
 .sc-epingle__nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-epingle__compteur { flex: none; color: var(--socle-texte-2); font-size: 11.5px; }
+/* Le compteur d'un épinglé : `CountBadge` du socle, variante `texte` (11,5 px T3, chiffres tabulaires). */
 
 /* La carte « Aujourd'hui » : en bas, à la place de l'ancien bloc « En ligne ». */
 .sc-aujourdhui {

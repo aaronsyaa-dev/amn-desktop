@@ -18,7 +18,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { AnneauProgression, Avatar, LiveDot, Raccourci, type TonVivant } from '../ui';
+import { AnneauProgression, Avatar, CountBadge, LiveDot, Raccourci, type TonVivant } from '../ui';
 import { useSocleLangue } from '../i18n';
 import type { CarteAujourdhui, EtatGarde, FamilleLaterale, ModuleLateral } from './types';
 
@@ -130,13 +130,8 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
       return n;
     });
 
-  const compteur = (n: number, aide: string, pastille = false) =>
-    n > 0 ? (
-      <span className="sc-compteur" data-pastille={pastille || undefined} title={aide}>
-        {n > 99 ? '99+' : n}
-        <span className="sr-only"> {aide}</span>
-      </span>
-    ) : null;
+  /* `CountBadge` du socle : la pastille de Cyber (`laterale`) ou le chiffre seul d'un épinglé (`texte`). */
+  const compteur = (n: number, aide: string, pastille = false) => <CountBadge n={n} libelle={aide} variante={pastille ? 'laterale' : 'texte'} />;
 
   const module = (m: ModuleLateral, ensemble = false) => (
     <li key={m.cle}>
@@ -265,12 +260,7 @@ export const BarreLaterale = React.forwardRef<HTMLElement, BarreLateraleProps>(f
                   <Link to={m.vers} onClick={onFermer} className="sc-epingle sc-focus">
                     <Icone aria-hidden size={13} strokeWidth={1.8} className="sc-epingle__icone" />
                     <span className="sc-epingle__nom">{m.libelle}</span>
-                    {m.badge > 0 && (
-                      <span className="sc-epingle__compteur sc-nombre" title={ts('coquille.badge', { n: m.badge })}>
-                        {m.badge > 99 ? '99+' : m.badge}
-                        <span className="sr-only"> {ts('coquille.badge', { n: m.badge })}</span>
-                      </span>
-                    )}
+                    <CountBadge n={m.badge} libelle={ts('coquille.badge', { n: m.badge })} variante="texte" className="sc-epingle__compteur" />
                   </Link>
                 </li>
               );

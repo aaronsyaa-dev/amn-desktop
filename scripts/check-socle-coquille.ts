@@ -85,12 +85,13 @@ await dit('Cyber est toujours là : sans La Garde, sans compteur, hors de ses é
   const sans = rendre(h(K.BarreLaterale, props([famille('jour', [mod('home', 'essentiel')])], null, { cyber: { ...CYBER, compteur: null }, epingles: [], aujourdhui: null })));
   assert.match(sans, /data-cle="cyber"><a data-active="false" class="sc-famille sc-focus" href="\/cyber"/);
   assert.match(sans, /data-section="surveillance"/);
-  assert.doesNotMatch(sans, /sc-compteur/, 'pas de compteur inventé');
+  assert.doesNotMatch(sans, /sc-compteur|sc-count-badge/, 'pas de compteur inventé');
   assert.doesNotMatch(sans, /data-section="epingles"/, 'sans épinglé, pas de section vide');
   const avec = rendre(h(K.BarreLaterale, props([famille('jour', [mod('home', 'essentiel')])])));
-  assert.match(avec, /data-cle="cyber">[\s\S]*?<span class="sc-compteur" data-pastille="true" title="5 alertes ouvertes">5<span class="sr-only"> 5 alertes ouvertes<\/span><\/span>/);
+  // Le `CountBadge` du socle, variante `laterale` (21 px de large au moins, 11,5 / 500, fond `--socle-lateral-compteur`).
+  assert.match(avec, /data-cle="cyber">[\s\S]*?<span class="sc-count-badge" data-variante="laterale" title="5 alertes ouvertes">5<span class="sr-only"> 5 alertes ouvertes<\/span><\/span>/);
   assert.match(avec, /lucide-target/);
-  assert.match(rendre(h(K.BarreLaterale, props([], null, { cyber: { ...CYBER, compteur: 0 } }))), /data-cle="cyber"(?![\s\S]*sc-compteur)/);
+  assert.match(rendre(h(K.BarreLaterale, props([], null, { cyber: { ...CYBER, compteur: 0 } }))), /data-cle="cyber"(?![\s\S]*data-variante="laterale")/);
 });
 
 await dit('familles : 32 px, une icône de trait lucide de 15 px en T3 par famille, plus aucune pastille de couleur ni compteur ; la teinte seulement sur l’icône de la famille active', () => {
@@ -101,7 +102,7 @@ await dit('familles : 32 px, une icône de trait lucide de 15 px en T3 par famil
   assert.match(r, /width="15" height="15"/);
   assert.doesNotMatch(r, /sc-point/, 'plus de pastille de couleur');
   const espace = r.slice(r.indexOf('data-section="espace"'), r.indexOf('data-section="surveillance"'));
-  assert.doesNotMatch(espace, /sc-compteur/, 'aucun compteur sur une famille ni dans la sous-liste');
+  assert.doesNotMatch(espace, /sc-compteur|sc-count-badge/, 'aucun compteur sur une famille ni dans la sous-liste');
   const css = sansCommentaires(lire('src/socle/coquille/coquille.css'));
   assert.match(css, /\.sc-famille \{[^}]*height: 32px;[^}]*padding: 0 10px;[^}]*color: var\(--socle-texte-courant\);[^}]*font-size: 13px;/);
   assert.match(css, /\.sc-famille__icone \{[^}]*color: var\(--socle-texte-2\)/, 'icône en T3');
