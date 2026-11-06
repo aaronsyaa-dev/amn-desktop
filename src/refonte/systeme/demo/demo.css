@@ -130,7 +130,8 @@
 .sd-rangee > .sd-cas .sd-cas__corps { width: auto; }
 .sd-cas__legende { color: var(--socle-texte-3); font-size: 11.5px; line-height: 14px; }
 
-.sd-rangee { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 20px; margin-top: 12px; }
+/* Les pièces d'une rangée se posent sur une même ligne de base : leurs légendes s'alignent, quelle que soit la hauteur de chacune. */
+.sd-rangee { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 20px; margin-top: 12px; }
 .sd-bloc__titre + .sd-rangee { margin-top: 0; }
 .sd-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--sd-min, 220px), 1fr)); align-items: start; gap: var(--sd-ecart); }
 .sd-pile { display: flex; max-width: 520px; flex-direction: column; gap: 16px; }

@@ -1937,7 +1937,7 @@ function SectionVivant() {
   );
 }
 
-/* ─────────────────────────────  17. Alignement § 4 (chantier s1b)  ───────────────────────────── */
+/* ─────────────────────────────  18. Alignement § 4 (chantier s1b)  ───────────────────────────── */
 
 const TAILLES_ANNEAU = [26, 34, 40, 48, 58, 72] as const;
 const TAILLES_CASE = [16, 18, 24] as const;
@@ -2095,7 +2095,7 @@ function SectionBriques() {
         </div>
         <div className="sd-rangee">
           {TONS_TUILE.map((ton) => (
-            <Cas key={ton} legende={ton}>
+            <Cas key={ton} legende={tm(`briques.ton.${ton}`)}>
               <IconTile taille={36} ton={ton} icone={<Bell />} />
             </Cas>
           ))}
@@ -2115,16 +2115,16 @@ function SectionBriques() {
       </Bloc>
       <Bloc titre={tm('briques.compteur')}>
         <div className="sd-rangee">
-          <Cas legende="standard">
+          <Cas legende={tm('briques.compteur.standard')}>
             <CountBadge n={comptes.aFaire} />
           </Cas>
           <Cas legende={tm('briques.compteur.critique')}>
             <CountBadge n={2} critique />
           </Cas>
-          <Cas legende="laterale">
+          <Cas legende={tm('briques.compteur.laterale')}>
             <CountBadge n={comptes.factures} variante="laterale" />
           </Cas>
-          <Cas legende="texte">
+          <Cas legende={tm('briques.compteur.texte')}>
             <CountBadge n={comptes.clients} variante="texte" />
           </Cas>
           <Cas legende={tm('briques.compteur.plafond')}>
@@ -2142,7 +2142,7 @@ function SectionBriques() {
             <div className="sd-modules">
               {tuile(MODULES[0], 0, <CountBadge n={comptes.aFaire} />, tm('briques.sous.afaire', { n: comptes.aFaire }))}
               {tuile(MODULES[1], 1, <StatusPill etat="succes">{tm('briques.etat.succes')}</StatusPill>, tm('briques.sous.clients', { n: comptes.clients }))}
-              {tuile(MODULES[2], 2, <LiveDot libelle={tm('briques.direct')} onde={false} halo={false} taille={6} />)}
+              {tuile(MODULES[2], 2, <LiveDot libelle={tm('briques.direct')} afficherLibelle onde={false} halo={false} taille={6} />)}
               <AddModuleTile onClick={() => setChoisi(MODULES[0].id)} />
             </div>
           </Cas>
@@ -2198,7 +2198,7 @@ function SectionBriques() {
       <Bloc titre={tm('briques.pastille')}>
         <div className="sd-rangee">
           {ETATS_BRIQUES.map((e) => (
-            <Cas key={e} legende={e}>
+            <Cas key={e} legende={tm(`briques.ton.${e}`)}>
               <StatusPill etat={e}>{tm(`briques.etat.${e}`)}</StatusPill>
             </Cas>
           ))}
