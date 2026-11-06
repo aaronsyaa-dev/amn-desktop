@@ -238,3 +238,17 @@ Audit brique par brique de `01-SOCLE-DESIGN.md` § 4, mesuré dans le **CSS calc
 | `BlocEtat` (le bloc d'état de H43) | — (c'est `StateBlock`, fiche H43) | tuile 48 px, titre 15 px, texte 240 px | non : cotes mesurées sur l'image H43 (0,72 %), hors § 4 |
 
 Ajouts demandés par LOT-06 (point 2) : `Anneau` accepte `taille` de **26 à 80** (`tailleAnneau` borne, `epaisseurAnneau` donne 3 px à 26 → 8 px dès 72, `coteAnneau` règle la valeur centrée : 16 px, 13 px sous 72, 11 px sous 48, rien sous 40 — `children` l'y remet) ; `CaseACocher` prend `taille={16 | 18 | 24}` (16 px, coche de 11 px ; `'serie'` reste) ; `Segmente` prend `taille="compact"` (26 px : rembourrage 2, segments 12 px 3 × 9) ; `BoiteRecherche` prend `hauteur={38}` (le champ 270 × 38 de l'en-tête de D02). Une cible de 16 ou 26 px est sous les 34 px du § 7.6 : réservée aux rangées denses.
+
+### Les noms de mouvement des fiches (`amn-grow`, `amn-slide`, `amn-bar`, `amnFlow`, `amnHalo`)
+
+Les fiches des lots nomment les mouvements à l'anglaise ; `src/socle/mouvement.css` les fournit sans rien dupliquer (LOT-06, point 4) : trois **classes** qui partagent la règle de leur attribut, deux **noms de keyframes** pour une feuille d'écran qui anime elle-même un trait. Même coupure que le reste de la couche (`prefers-reduced-motion`, Mouvement « aucun » ; « réduit » garde un fondu court pour `amn-grow` et `amn-slide`, coupe `amn-bar`).
+
+| Nom de la fiche | Équivalent de la couche | Ce que c'est |
+|---|---|---|
+| `.amn-grow` | `data-mvt="entree"` | l'entrée d'une carte : 500 ms, monte de 6 px, décalage `--sc-mvt-rang` × 45 ms |
+| `.amn-slide` | `data-mvt="arrivee"` | l'arrivée d'une ligne : glisse de 8 px depuis la gauche, 450 ms |
+| `.amn-bar` | `data-mvt="pousse"` | une barre qui pousse depuis sa base : 700 ms, décalage `--sc-mvt-rang` × `--sc-mvt-barre-decalage` |
+| `amnFlow` | keyframes de `data-mvt="flux"` | un pointillé qui s'écoule (`stroke-dashoffset` recule de `--sc-mvt-flux-pas`), en boucle |
+| `amnHalo` | keyframes de `data-mvt="onde"` | une onde qui s'élargit (opacité .55 → 0, échelle 1 → 2,6), en boucle |
+
+Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement).
