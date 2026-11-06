@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, CornerDownLeft, Lock, Search, Shield, Target } from 'lucide-react';
-import { Avatar, Raccourci, Segmente } from '../../../socle/ui';
+import { Avatar, CountBadge, IconTile, ModuleTile, PageHead, Raccourci, Segmente } from '../../../socle/ui';
+import { estFamille, type Famille } from '../../../socle/familles';
 import { styleRang } from '../../../socle/couche-mouvement';
 import {
   composerRepertoire,
@@ -35,6 +36,9 @@ import './modules.css';
  *
  * La page branchée (`PageTousLesModules`) lit le registre, le catalogue, les épingles, le journal des ouvertures et
  * les compteurs de la coquille ; l'aperçu de capture passe des données fictives. Aucun nom, aucun chiffre ici.
+ *
+ * Briques du socle (STATUT §1.10 point 1) : `PageHead` (contrôles à la place des boutons), `IconTile` (22 et 28 px, part
+ * de teinte 10 % et bordure mesurées sur l'image), `ModuleTile` en variante `ligne` (les épinglés), `CountBadge` (lignes).
  */
 
 /** Un module tel que la colonne droite le montre : son nom, sa teinte de famille, son icône, où il mène. */
@@ -230,37 +234,38 @@ export function VueTousLesModules({
 
   return (
     <div className="dm-page" data-refonte-police="inter">
-      <header className="dm-entete">
-        <div className="dm-entete__titres">
-          <h1 className="dm-titre">{tm('titre')}</h1>
-          <p className="dm-sous">{sousTitre}</p>
-        </div>
-        <div className="dm-entete__controles">
-          <Segmente
-            libelle={tm('filtres')}
-            valeur={niveau}
-            onChange={(c) => setNiveau(c === niveau && c !== 'tous' ? 'tous' : (c as FiltreNiveau))}
-            options={NIVEAUX_FILTRE.map((f) => ({ cle: f, libelle: `${tm(`filtre.${f}`)} ${total[f]}` }))}
-          />
-          <div role="search" className="dm-recherche">
-            <Search aria-hidden size={14} />
-            <input
-              ref={champ}
-              type="search"
-              value={requete}
-              autoFocus={focusInitial}
-              placeholder={tm('recherche.placeholder')}
-              aria-label={tm('recherche.libelle')}
-              aria-controls="dm-repertoire"
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => setRequete(e.target.value)}
-              onKeyDown={surChamp}
-            />
-            <Raccourci>/</Raccourci>
-          </div>
-        </div>
-      </header>
+      <PageHead
+        className="dm-entete"
+        titre={tm('titre')}
+        sousTitre={sousTitre}
+        controles={
+          <>
+              <Segmente
+                libelle={tm('filtres')}
+                valeur={niveau}
+                onChange={(c) => setNiveau(c === niveau && c !== 'tous' ? 'tous' : (c as FiltreNiveau))}
+                options={NIVEAUX_FILTRE.map((f) => ({ cle: f, libelle: `${tm(`filtre.${f}`)} ${total[f]}` }))}
+              />
+              <div role="search" className="dm-recherche">
+                <Search aria-hidden size={14} />
+                <input
+                  ref={champ}
+                  type="search"
+                  value={requete}
+                  autoFocus={focusInitial}
+                  placeholder={tm('recherche.placeholder')}
+                  aria-label={tm('recherche.libelle')}
+                  aria-controls="dm-repertoire"
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setRequete(e.target.value)}
+                  onKeyDown={surChamp}
+                />
+                <Raccourci>/</Raccourci>
+              </div>
+          </>
+        }
+      />
       {aucun && (
         <p className="dm-aucun" role="status">
           <span>{tm('vide.titre', { q: requete.trim() })}</span>
@@ -452,12 +457,7 @@ function Ligne({
               <span className="sr-only">{tm('ligne.verrou')}</span>
             </span>
           )}
-          {m.badge > 0 && (
-            <span className="dm-compte">
-              {m.badge > 99 ? '99+' : m.badge}
-              <span className="sr-only"> {tm('ligne.badge', { n: m.badge })}</span>
-            </span>
-          )}
+          <CountBadge n={m.badge} libelle={tm('ligne.badge', { n: m.badge })} />
           {m.personnes.length > 0 && (
             <span className="dm-presents">
               {m.personnes.slice(0, 2).map((n) => (
@@ -491,13 +491,15 @@ function Ligne({
   );
 }
 
+/** La teinte d'une puce (`teinte` du répertoire) en famille de la tuile d'icône ; une teinte inconnue : la tuile neutre des outils. */
+const familleDe = (teinte: string): Famille | 'garde' | undefined => (estFamille(teinte) || teinte === 'garde' ? teinte : undefined);
+
+/** Les cotes de l'image D02 : part de teinte 10 %, bordure à 22 % (`IconTile`, 22 ou 28 px). */
+const TUILE_D02 = { part: 10, bordure: true } as const;
+
 function Tuile({ module, taille }: { module: ModulePuce; taille: 22 | 28 }) {
   const Icone = module.icone;
-  return (
-    <span aria-hidden className="dm-tuile" data-teinte={module.teinte} data-taille={taille}>
-      {Icone ? <Icone size={taille === 28 ? 13 : 11} strokeWidth={1.8} /> : null}
-    </span>
-  );
+  return <IconTile taille={taille} famille={familleDe(module.teinte)} part={TUILE_D02.part} bordure={TUILE_D02.bordure} icone={Icone ? <Icone size={taille === 28 ? 13 : 11} strokeWidth={1.8} /> : null} />;
 }
 
 function CarteEpingles({ epingles, touche }: { epingles: readonly ModulePuce[]; touche: '⌘' | 'Ctrl' }) {
@@ -523,10 +525,16 @@ function CarteEpingles({ epingles, touche }: { epingles: readonly ModulePuce[]; 
         <ul className="dm-puces">
           {epingles.map((p, i) => (
             <li key={p.id}>
-              <Link to={p.vers} aria-label={tm('epingles.ouvrir', { nom: p.nom, touche: raccourci(i + 1) })} title={p.nom} className="dm-puce sc-focus">
-                <Tuile module={p} taille={22} />
-                <span className="dm-puce__nom">{p.nom}</span>
-              </Link>
+              <ModuleTile
+                variante="ligne"
+                nom={p.nom}
+                vers={p.vers}
+                famille={familleDe(p.teinte)}
+                tuile={TUILE_D02}
+                icone={p.icone ? <p.icone size={11} strokeWidth={1.8} /> : null}
+                aria-label={tm('epingles.ouvrir', { nom: p.nom, touche: raccourci(i + 1) })}
+                title={p.nom}
+              />
             </li>
           ))}
         </ul>

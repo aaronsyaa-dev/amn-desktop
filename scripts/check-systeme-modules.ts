@@ -217,7 +217,7 @@ await dit('états de ligne : « non activé » (pas un lien), cadenas, « Nouvea
   assert.match(html, /<span role="link" aria-disabled="true"[^>]*data-ligne="a-1"[\s\S]*?non activé/);
   assert.match(html, /data-ligne="b-0"[\s\S]*?lucide-lock/);
   assert.doesNotMatch(html.slice(html.indexOf('data-ligne="b-0"'), html.indexOf('data-ligne="b-1"')), /non activé/, 'verrouillé : le cadenas, pas « non activé »');
-  assert.match(html, /data-ligne="a-2"[\s\S]*?>Nouveau<[\s\S]*?class="dm-compte">4/);
+  assert.match(html, /data-ligne="a-2"[\s\S]*?>Nouveau<[\s\S]*?class="sc-count-badge" data-variante="standard" title="[^"]*">4<span class="sr-only">/, 'le compteur est le CountBadge du socle');
   assert.match(html, /Ouvert en ce moment par Sacha/);
   assert.equal(compter(html, /data-ligne="[^"]*"[^>]*tabindex="0"|tabindex="0"[^>]*data-ligne=/g), 1);
 });
@@ -267,7 +267,12 @@ await dit('mouvement : colonnes en fondu échelonné, cartes de droite en entré
 
 await dit('cotes lues dans modules.css : titre 28, champ 270 × 38, colonnes de 187 (écart 6), lignes de 21, en-tête de famille 26, colonne droite 300, cartes 218 et 190', () => {
   const css = sansCommentaires(lire('src/refonte/systeme/modules/modules.css'));
-  assert.match(css, /\.dm-titre \{[^}]*font-size: 28px; font-weight: 600; letter-spacing: -0\.02em; line-height: 1\.1/);
+  // L'en-tête est le `PageHead` du socle (28 / 600 / −.02 em / 1,1 dans archetypes.css) ; D02 règle sa hauteur et ses contrôles.
+  assert.match(sansCommentaires(lire('src/socle/ui/archetypes/archetypes.css')), /\.sc-page__titre \{[^}]*font-size: 28px; font-weight: 600; letter-spacing: -0\.02em; line-height: 1\.1/);
+  assert.match(css, /\.dm-entete\.sc-page__entete \{ height: 70px; flex-wrap: nowrap; gap: 24px; \}/);
+  assert.match(css, /\.dm-entete \.sc-page__controles \{ margin-top: 16px; \}/);
+  assert.match(vue(), /<header class="sc-page__entete dm-entete"><div class="sc-page__titres"><h1 class="sc-page__titre">Tous les modules<\/h1>/);
+  assert.doesNotMatch(css, /\.dm-titre|\.dm-sous|\.dm-tuile|\.dm-puce \{|\.dm-compte/, 'titre, tuiles, puces et compteur : les briques du socle');
   assert.match(css, /\.dm-recherche \{[^}]*width: 270px;[^}]*height: 38px/);
   assert.match(css, /\.dm-recherche:focus-within \{ border-color: var\(--socle-bord-champ\); \}/);
   assert.match(css, /\.dm-colonnes \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 187px\)\); gap: 6px; \}/);
@@ -278,9 +283,13 @@ await dit('cotes lues dans modules.css : titre 28, champ 270 × 38, colonnes de 
   assert.match(css, /\.dm-epingles \{ height: 218px; \}/);
   assert.match(css, /\.dm-recents \{ height: 190px; \}/);
   assert.match(css, /\.dm-puces \{[^}]*grid-template-columns: repeat\(2, 132px\)/);
-  assert.match(css, /\.dm-puce \{[^}]*height: 34px/);
+  const briques = sansCommentaires(lire('src/socle/ui/briques-partagees/briques-partagees.css'));
+  assert.match(briques, /\.sc-module-tile\[data-variante='ligne'\] \{[^}]*height: 34px;[^}]*gap: 9px;[^}]*padding: 0 8px;[^}]*border-radius: 9px;[^}]*font-size: 12\.5px;[^}]*font-weight: 500/);
+  assert.match(briques, /\.sc-icon-tile\[data-taille='22'\] \{ --sc-tuile: 22px; --sc-tuile-rayon: 6px;/);
+  assert.match(briques, /\.sc-icon-tile\[data-taille='28'\] \{ --sc-tuile: 28px; --sc-tuile-rayon: 8px;/);
+  assert.match(vue(), /<a class="sc-module-tile sc-focus" data-variante="ligne" title="[^"]*" aria-label="[^"]*" href="[^"]*"[^>]*><span aria-hidden="true" data-taille="22" data-famille="[a-z]+" data-part="10" data-bordure="true" class="sc-icon-tile">/, 'les épinglés : ModuleTile « ligne » et IconTile 22 (part 10, bordure)');
   assert.match(css, /\.dm-recent \{[^}]*height: 33px/);
-  assert.match(css, /\.dm-compte \{[^}]*height: 16px;[^}]*background: var\(--socle-pastille-compte\);[^}]*font-size: 10\.5px/);
+  assert.match(briques, /\.sc-count-badge\[data-variante='standard'\] \{[^}]*height: 16px;[^}]*background: var\(--socle-pastille-compte\);[^}]*font-size: 10\.5px/);
   assert.match(lire('src/socle/noir.css'), /--socle-pastille-compte: #26262a;/);
 });
 
@@ -300,7 +309,7 @@ await dit('aucune couleur hex en dur, aucune encre « discret » en texte, chiff
   assert.doesNotMatch(css, /color:\s*var\(--socle-trait/);
   const racine = /\.dm-page \{([^}]*)\}/.exec(css)?.[1] ?? '';
   assert.doesNotMatch(racine, /tabular-nums/, 'C11 : pas sur la racine de la page');
-  assert.match(css, /\.dm-compte \{[^}]*tabular-nums/);
+  assert.match(sansCommentaires(lire('src/socle/ui/briques-partagees/briques-partagees.css')), /\.sc-count-badge \{ font-variant-numeric: tabular-nums; \}/);
 });
 
 await dit('aucun chiffre du registre ni nom d’exemple écrit à la main dans le dossier', () => {
