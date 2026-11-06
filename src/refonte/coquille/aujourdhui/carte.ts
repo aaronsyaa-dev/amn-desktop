@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
-import type { Langue } from '../../i18n';
-import { traduireSocle } from '../../socle/i18n';
-import type { CarteAujourdhui } from '../../socle/coquille';
-import { useAccueil } from '../accueil/useAccueil';
+import type { Langue } from '../../../i18n';
+import { traduireSocle } from '../../../socle/i18n';
+import type { CarteAujourdhui } from '../../../socle/coquille';
+import { useAujourdhui } from './useAujourdhui';
 
 /**
  * LA CARTE « AUJOURD'HUI » DE LA BARRE LATÉRALE (§0.1) — les MÊMES chiffres que l'Accueil (N01), parce qu'elle
- * les lit au même endroit : `useAccueil` (le fil du jour et ce qui y est coché, la série des routines, le prochain
- * rendez-vous du jour, les collègues en ligne et le libellé de leur module). Rien n'est calculé ici, sauf la mise
- * en mots de l'heure (« 11:00 · dans 18 min »).
+ * les lit au même endroit : `useAujourdhui` (le fil du jour et ce qui y est coché, la série des routines, le
+ * prochain rendez-vous du jour, les collègues en ligne et le libellé de leur module). Rien n'est calculé ici, sauf
+ * la mise en mots de l'heure (« 11:00 · dans 18 min »).
  */
 
 /** « dans 18 min », « dans 2 h », « dans 1 h 05 », « en cours » : le temps qui reste avant un début. Pur. */
@@ -27,19 +27,19 @@ export function heureDe(debut: Date, langue: Langue): string {
 }
 
 export function useCarteAujourdhui(langue: Langue, versAccueil: string): CarteAujourdhui | null {
-  const a = useAccueil();
+  const a = useAujourdhui();
   return useMemo(() => {
     if (!a.pret) return null;
     const rdv = a.prochainRdv;
     const debut = rdv ? new Date(rdv.debut) : null;
     return {
-      faites: a.faits,
-      total: a.fil.length,
+      faites: a.faites,
+      total: a.total,
       serie: a.serie,
       rendezVous: rdv && debut && rdv.titre ? { titre: rdv.titre, heure: heureDe(debut, langue), dans: delaiAvant(debut, a.maintenant, langue) } : null,
       collegues: a.enLigne.map((p) => ({ cle: p.email, nom: p.nom, lieu: p.module })),
       presenceMontree: a.presenceMontree,
       vers: versAccueil,
     };
-  }, [a.pret, a.prochainRdv, a.faits, a.fil.length, a.serie, a.enLigne, a.presenceMontree, a.maintenant, langue, versAccueil]);
+  }, [a.pret, a.prochainRdv, a.faites, a.total, a.serie, a.enLigne, a.presenceMontree, a.maintenant, langue, versAccueil]);
 }

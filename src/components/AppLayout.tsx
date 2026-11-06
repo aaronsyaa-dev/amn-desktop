@@ -50,7 +50,7 @@ import { ModulesOuvertsTracker } from '../state/useModulesOuverts';
 import { RegardsProvider } from '../state/RegardsContext';
 import { SourceBureauxProvider, useActiverSourceBureaux } from '../bureaux/donnees/source';
 import { NavigationEspacesProvider } from '../bureaux/navigation';
-import { CoquilleRefonte, useCoquilleActive } from '@edition/coquille';
+import { CoquilleRefonte, FournisseurAujourdhui, useCoquilleActive } from '@edition/coquille';
 import { bureauDuChemin } from '../bureaux/catalogue';
 import { CadreBureau } from '../bureaux/CadreBureau';
 import { PaletteEspaces } from '../bureaux/ui/PaletteEspaces';
@@ -168,6 +168,8 @@ export function AppLayout() {
               ) : coquille ? (
               <>
               <SourceEnAttente />
+              {/* « Aujourd'hui » : un seul calcul, partagé par la barre latérale et l'Accueil (monté une fois, ici). */}
+              <FournisseurAujourdhui>
               {/* La nouvelle coquille : une navigation, un fil d'Ariane, ⌘K, ⌘J. L'écran est le même. */}
               <CoquilleRefonte largeur={isControl ? 'pleine' : 'lecture'}>
                 <div className={isControl ? 'control-ground control-edge control-dense' : undefined}>
@@ -183,6 +185,7 @@ export function AppLayout() {
                   </motion.div>
                 </div>
               </CoquilleRefonte>
+              </FournisseurAujourdhui>
               </>
               ) : (
               <>

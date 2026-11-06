@@ -1,28 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useLangue, libelleNav } from '../../i18n';
-import { useCollection, useSync, stripMeta } from '../../state/SyncContext';
+import { useCollection, useSync } from '../../state/SyncContext';
 import { useClients } from '../../state/useClients';
 import { useInvoices, isOverdue, isoDay, invoiceTotals, netDueCents } from '../../state/useInvoices';
 import { useAppointments, appointmentEnd } from '../../state/useAppointments';
 import { useAttention } from '../../state/useAttention';
 import { useActivity } from '../../state/ActivityContext';
-import { useRegards } from '../../state/RegardsContext';
-import { useProfilesOptionnel } from '../../state/ProfilesContext';
 import { toutesLesSections } from '../../data/spaces';
 import type { NavItem } from '../../data/navigation';
 import { daysBetween, type AttentionKind } from '../../lib/attention';
-import { emit } from '../../socle/moments';
 import { FAMILLES, type Famille } from '../../socle/familles';
-import { guideVu } from '../../guide/memoire';
 import { familleDe } from '../navigation/registre';
-import { jourDe } from './ajmani/parole';
 import { traduireAccueil, type CleAccueil } from './i18n';
-import { appliquerRetouches, actionPrincipale, basculerFait, construireFil, retouchesVides, type ActionPrincipale, type LigneFil, type RetouchesFil } from './filDuJour';
-import { calculerTuiles, lundiDe, meilleureSerie, type Tuile } from './tuiles';
+import { actionPrincipale, type ActionPrincipale, type LigneFil, type RetouchesFil } from './filDuJour';
+import { calculerTuiles, lundiDe, type Tuile } from './tuiles';
 import { filDActivite, type LigneActivite } from './activite';
-import { libelleDuLieu } from '../coquille/lieu';
-import { libellePageSysteme } from '../coquille/pagesSysteme';
+import { useAujourdhui } from '../coquille/aujourdhui';
 import type { Journee, TypeAlerte } from './scenes';
 
 /**
@@ -30,11 +24,16 @@ import type { Journee, TypeAlerte } from './scenes';
  * ═════════════════════════════════════════════════════════════════════════
  *
  * Aucune requête nouvelle : les collections synchronisées (rendez-vous,
- * factures, tâches, priorités du jour, routines, revues hebdo, journal de
- * bord, clients), le journal d'activité de l'équipe (`useActivity`), la
- * présence sur les modules (`useRegards`) et le moteur d'attention. Les
- * seules écritures sont celles que les écrans d'origine font déjà : cocher
- * sa priorité du jour, cocher une tâche.
+ * factures, tâches, priorités du jour, revues hebdo, journal de bord,
+ * clients), le journal d'activité de l'équipe (`useActivity`) et le moteur
+ * d'attention.
+ *
+ * « AUJOURD'HUI » (le fil du jour et ce qui y est coché, la série, le prochain
+ * rendez-vous, la présence, les gestes `cocher` et `retoucher`) vient de
+ * `useAujourdhui` (`src/refonte/coquille/aujourdhui/`) : UN SEUL calcul,
+ * partagé avec la carte de la barre latérale (§1.10 point 3). Rien de tout
+ * cela n'est recalculé ici ; les règles restent celles de `filDuJour.ts` et
+ * `tuiles.ts`.
  */
 
 interface LigneTache {
@@ -42,15 +41,10 @@ interface LigneTache {
   status?: string;
   assigneeEmail?: string;
 }
-interface Priorite {
-  id: string;
-  label: string;
-  doneAt: string | null;
-}
 interface JourPriorites {
   email: string;
   day: string;
-  items: Priorite[];
+  items: { doneAt: string | null }[];
 }
 
 /** Les modules qu'on ouvre peu : un par jour, à tour de rôle (il n'existe pas de trace des visites). */
@@ -66,17 +60,6 @@ function typeAlerte(kind: AttentionKind): TypeAlerte {
   if (kind === 'incident-critical' || kind === 'incident-stale' || kind === 'scan-regression') return 'site';
   if (kind === 'certificate-expired' || kind === 'certificate-expiring' || kind === 'certificate-unknown') return 'securite';
   return 'autre';
-}
-
-const CLE_RETOUCHES = (email: string) => `amn.accueil.fil.${email || 'anonyme'}`;
-function lireRetouches(email: string, jour: string): RetouchesFil {
-  try {
-    const v = JSON.parse(window.localStorage.getItem(CLE_RETOUCHES(email)) ?? 'null') as RetouchesFil | null;
-    if (v && v.jour === jour && Array.isArray(v.faits) && Array.isArray(v.masques) && Array.isArray(v.ajouts)) return v;
-  } catch {
-    /* illisible : on repart d'un fil sans retouches */
-  }
-  return retouchesVides(jour);
 }
 
 export interface ModuleBarre {
@@ -119,87 +102,25 @@ export interface Accueil {
 
 export function useAccueil(): Accueil {
   const { user } = useAuth();
-  const email = user?.email ?? '';
-  const moi = email.toLowerCase();
   const { langue } = useLangue();
-  const { upsert, ready } = useSync();
+  const { ready } = useSync();
   const { clients } = useClients();
   const { invoices } = useInvoices();
   const { appointments } = useAppointments();
   const taches = useCollection<LigneTache>('tasks');
   const priorites = useCollection<JourPriorites>('dailyPriorities');
-  const routines = useCollection<{ ticks: string[] }>('routines');
   const revues = useCollection<{ week: string; prochaine?: string }>('weeklyReviews');
   const journal = useCollection<{ text: string; kind: string; byEmail: string; at: string }>('logbook');
   const { items } = useAttention();
   const { events, totalUnseen, unseen } = useActivity();
-  const { autres, montree } = useRegards();
-  const profils = useProfilesOptionnel();
 
-  // L'horloge de l'Accueil : la minute suffit.
-  const [maintenant, setMaintenant] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setMaintenant(new Date()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-  const jour = jourDe(maintenant);
-
-  const [retouches, setRetouches] = useState(() => lireRetouches(email, jour));
-  useEffect(() => setRetouches(lireRetouches(email, jour)), [email, jour]);
-  const retoucher = useCallback(
-    (fn: (r: RetouchesFil, jour: string) => RetouchesFil) => {
-      setRetouches((r) => {
-        const suivant = fn(r, jour);
-        try {
-          window.localStorage.setItem(CLE_RETOUCHES(email), JSON.stringify(suivant));
-        } catch {
-          /* stockage refusé : la retouche vaut pour cette session */
-        }
-        return suivant;
-      });
-    },
-    [email, jour],
-  );
-
-  const nomDe = useCallback(
-    (e: string) => {
-      const p = profils?.profileFor(e);
-      return p?.name?.trim() || e.split('@')[0];
-    },
-    [profils],
-  );
-
-  /* Cocher dans la donnée : ce que font déjà les écrans Priorités et Tâches. */
-  const cocher = useCallback(
-    (ligne: LigneFil) => {
-      if (ligne.case === 'poste') return retoucher((r, j) => basculerFait(r, j, ligne.cle));
-      if (ligne.case !== 'donnee') return undefined;
-      if (ligne.type === 'tache') {
-        const id = ligne.cle.slice('tache:'.length);
-        const t = taches.find((x) => x.id === id);
-        if (!t) return undefined;
-        const statut = ligne.fait ? 'todo' : 'done';
-        void upsert('tasks', t.id, { ...stripMeta(t), status: statut });
-        if (statut === 'done') emit('tache.terminee', { tacheId: t.id });
-        return undefined;
-      }
-      if (ligne.type === 'priorite') {
-        const aujourdhui = isoDay(maintenant);
-        const rec = priorites.find((d) => d.day === aujourdhui && d.email.toLowerCase() === moi);
-        const idPriorite = ligne.cle.split(':').slice(2).join(':');
-        if (!rec) return undefined;
-        const items = rec.items.map((p) => (p.id === idPriorite ? { ...p, doneAt: p.doneAt ? null : new Date().toISOString() } : p));
-        void upsert('dailyPriorities', rec.id, { email: rec.email, day: rec.day, items, updatedAt: new Date().toISOString() });
-      }
-      return undefined;
-    },
-    [retoucher, taches, upsert, priorites, maintenant, moi],
-  );
+  /* « Aujourd'hui » : le même objet que la carte de la barre latérale (un seul calcul, une seule horloge). */
+  const { email, maintenant, jour, fil: visibles, faites: faits, masquees, serie, prochainRdv, compteVide, enLigne, presenceMontree, nomDe, cocher, retoucher } = useAujourdhui();
+  const moi = email.toLowerCase();
 
   return useMemo(() => {
     const ta = (cle: CleAccueil, params?: Record<string, string | number>) => traduireAccueil(langue, cle, params);
-    const aujourdhui = isoDay(maintenant);
-    const heure = (iso: string) => new Date(iso).toLocaleTimeString(langue === 'en' ? 'en-GB' : 'fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const aujourdhui = jour;
 
     /* ── Factures ── */
     const enRetard = invoices
@@ -226,28 +147,9 @@ export function useAccueil(): Accueil {
       })(),
     });
 
-    /* ── Aujourd'hui ── */
+    /* ── Le reste de la journée : ce que le message d'Ajmani et la barre comptent encore ── */
     const rdvDuJour = appointments.filter((a) => a.status !== 'cancelled' && isoDay(new Date(a.startAt)) === aujourdhui);
     const ouvertes = taches.filter((t) => t.status === 'todo' || t.status === 'doing');
-    const faitesAujourdhui = taches.filter((t) => t.status === 'done' && (t.updatedAt ?? '').slice(0, 10) === aujourdhui);
-    const compteVide = ready && clients.length === 0 && invoices.length === 0 && appointments.length === 0 && taches.length === 0;
-    const lignes = construireFil(
-      {
-        moi: email,
-        priorites: priorites.filter((d) => d.day === aujourdhui).flatMap((d) => (d.items ?? []).map((p) => ({ email: d.email, id: p.id, label: p.label, fait: Boolean(p.doneAt) }))),
-        rdv: rdvDuJour.map((a) => ({
-          id: a.id,
-          titre: a.clientName ? `${a.title} · ${a.clientName}` : a.title,
-          quand: a.startAt,
-          heure: heure(a.startAt),
-          fait: a.status === 'done' || appointmentEnd(a) <= maintenant,
-        })),
-        taches: [...ouvertes, ...faitesAujourdhui].map((t) => ({ id: t.id, titre: t.title || '—', statut: (t.status as 'todo' | 'doing' | 'done') ?? 'todo', responsable: t.assigneeEmail || null })),
-        etapes: compteVide ? { client: clients.length > 0, rdv: appointments.length > 0, visite: guideVu('general', email) } : null,
-      },
-      { enCours: ta('jour.enCours'), aFaire: ta('jour.aFaire'), faite: ta('jour.faite'), etapeClient: ta('jour.etape.client'), etapeRdv: ta('jour.etape.rdv'), etapeVisite: ta('jour.etape.visite') },
-    );
-    const { visibles, masquees, faits } = appliquerRetouches(lignes, retouches, jour, email);
 
     /* ── Activité de l'équipe ── */
     const activite = filDActivite(
@@ -285,10 +187,6 @@ export function useAccueil(): Accueil {
     });
     const garde = catalogue.filter(estGarde).map(versModule);
 
-    /* ── En ligne ── */
-    // Le libellé du module, jamais l'adresse (écart C7) : inconnu, on n'écrit rien.
-    const enLigne = autres.filter((r) => !r.parti).map((r) => ({ email: r.email, nom: nomDe(r.email), module: libelleDuLieu(r.module, catalogue, (c) => libellePageSysteme(c, langue)) }));
-
     /* ── Le message d'Ajmani ── */
     const critique = items.find((i) => i.severity === 'critical') ?? null;
     const factureCritique = critique?.kind === 'invoice-overdue' ? enRetard.find((f) => critique.key === `invoice-overdue:${f.id}`) : undefined;
@@ -315,8 +213,8 @@ export function useAccueil(): Accueil {
       jour,
       journee,
       tuiles,
-      serie: meilleureSerie(routines, maintenant),
-      prochainRdv: rdvAVenir[0] ? { titre: rdvAVenir[0].title?.trim() || rdvAVenir[0].clientName || '', debut: rdvAVenir[0].startAt } : null,
+      serie,
+      prochainRdv,
       boiteAZero: ready && totalUnseen === 0,
       fil: visibles,
       faits,
@@ -326,10 +224,10 @@ export function useAccueil(): Accueil {
       familles,
       garde,
       enLigne,
-      presenceMontree: montree,
+      presenceMontree,
       nomDe,
       cocher,
       retoucher,
     };
-  }, [langue, maintenant, invoices, ready, taches, revues, appointments, clients, priorites, email, retouches, jour, events, journal, unseen, moi, autres, nomDe, items, routines, user, totalUnseen, montree, cocher, retoucher]);
+  }, [langue, maintenant, invoices, ready, taches, revues, appointments, clients, priorites, email, jour, events, journal, unseen, moi, nomDe, items, user, totalUnseen, visibles, faits, masquees, serie, prochainRdv, compteVide, enLigne, presenceMontree, cocher, retoucher]);
 }

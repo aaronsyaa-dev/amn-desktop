@@ -291,3 +291,48 @@ Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data
 - `Mono` (`src/socle/ui/Mono.tsx`, exporté par `src/socle/ui`) : la donnée technique « en MONO » des fiches — `<Mono>10:42:07</Mono>`, `<Mono as="time" dateTime="…">`, `<Mono as="code">`, `taille` de 11 à 18 px (bornée) ; la couleur vient du parent. C'est `.sc-mono` de `noir.css` (`--socle-police-mono`, chiffres tabulaires, sans ligatures).
 - `src/socle/formats.ts` : `formaterNombre`, `formaterPourcent` (déjà en pour cent), `formaterRatio` (0 à 1), `formaterEuro`, `formaterMontant`, `formaterDate`, `formaterHeure`, `dateIso`, importables depuis tout code interne (`import { formaterEuro } from '../../socle/formats'`) — `check:socle-graphiques` interdit d'importer `src/socle/ui/graphiques/*` hors du socle ; ce module neutre réexporte les deux sources sans rien recopier.
 - Jetons ajoutés dans `noir.css` : `--socle-decor-1/2/3` (illustrations seulement), `--socle-hachure-attention` / `--socle-hachure-grise` (`background-image`), `--socle-pointille-ok` / `--socle-pointille-attention` (`border`) ; la teinte de sélection `#D9A27A` des fiches est `--socle-fam-creer`.
+
+## « Aujourd'hui » et compteurs de la barre latérale (socle v3, chantier s2)
+
+### « Aujourd'hui » : un seul calcul (`src/refonte/coquille/aujourdhui/`)
+
+La carte « Aujourd'hui » de la barre latérale et l'Accueil (N01) lisent les mêmes chiffres parce qu'ils sortent d'un seul calcul (consigne du CO, `STATUT.md` §1.10 point 3). LOT-01 le lit, il ne le recalcule pas.
+
+```ts
+import { useAujourdhui } from '../coquille/aujourdhui';
+
+const a = useAujourdhui();
+// a.faites / a.total   : « x sur y faites » (les lignes faites sur les lignes visibles du fil)
+// a.serie               : la série en cours, en jours (0 : aucune), comptée à la clôture (04-ECARTS B2)
+// a.prochainRdv         : { titre, debut } du prochain rendez-vous du jour pas encore fini, ou null
+// a.fil / a.masquees    : le fil du jour tel qu'on le montre (retouches appliquées), et ce qui est masqué
+// a.enLigne / a.presenceMontree : qui est en ligne et le libellé du module où chacun est (jamais une adresse)
+// a.maintenant / a.jour : l'horloge à la minute, le jour « AAAA-MM-JJ »
+// a.cocher(ligne)       : cocher dans la donnée (priorité, tâche) ou sur ce poste (ligne à soi)
+// a.retoucher(fn)       : masquer, ajouter, tout réafficher (fonctions pures de `accueil/filDuJour.ts`)
+```
+
+- Les **règles** restent celles de S2 : `construireFil` et `appliquerRetouches` (`src/refonte/accueil/filDuJour.ts`), `meilleureSerie` (`tuiles.ts`). Elles sont appelées par la fonction pure `calculerAujourdhui(sources, maintenant, libelles)` (`calculer.ts`), jamais recopiées ; `construireFil` n'est appelé que là (`check:socle-coquille`).
+- **Une seule instance** : `FournisseurAujourdhui` est monté une fois dans la coque interne (`AppLayout`, par `@edition/coquille`, jumeau cliente inerte). Tout ce qui est sous la coque reçoit le même objet : cocher une ligne à l'Accueil met la carte de la barre à jour sans second calcul. Sans fournisseur (contrôles, aperçus), `useAujourdhui()` calcule localement.
+- `useCarteAujourdhui(langue, versAccueil)` (`carte.ts`) met ces chiffres en mots pour la barre (« 11:00 · dans 18 min »). `useAccueil` (N01) lit `useAujourdhui()` et garde le reste (tuiles, activité, familles, message d'Ajmani).
+
+### Compteurs de la barre latérale : déclarés par les lots (`src/refonte/compteurs/`)
+
+Les pastilles de la barre latérale (« ce qui attend », par adresse de module) ne sont plus calculées en dur dans la coquille. Chaque lot déclare les siennes dans **un fichier**, `src/refonte/compteurs/<famille>.ts`, ramassé seul (comme le registre des modules de S5) :
+
+```ts
+import { useMemo } from 'react';
+import { useCollection } from '../../state/SyncContext';
+import { declarerCompteurs } from '../coquille/declarerCompteurs';
+
+function useCompteurs(): Record<string, number> {
+  const articles = useCollection<Article>('stock');
+  return useMemo(() => ({ '/stock': articlesASurveiller(articles).length }), [articles]);
+}
+export default declarerCompteurs({ famille: 'creer', useCompteurs });
+```
+
+- `useCompteurs` est un **hook** (il lit les accès existants) qui rend les compteurs par adresse de vue (le `to` du catalogue). Rendez un objet mémorisé. Une adresse absente ou à zéro n'affiche rien ; deux déclarations sur la même adresse s'additionnent : déclarez une adresse une seule fois.
+- `famille` : une des sept familles, `garde` ou `cyber`. Une déclaration mal formée est écartée avec sa raison (`COMPTEURS_DECLARES.ecartes`), les autres s'affichent.
+- Les compteurs d'avant sont la première déclaration, `compteurs/jour.ts` (activité non vue, agenda, tâches, relances, priorités) ; celui de Cyber est `compteurs/cyber.ts` (absent tant que la source n'a pas répondu : pas de pastille, pas de zéro inventé).
+- Hors de Vite (contrôles Node), `import.meta.glob` n'existe pas : la liste est vide ; `check:socle-coquille` et les aperçus (`scripts/apercu/construire.ts`) la remplacent par le contenu du dossier.

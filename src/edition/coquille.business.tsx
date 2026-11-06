@@ -19,6 +19,11 @@ export function EcranDeVeille(): null {
   return null;
 }
 
+/** « Aujourd'hui » n'existe pas côté cliente : le fournisseur rend ses enfants, sans rien. */
+export function FournisseurAujourdhui({ children }: { children?: React.ReactNode }): React.ReactElement {
+  return <>{children}</>;
+}
+
 /** Toujours faux : la coquille d'origine. */
 export function useCoquilleActive(): boolean {
   return false;
