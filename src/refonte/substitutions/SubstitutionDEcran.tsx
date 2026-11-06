@@ -7,10 +7,11 @@ import { REGISTRE_SUBSTITUTIONS, trouverSubstitution, type RegistreSubstitutions
 /**
  * LE POINT UNIQUE DE SUBSTITUTION — à la place de chaque `<Outlet />` de la coque interne.
  *
- * `AppLayout` (ses deux sorties : ancienne coquille et `CoquilleRefonte`) et
- * `ClientContextLayout` (la session de support cliente, `support`) le montent
- * par la couture `@edition/substitutions` ; côté cliente, le jumeau rend
- * `<Outlet />` et rien d'autre.
+ * `AppLayout` (ses deux sorties : ancienne coquille et `CoquilleRefonte`),
+ * `CadreBureau` (la pièce des cinq bureaux, que `AppLayout` rend avant ses
+ * deux sorties) et `ClientContextLayout` (la session de support cliente,
+ * `support`) le montent par la couture `@edition/substitutions` ; côté
+ * cliente, le jumeau rend `<Outlet />` et rien d'autre.
  *
  * Quand le chemin courant est déclaré (`registre.ts`, `matchPath` : routes
  * exactes et paramétrées), le substitut est rendu à la place de la route

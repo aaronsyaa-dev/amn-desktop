@@ -5,9 +5,15 @@
  *
  * Ce qu'il tient : chaque route déclarée existe dans `appRoot.internal.tsx` (lecture des sources),
  * aucune route en double, les substituts vivent dans `src/refonte/<lot>/` et n'importent pas
- * `src/screens/**`, le jumeau `.business` est inerte (rend l'Outlet, registre vide), `AppLayout`
- * n'a qu'un point de substitution par Outlet, `ModuleRoute` est conservé quand `module` est déclaré,
+ * `src/screens/**`, le jumeau `.business` est inerte (rend l'Outlet, registre vide), la coque interne
+ * (`AppLayout`, `CadreBureau`, `ClientContextLayout`) n'a plus un seul Outlet nu — un point de substitution
+ * à la place de chacun —, la clé `module` déclarée est celle de la garde `ModuleRoute` de la route d'origine
+ * (lue dans les sources, par bloc : édition interne, session de support), `ModuleRoute` est conservé quand
+ * `module` est déclaré, `declarations/` ne contient que des `.tsx` (un `.ts` serait ignoré en silence),
  * coquille éteinte → l'écran d'origine, et le mécanisme survit à un fichier de déclaration vide ou absent.
+ *
+ * `node_modules` peut être un lien vers un autre dossier (les arbres de travail) : le graphe d'imports le
+ * reconnaît au segment, jamais au préfixe.
  *
  * Le registre réel n'a aucune substitution aujourd'hui (LOT-00 n'a rien d'honnête à substituer) : une
  * substitution FACTICE est montée ici, dans le contrôle seulement, sur le même composant.
@@ -106,8 +112,11 @@ async function graphe(fichier: string): Promise<{ directs: string[]; tous: strin
   });
   const entrees = r.metafile.inputs;
   const propre = (p: string) => p.replace(/\\/g, '/');
-  const directs = (entrees[fichier]?.imports ?? []).map((i) => propre(i.path)).filter((p) => !p.startsWith('node_modules/'));
-  const tous = Object.keys(entrees).map(propre).filter((p) => !p.startsWith('node_modules/'));
+  // `node_modules` peut être un lien vers un autre dossier (`../autre-arbre/node_modules/react/…` dans le metafile) :
+  // on reconnaît le segment, pas le préfixe — sinon un `import { lazy } from 'react'` passerait pour un import de source.
+  const horsModules = (p: string) => !/(^|\/)node_modules\//.test(p);
+  const directs = (entrees[fichier]?.imports ?? []).map((i) => propre(i.path)).filter(horsModules);
+  const tous = Object.keys(entrees).map(propre).filter(horsModules);
   return { directs, tous };
 }
 
@@ -159,7 +168,7 @@ await dit('le jumeau .business est inerte : il n’importe rien du socle ni de l
   assert.equal(m.rendu, '<p>ORIGINE</p>');
 });
 
-await dit('AppLayout a un point de substitution par Outlet (deux : ancienne coquille et CoquilleRefonte), par la couture ; ClientContextLayout un, en support', () => {
+await dit('AppLayout a un point de substitution par Outlet (deux : ancienne coquille et CoquilleRefonte) et CadreBureau un (les routes des bureaux), par la couture ; ClientContextLayout un, en support', () => {
   const layout = sansCommentaires(lire('src/components/AppLayout.tsx'));
   assert.match(layout, /import \{ SubstitutionDEcran \} from '@edition\/substitutions';/);
   assert.doesNotMatch(layout, /<Outlet/, 'un Outlet nu subsiste dans AppLayout : un écran y échapperait à la substitution');
@@ -167,10 +176,36 @@ await dit('AppLayout a un point de substitution par Outlet (deux : ancienne coqu
   assert.equal(layout.match(/<SubstitutionDEcran \/>/g)?.length, 2, 'AppLayout : deux points de substitution attendus, sans propriété support');
   const coquille = layout.slice(layout.indexOf('<CoquilleRefonte'), layout.indexOf('</CoquilleRefonte>'));
   assert.equal(coquille.match(/<SubstitutionDEcran \/>/g)?.length, 1, 'un seul point dans CoquilleRefonte');
+  // Les bureaux : AppLayout rend CadreBureau AVANT ses deux points, et CadreBureau pose l'écran lui-même. Un Outlet nu
+  // ici, et les routes des cinq bureaux (/garde/*, /cyber/*, /supervisor/*, /studio/*, /strategie/*) échapperaient au mécanisme.
+  assert.match(layout, /\{bureau \? \(\s*<CadreBureau bureau=\{bureau\} \/>/, 'AppLayout rend CadreBureau pour un chemin de bureau');
+  const cadre = sansCommentaires(lire('src/bureaux/CadreBureau.tsx'));
+  assert.match(cadre, /import \{ SubstitutionDEcran \} from '@edition\/substitutions';/, 'CadreBureau passe par la couture');
+  assert.doesNotMatch(cadre, /<Outlet|\bOutlet\b/, 'un Outlet nu subsiste dans CadreBureau : les écrans des bureaux y échapperaient à la substitution');
+  assert.equal(cadre.match(/<SubstitutionDEcran \/>/g)?.length, 1, 'CadreBureau : un point de substitution, sans propriété support');
   const support = sansCommentaires(lire('src/client-context/ClientContextLayout.tsx'));
   assert.match(support, /import \{ SubstitutionDEcran \} from '@edition\/substitutions';/);
   assert.doesNotMatch(support, /<Outlet|\bOutlet\b/);
   assert.equal(support.match(/<SubstitutionDEcran support \/>/g)?.length, 1, 'ClientContextLayout : un point, en session de support');
+});
+
+await dit('aucun autre <Outlet /> dans src : les seuls sont le point lui-même, son jumeau cliente et la coque cliente (BusinessLayout)', () => {
+  const admis = new Set([`${DOSSIER}/SubstitutionDEcran.tsx`, 'src/edition/substitutions.business.tsx', 'src/business/BusinessLayout.tsx']);
+  const fautes: string[] = [];
+  const marcher = (d: string) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) marcher(f);
+      else if (/\.tsx?$/.test(e.name)) {
+        const rel = path.relative(racine, f).replace(/\\/g, '/');
+        if (admis.has(rel)) continue;
+        if (/<Outlet\b/.test(sansCommentaires(fs.readFileSync(f, 'utf8')))) fautes.push(rel);
+      }
+    }
+  };
+  marcher(path.join(racine, 'src'));
+  assert.deepEqual(fautes, [], 'un Outlet nu rend des écrans hors du point de substitution');
+  for (const f of admis) assert.match(sansCommentaires(lire(f)), /<Outlet \/>/, `${f} : l'Outlet attendu manque`);
 });
 
 await dit('aucun fichier partagé n’importe src/refonte/substitutions : seule la couture interne y mène', () => {
@@ -192,11 +227,32 @@ await dit('aucun fichier partagé n’importe src/refonte/substitutions : seule 
 
 /* ── 2. Les routes d'origine, lues dans les sources ──────────────────────────────────────────── */
 
-/** Toutes les routes montées par `appRoot.internal.tsx` : littérales, constantes importées, bureaux, registre. */
-async function routesDAppRoot(): Promise<Set<string>> {
+/** Les gardes `ModuleRoute` d'un bloc de routes (`<Route path="…" element={<ModuleRoute module="…">`) : route → clé de module. */
+function gardesDuBloc(bloc: string): Map<string, string> {
+  const gardes = new Map<string, string>();
+  for (const [, route, module] of bloc.matchAll(/<Route\s+path="([^"]+)"\s+element=\{\s*<ModuleRoute module="([^"]+)">/g)) gardes.set(route, module);
+  return gardes;
+}
+
+interface RoutesDOrigine {
+  /** Toutes les routes montées par `appRoot.internal.tsx` : littérales, constantes importées, bureaux, registre. */
+  routes: Set<string>;
+  /** Les gardes `ModuleRoute` des routes de l'édition interne (`AmnRoutes`, sous `AppLayout`). */
+  gardesInterne: Map<string, string>;
+  /** Les gardes `ModuleRoute` des routes de la session de support cliente (`ClientContextRoutes`). */
+  gardesSupport: Map<string, string>;
+}
+
+/** Les routes d'origine, lues dans les sources, et la garde `ModuleRoute` de chacune, par bloc. */
+async function routesDAppRoot(): Promise<RoutesDOrigine> {
   const routes = new Set<string>();
   const appRoot = sansCommentaires(lire('src/edition/appRoot.internal.tsx'));
   for (const [, p] of appRoot.matchAll(/path="([^"]+)"/g)) routes.add(p);
+  const debutInterne = appRoot.indexOf('function AmnRoutes()');
+  const debutSupport = appRoot.indexOf('function ClientContextRoutes()');
+  assert.ok(debutInterne >= 0 && debutSupport > debutInterne, 'appRoot.internal.tsx : les blocs AmnRoutes puis ClientContextRoutes');
+  const gardesInterne = gardesDuBloc(appRoot.slice(debutInterne, debutSupport));
+  const gardesSupport = gardesDuBloc(appRoot.slice(debutSupport));
   for (const [, p] of sansCommentaires(lire('src/bureaux/routes.tsx')).matchAll(/path="([^"]+)"/g)) routes.add(p);
   // `path={CONSTANTE}` : la constante est lue dans le module qui l'exporte, jamais devinée.
   const noms = [...new Set([...appRoot.matchAll(/path=\{(\w+)\}/g)].map((m) => m[1]))];
@@ -218,15 +274,63 @@ async function routesDAppRoot(): Promise<Set<string>> {
     routes.add(v as string);
   }
   for (const r of m.registre) routes.add(r);
-  return routes;
+  return { routes, gardesInterne, gardesSupport };
 }
 
-const ROUTES = await routesDAppRoot();
+const ORIGINES = await routesDAppRoot();
+const ROUTES = ORIGINES.routes;
 
-await dit('les routes d’origine se lisent dans appRoot.internal.tsx (littérales, constantes, bureaux, registre) : plus de 150, dont /tasks, /notifications, /supervisor', () => {
+await dit('les routes d’origine se lisent dans appRoot.internal.tsx (littérales, constantes, bureaux, registre) : plus de 150, dont /tasks, /notifications, /supervisor ; leurs gardes ModuleRoute aussi, par bloc', () => {
   assert.ok(ROUTES.size > 150, `${ROUTES.size} routes lues`);
   for (const r of ['/', '/tasks', '/settings', '/notifications', '/tous-les-modules', '/supervisor', '/garde/bureaux/:equipe']) assert.ok(ROUTES.has(r), `${r} manque`);
   assert.ok(!ROUTES.has('/nulle-part'));
+  // La session de support garde ses modules un à un ; l'édition interne, aujourd'hui, aucun (l'organisation interne a tout).
+  assert.ok(ORIGINES.gardesSupport.size > 100, `${ORIGINES.gardesSupport.size} garde(s) ModuleRoute lue(s) dans ClientContextRoutes`);
+  assert.equal(ORIGINES.gardesSupport.get('/tasks'), 'tasks');
+  assert.equal(ORIGINES.gardesSupport.get('/agenda'), 'agenda');
+  assert.equal(ORIGINES.gardesSupport.get('/settings'), undefined, '/settings n’a pas de garde en session de support');
+  for (const [route] of ORIGINES.gardesSupport) assert.ok(ROUTES.has(route), `${route} gardée mais inconnue`);
+  for (const [route] of ORIGINES.gardesInterne) assert.ok(ROUTES.has(route), `${route} gardée mais inconnue`);
+  assert.deepEqual(gardesDuBloc('<Route path="/a" element={<ModuleRoute module="x"><A /></ModuleRoute>} /><Route\n path="/b"\n element={\n <ModuleRoute module="y">\n <B />'), new Map([['/a', 'x'], ['/b', 'y']]));
+  assert.deepEqual(gardesDuBloc('<Route path="/c" element={<C />} />'), new Map());
+});
+
+/**
+ * La clé `module` déclarée doit être celle de la garde `ModuleRoute` de la route d'origine, là où le substitut est rendu :
+ * dans l'édition interne toujours (`gardesInterne`), en session de support seulement avec `support: 'identique'`
+ * (`gardesSupport`). Une clé recopiée de travers renverrait à l'Accueil un écran ouvert ; une clé oubliée rendrait un
+ * écran que la route d'origine ferme. Pur : la faute, ou `null`.
+ */
+function fauteDeModule(s: { route: string; module?: string; support?: string; source: string }, origines: Pick<RoutesDOrigine, 'gardesInterne' | 'gardesSupport'>): string | null {
+  const ou = `${s.source} › ${s.route}`;
+  const interne = origines.gardesInterne.get(s.route);
+  const support = s.support === 'identique' ? origines.gardesSupport.get(s.route) : undefined;
+  if (s.module === undefined) {
+    if (interne !== undefined) return `${ou} : la route d'origine est gardée par ModuleRoute module="${interne}" dans l'édition interne — déclarez module: '${interne}'`;
+    if (support !== undefined) return `${ou} : rendu en session de support (support: 'identique') sans la garde ModuleRoute module="${support}" de la route d'origine — déclarez module: '${support}'`;
+    return null;
+  }
+  const attendues = new Set([interne, origines.gardesSupport.get(s.route)].filter((m): m is string => m !== undefined));
+  if (attendues.size === 0) return `${ou} : module « ${s.module} » déclaré, mais la route d'origine n'a de garde ModuleRoute ni dans l'édition interne ni en session de support`;
+  if (!attendues.has(s.module)) return `${ou} : module « ${s.module} » n'est pas la clé de la garde ModuleRoute de la route d'origine (« ${[...attendues].join(' » / « ')} »)`;
+  if (interne !== undefined && interne !== s.module) return `${ou} : module « ${s.module} » n'est pas la clé de la garde de l'édition interne (« ${interne} »)`;
+  return null;
+}
+
+await dit('fauteDeModule (pur) : la clé déclarée est celle de la garde de la route d’origine ; oubliée là où l’origine est gardée, c’est une faute ; en trop là où rien ne garde, aussi', () => {
+  const origines = { gardesInterne: new Map([['/salle', 'salle']]), gardesSupport: new Map([['/tasks', 'tasks'], ['/salle', 'salle']]) };
+  const f = (s: { route: string; module?: string; support?: string }) => fauteDeModule({ ...s, source: 'declarations/essai.tsx' }, origines);
+  assert.equal(f({ route: '/tasks', module: 'tasks', support: 'identique' }), null, 'la bonne clé, rendue en support');
+  assert.equal(f({ route: '/tasks', module: 'tasks' }), null, 'la bonne clé, jamais rendue en support : la garde s’applique quand même en interne');
+  assert.equal(f({ route: '/tasks' }), null, 'sans module ni support : en interne, l’origine n’a pas de garde non plus');
+  assert.match(f({ route: '/tasks', support: 'identique' }) ?? '', /sans la garde ModuleRoute module="tasks"/, 'rendu en support sans la garde de l’origine');
+  assert.match(f({ route: '/tasks', module: 'taches', support: 'identique' }) ?? '', /« taches » n'est pas la clé de la garde ModuleRoute de la route d'origine \(« tasks »\)/, 'une clé recopiée de travers');
+  assert.match(f({ route: '/tasks', module: 'taches' }) ?? '', /« taches » n'est pas la clé/, 'une clé fausse, même hors support');
+  assert.match(f({ route: '/notes', module: 'notes' }) ?? '', /n'a de garde ModuleRoute ni dans l'édition interne ni en session de support/, 'une garde que l’origine n’a nulle part');
+  assert.equal(f({ route: '/notes' }), null);
+  assert.equal(f({ route: '/salle', module: 'salle' }), null, 'gardée dans les deux blocs, même clé');
+  assert.match(f({ route: '/salle' }) ?? '', /gardée par ModuleRoute module="salle" dans l'édition interne/, 'gardée en interne : la clé est obligatoire');
+  assert.match(f({ route: '/salle', module: 'autre' }) ?? '', /n'est pas la clé/);
 });
 
 /* ── 3. Le registre réel ─────────────────────────────────────────────────────────────────────── */
@@ -235,15 +339,25 @@ const reel = await charger<any>(`
   export { REGISTRE_SUBSTITUTIONS as registre } from '../src/refonte/substitutions/registre';
 `);
 
-await dit('le registre réel se ramasse sans faute ; chaque route déclarée existe dans appRoot.internal.tsx ; une seule déclaration par route', () => {
+await dit('le registre réel se ramasse sans faute ; chaque route déclarée existe dans appRoot.internal.tsx ; une seule déclaration par route ; la clé module est celle de la garde d’origine', () => {
   assert.deepEqual(reel.registre.fautes, []);
   const vues = new Set<string>();
   for (const s of reel.registre.substitutions) {
     assert.ok(ROUTES.has(s.route), `${s.source} › ${s.route} : route absente de appRoot.internal.tsx`);
     assert.ok(!vues.has(s.route), `${s.route} déclarée deux fois`);
     vues.add(s.route);
+    const faute = fauteDeModule(s, ORIGINES);
+    assert.equal(faute, null, faute ?? '');
   }
   console.log(`      ${fichiersDeclares.length} fichier(s) de déclaration, ${reel.registre.substitutions.length} substitution(s) : ${reel.registre.substitutions.map((s: any) => `${s.route} (${s.lot})`).join(', ') || 'aucune'}`);
+});
+
+await dit('declarations/ ne contient que des fichiers .tsx : un .ts y serait ignoré en silence, par Vite (glob *.tsx du registre) comme par ce contrôle', () => {
+  // Le fichier brut : « /*.tsx » dans le motif du glob passerait pour l'ouverture d'un commentaire.
+  assert.match(lire(`${DOSSIER}/registre.ts`), /import\.meta\.glob<\{ default: unknown \}>\('\.\/declarations\/\*\.tsx', \{ eager: true \}\)/, 'le registre ramasse ./declarations/*.tsx');
+  const autres = fs.readdirSync(path.join(racine, DECLARATIONS)).filter((f) => !f.endsWith('.tsx'));
+  assert.deepEqual(autres, [], `fichier(s) que personne ne ramasse dans ${DECLARATIONS} : ${autres.join(', ')} — un fichier de déclaration se nomme <lot>.tsx`);
+  assert.ok(fichiersDeclares.length > 0, 'au moins un fichier de déclaration (systeme.tsx, le modèle)');
 });
 
 await dit('chaque fichier de déclaration n’importe que src/refonte/<lot>/ (et declarer.ts), et aucun substitut n’atteint src/screens/**', async () => {
@@ -361,6 +475,7 @@ const R = await charger<any>(`
   import { MemoryRouter, Routes, Route } from 'react-router-dom';
   import { SubstitutionDEcranDe, SubstitutionDEcran } from '../src/refonte/substitutions/SubstitutionDEcran';
   import { assemblerSubstitutions } from '../src/refonte/substitutions/registre';
+  export { trouverSubstitution, REGISTRE_SUBSTITUTIONS as registreReel } from '../src/refonte/substitutions/registre';
   import { declarerSubstitutions } from '../src/refonte/substitutions/declarer';
   import { ModuleRoute } from '../src/components/ModuleRoute';
   export { setLockedModules, isModuleEnabled } from '../src/data/spaces';
@@ -428,9 +543,14 @@ await dit('un substitut paresseux (lazy) est rendu dans Suspense, repli null : v
   assert.doesNotMatch(complet, /ORIGINE/);
 });
 
-await dit('le point réel (SubstitutionDEcran, registre ramassé, drapeau de la coquille lu) rend l’écran d’origine aujourd’hui', () => {
-  assert.equal(R.rendreReel('/tasks'), '<p>ORIGINE tasks</p>');
-  assert.equal(R.rendreReel('/garde/bureaux/soc'), '<p>ORIGINE equipe</p>');
+await dit('le point réel (SubstitutionDEcran, registre ramassé, drapeau de la coquille lu — éteint hors navigateur) rend l’écran d’origine, sauf un substitut « toujours » déclaré', () => {
+  // L'attendu vient du registre réel : une déclaration légale (`toujours: true`) ne fait pas rougir ce contrôle.
+  for (const [chemin, origine] of [['/tasks', '<p>ORIGINE tasks</p>'], ['/garde/bureaux/soc', '<p>ORIGINE equipe</p>']]) {
+    const rendu = R.rendreReel(chemin);
+    const declaree = R.trouverSubstitution(chemin, { support: false, coquille: false }, R.registreReel);
+    if (declaree) assert.doesNotMatch(rendu, /ORIGINE/, `${chemin} : ${declaree.source} déclare un substitut « toujours », l'origine ne doit pas être rendue`);
+    else assert.equal(rendu, origine, `${chemin} : rien de déclaré, l'écran d'origine à l'identique`);
+  }
 });
 
 await dit('SubstitutionDEcran.tsx : le drapeau vient de coquille/drapeau.ts, la garde de components/ModuleRoute, le repli de Suspense est null', () => {

@@ -11,8 +11,8 @@ import type React from 'react';
  * `src/refonte/substitutions/declarations/<lot>.tsx` — un fichier par lot,
  * ramassé seul (`registre.ts`), sans liste à tenir ailleurs.
  *
- * La coque interne (`AppLayout`, `ClientContextLayout`) a un seul point de
- * substitution par `<Outlet />` (`SubstitutionDEcran`) : quand le chemin
+ * La coque interne (`AppLayout`, `CadreBureau`, `ClientContextLayout`) a un
+ * seul point de substitution par `<Outlet />` (`SubstitutionDEcran`) : quand le chemin
  * courant est déclaré, c'est le substitut qui est rendu à la place de la
  * route d'origine ; sinon, l'écran d'origine, à l'identique. Les 164 routes
  * ne bougent pas, et l'édition cliente ne reçoit rien (jumeau
@@ -23,15 +23,20 @@ import type React from 'react';
  *   ]);
  *
  * `npm run check:substitutions` refuse une route absente de
- * `appRoot.internal.tsx`, une route déclarée deux fois, un substitut hors de
- * `src/refonte/<lot>/` ou qui importe `src/screens/**`.
+ * `appRoot.internal.tsx`, une route déclarée deux fois, une clé `module` qui
+ * n'est pas celle de la garde de la route d'origine, un substitut hors de
+ * `src/refonte/<lot>/` ou qui importe `src/screens/**`, et un fichier de
+ * `declarations/` qui ne finit pas par `.tsx` (il serait ignoré en silence).
  */
 export interface Substitution {
   /** Le chemin EXACT de la route d'origine dans `appRoot.internal.tsx` (`'/tasks'`, `'/garde/bureaux/:equipe'`). */
   route: string;
   /**
-   * La garde `ModuleRoute` de la route d'origine (même clé de module), quand elle en a une : un module fermé à
-   * l'organisation renvoie à l'Accueil, substitut ou non.
+   * La clé de la garde `ModuleRoute` de la route d'origine, quand elle en a une : un module fermé à l'organisation
+   * renvoie à l'Accueil, substitut ou non. Aujourd'hui seule la session de support garde ses routes
+   * (`ClientContextRoutes` de `appRoot.internal.tsx`) : la clé y est obligatoire avec `support: 'identique'`, et la
+   * garde s'applique aussi dans l'édition interne. `check:substitutions` la compare à la source : une clé fausse,
+   * oubliée ou en trop est refusée.
    */
   module?: string;
   /** L'écran refondu, de `src/refonte/<lot>/` ; de préférence paresseux (`lazy`). */
