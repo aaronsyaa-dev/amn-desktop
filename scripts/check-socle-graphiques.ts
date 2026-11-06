@@ -23,7 +23,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { assert, chargerRendu, creerEssais, jetons, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
+import { assert, charger, chargerRendu, creerEssais, jetons, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
 
 const { dit, fin } = creerEssais('Graphiques du socle — courbe, barres, donut, anneau, formats français\n');
 
@@ -733,6 +733,30 @@ await dit('les graphiques n’importent que le socle, src/lib, src/i18n et les b
   for (const f of dehors) assert.ok(permis.has(f), `${f} importe les graphiques du socle`);
   const pkg = JSON.parse(lire('package.json')) as { dependencies?: Record<string, string> };
   assert.ok(!Object.keys(pkg.dependencies ?? {}).some((d) => /chart|d3|recharts|victory|nivo|visx/i.test(d)), 'aucune bibliothèque de graphiques');
+});
+
+await dit('src/socle/formats.ts (LOT-06, point 6) : les formats importables depuis tout code interne, identiques à leurs sources, sans copie', async () => {
+  type Formats = Record<string, (...a: never[]) => string> & { ESPACE_INSECABLE: string; ESPACE_FINE: string; TIRET_ABSENT: string };
+  const F = await charger<Formats>('src/socle/formats.ts');
+  for (const nom of ['formaterNombre', 'formaterPourcent', 'formaterEuro', 'formaterRatio', 'formaterMontant', 'formaterDate', 'formaterHeure', 'dateIso']) assert.equal(typeof F[nom], 'function', `${nom} exporté`);
+  assert.equal(F.ESPACE_INSECABLE, NBSP);
+  assert.equal(F.ESPACE_FINE, FINE);
+  assert.equal(F.TIRET_ABSENT, '—');
+  for (const v of [0, 3.8, 999, 1234567.5, -1234.5, Number.NaN]) {
+    assert.equal((F.formaterNombre as (n: number) => string)(v), M.formaterNombre(v), `formaterNombre(${v})`);
+    assert.equal((F.formaterPourcent as (n: number) => string)(v), M.formaterPourcent(v), `formaterPourcent(${v})`);
+    assert.equal((F.formaterEuro as (n: number) => string)(v), M.formaterEuro(v), `formaterEuro(${v})`);
+  }
+  assert.equal((F.formaterRatio as (n: number) => string)(0.78), `78${NBSP}%`);
+  assert.equal(sansBlancs((F.formaterMontant as (n: number) => string)(1250)), sansBlancs(`1 250 €`));
+  assert.equal((F.formaterHeure as (d: Date) => string)(new Date(2031, 2, 12, 10, 42)), '10:42');
+  assert.match((F.formaterDate as (d: Date) => string)(new Date(2031, 2, 12)), /^12 mars$/);
+  // Le module ne recopie rien : il réexporte ses deux sources, et rien d'autre.
+  const src = sansCommentaires(lire('src/socle/formats.ts'));
+  assert.deepEqual([...src.matchAll(/from '([^']+)'/g)].map((m) => m[1]).sort(), ['./ui/archetypes/logique/formats', './ui/graphiques/format']);
+  assert.ok(!/function |=>/.test(src), 'aucune fonction écrite ici');
+  // Et un fichier interne qui l'importe ne tombe pas sous l'interdiction des graphiques (le chemin ne nomme pas « graphiques »).
+  assert.ok(!/socle\/(ui\/)?graphiques/.test("import { formaterEuro } from '../../socle/formats';"));
 });
 
 await dit('mots : fr et en portent les mêmes clés et les mêmes {paramètres}, sans point d’exclamation', () => {
