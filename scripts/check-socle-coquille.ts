@@ -515,7 +515,7 @@ type ModuleCompteurs = {
   verifierDeclaration: (v: unknown) => string | null;
 };
 
-await dit('compteurs déclarables : ramassés seuls dans src/refonte/compteurs (glob de Vite, repli vide sous esbuild), dans l’ordre des chemins ; jour.ts porte les compteurs d’avant, cyber.ts celui de Cyber', async () => {
+await dit('compteurs déclarables : ramassés seuls dans src/refonte/compteurs (glob de Vite, repli vide sous esbuild), dans l’ordre des chemins ; jour.ts porte les compteurs d’avant à l’horloge de la minute, cyber.ts celui de Cyber', async () => {
   const sans = await charger<ModuleCompteurs>('src/refonte/coquille/compteurs.ts');
   assert.deepEqual(sans.COMPTEURS_DECLARES, { declarations: [], ecartes: [] }, 'sans Vite : rien, et rien ne casse');
   const avec = await chargerVite<ModuleCompteurs>("export * from '../src/refonte/coquille/compteurs'; export * from '../src/refonte/coquille/declarerCompteurs';");
@@ -538,6 +538,12 @@ await dit('compteurs déclarables : ramassés seuls dans src/refonte/compteurs (
     /'\/relances': invoices\.filter\(\(f\) => isOverdue\(f, aujourdhui, invoices\)\)\.length,/,
     /'\/priorites': priorites\.filter\(\(d\) => d\.day === aujourdhui && d\.email\.toLowerCase\(\) === moi\)\.flatMap\(\(d\) => d\.items \?\? \[\]\)\.filter\(\(p\) => !p\.doneAt\)\.length,/,
   ]) assert.match(jour, re, `jour.ts : ${re}`);
+  // L'horloge à la minute : un rendez-vous fini sort du compteur de l'agenda, et les compteurs du jour changent à
+  // minuit, sans attendre un changement de donnée — la cadence de la carte « Aujourd'hui ».
+  assert.match(jour, /import \{ useMaintenant \} from '\.\.\/\.\.\/bureaux\/donnees\/useSupervisor';/, 'jour.ts : l’horloge vient de useMaintenant');
+  assert.match(jour, /const tic = useMaintenant\(60_000\);/, 'jour.ts : l’horloge est lue à la minute');
+  assert.match(jour, /const maintenant = new Date\(tic\);/, 'jour.ts : « maintenant » vient de l’horloge, pas d’un new Date() figé dans le memo');
+  assert.match(jour, /\}, \[unseen, appointments, taches, invoices, priorites, moi, tic\]\);/, 'jour.ts : le memo rejoue à chaque minute (tic en dépendance)');
   const cyber = sansCommentaires(lire(`${DOSSIER_COMPTEURS}/cyber.ts`));
   assert.match(cyber, /const alertes = modele\.pret \? modele\.alertes\.length : null;/, 'Cyber : rien tant que la source n’a pas répondu');
   assert.match(cyber, /if \(alertes !== null\) compteurs\['\/cyber'\] = alertes;/);
