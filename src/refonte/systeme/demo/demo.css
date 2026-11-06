@@ -277,3 +277,8 @@
   font-size: 13px;
 }
 .sd-survol-ligne { min-width: 220px; padding: 10px 12px; border-bottom: 1px solid var(--socle-bord-ligne); color: var(--socle-texte-courant); font-size: 13px; }
+
+/* ═══ Les briques partagées (v3) : une colonne de tuiles de module, la grille 2 × 132 des épinglés de D02, un cadre large ═══ */
+.sd-modules { display: flex; width: 300px; flex-direction: column; gap: 2px; }
+.sd-puces { display: grid; grid-template-columns: repeat(2, 132px); gap: 6px; }
+.sd-etroit--large { max-width: 720px; }

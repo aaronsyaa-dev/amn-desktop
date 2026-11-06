@@ -1,3 +1,4 @@
+import { jeu } from '../../donnees';
 import type { Famille } from '../../../socle/familles';
 import type { EtatPastille, TonGraphique } from '../../../socle/ui';
 
@@ -234,3 +235,14 @@ export const TENDANCE_BAISSE: number[] = [28, 26, 27, 23, 24, 20, 21, 17, 18, 14
 /* ── Les indicateurs ────────────────────────────────────────────────────────────────────────────────────── */
 
 export const SEUILS_SANTE: number[] = [0.82, 0.55, 0.3];
+
+/* ── Les briques partagées : des compteurs CALCULÉS sur les jeux fictifs de `src/refonte/donnees` (volume « peu ») ── */
+
+/** Tâches à faire, clients et factures des jeux fictifs : jamais un chiffre écrit à la main. */
+export function comptesFictifs(): { aFaire: number; clients: number; factures: number } {
+  return {
+    aFaire: jeu('taches', 'peu').filter((t) => t.status !== 'done').length,
+    clients: jeu('clients', 'peu').length,
+    factures: jeu('factures', 'peu').length,
+  };
+}

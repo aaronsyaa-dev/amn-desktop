@@ -3,7 +3,7 @@
  *
  * Il prouve que la page :
  *   1. se rend en HTML statique sans exception, avec une section par groupe du socle (base, contrôles, graphiques,
- *      situations, archétypes) et son sommaire en BOUTONS (jamais `href="#…"` : l'application est en HashRouter) ;
+ *      situations, archétypes, briques partagées) et son sommaire en BOUTONS (jamais `href="#…"` : l'application est en HashRouter) ;
  *   2. montre TOUS les composants exportés par `src/socle/ui/index.ts` et ses sous-index — la liste est lue dans les
  *      `export { … }`, pas recopiée ; les seules exceptions sont écrites plus bas, avec leur raison ;
  *   3. lit ses jetons (noms réels de `noir.css`, valeurs lues par `getComputedStyle`), n'invente aucune couleur,
@@ -107,23 +107,24 @@ const GROUPES: Record<string, string[]> = {
   graphiques: ['graphiques', 'progression'],
   situations: ['etats'],
   archetypes: ['archetypes', 'gabarit'],
+  briques: ['briques'],
 };
 
 await dit('une section par groupe du socle, chacune avec titre, description et liste des états ; l’ordre est celui du sommaire', () => {
-  assert.equal(R.SECTIONS.length, 16);
+  assert.equal(R.SECTIONS.length, 17);
   const trouvees = [...html.matchAll(/<section id="sd-([a-z]+)" data-section="([a-z]+)" aria-labelledby="sd-([a-z]+)-titre" class="sd-section">/g)];
   assert.deepEqual(trouvees.map((m) => m[1]), [...R.SECTIONS], 'sections absentes ou dans le désordre');
   for (const m of trouvees) assert.ok(m[1] === m[2] && m[2] === m[3], `identifiants incohérents pour ${m[1]}`);
-  assert.equal(compter(html, /<h2 id="sd-[a-z]+-titre" class="sd-section__titre">[^<]+<\/h2>/g), 16, 'un titre par section');
-  assert.equal(compter(html, /<p class="sd-section__desc">[^<]{20,}<\/p>/g), 16, 'une description par section');
-  assert.equal(compter(html, /<p class="sd-section__etats"><span class="sd-section__etats-etiquette">ÉTATS<\/span> [^<]{10,}<\/p>/g), 16, 'une liste d’états par section');
+  assert.equal(compter(html, /<h2 id="sd-[a-z]+-titre" class="sd-section__titre">[^<]+<\/h2>/g), 17, 'un titre par section');
+  assert.equal(compter(html, /<p class="sd-section__desc">[^<]{20,}<\/p>/g), 17, 'une description par section');
+  assert.equal(compter(html, /<p class="sd-section__etats"><span class="sd-section__etats-etiquette">ÉTATS<\/span> [^<]{10,}<\/p>/g), 17, 'une liste d’états par section');
   for (const [groupe, sections] of Object.entries(GROUPES)) for (const s of sections) assert.ok(R.SECTIONS.includes(s), `le groupe « ${groupe} » vise la section « ${s} », qui n’existe pas`);
   assert.ok(R.SECTIONS.includes('mouvement') && R.SECTIONS.includes('jetons'));
 });
 
 await dit('le sommaire est fait de boutons qui font scrollIntoView : aucun href="#…" (HashRouter), aucune ancre', () => {
   const nav = /<nav aria-label="[^"]+">([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? '';
-  assert.equal(compter(nav, /<button type="button"[^>]*class="sd-sommaire__lien sc-focus"/g), 16, 'seize boutons');
+  assert.equal(compter(nav, /<button type="button"[^>]*class="sd-sommaire__lien sc-focus"/g), 17, 'dix-sept boutons');
   assert.equal(compter(nav, /<a[\s>]/g), 0, 'aucune ancre dans le sommaire');
   assert.ok(!/href="#/.test(html), 'un href="#…" dans le rendu');
   assert.ok(!/href="#/.test(pageSansCommentaires) && !/href=\{`#/.test(pageSansCommentaires), 'un href="#…" dans la source');
@@ -168,18 +169,22 @@ const EXCEPTIONS: Record<string, string> = {
   AvisCollaboration: 'montré par /dev/etats (H43, modèle 8)',
 };
 
-/** Les noms exportés par un fichier d'index, en suivant les `export { … } from` et les `export * from`. */
-function exportes(fichier: string, vus = new Set<string>()): string[] {
+/**
+ * Les noms exportés par un fichier d'index, en suivant les `export { … } from` et les `export * from` ; un `X as Y`
+ * (le catalogue des noms des fiches, `noms.ts`) garde son origine : l'alias est montré quand sa brique l'est.
+ */
+function exportes(fichier: string, vus = new Set<string>()): { nom: string; origine: string }[] {
   const cle = path.resolve(racine, fichier);
   if (vus.has(cle)) return [];
   vus.add(cle);
   const source = sansCommentaires(fs.readFileSync(cle, 'utf8'));
-  const noms: string[] = [];
+  const noms: { nom: string; origine: string }[] = [];
   for (const m of source.matchAll(/export\s*\{([^}]*)\}\s*from\s*'([^']+)'/g)) {
     for (const brut of m[1].split(',')) {
       const nom = brut.trim();
       if (!nom || nom.startsWith('type ')) continue;
-      noms.push(nom.split(/\s+as\s+/).pop() as string);
+      const parts = nom.split(/\s+as\s+/);
+      noms.push({ nom: parts[parts.length - 1], origine: parts[0] });
     }
   }
   for (const m of source.matchAll(/export\s*\*\s*from\s*'([^']+)'/g)) {
@@ -190,7 +195,10 @@ function exportes(fichier: string, vus = new Set<string>()): string[] {
   return noms;
 }
 
-const composants = [...new Set(exportes('src/socle/ui/index.ts'))].filter((n) => /^[A-Z][A-Za-z0-9]*$/.test(n) && !/^[A-Z0-9_]+$/.test(n)).sort();
+const exportsSocle = exportes('src/socle/ui/index.ts');
+const composants = [...new Set(exportsSocle.map((e) => e.nom))].filter((n) => /^[A-Z][A-Za-z0-9]*$/.test(n) && !/^[A-Z0-9_]+$/.test(n)).sort();
+/** Les alias du catalogue des noms des fiches (`noms.ts`) : nom de fiche → brique. */
+const ALIAS = new Map(exportsSocle.filter((e) => e.origine !== e.nom && /^[A-Z]/.test(e.nom)).map((e) => [e.nom, e.origine]));
 
 await dit('la liste des composants est bien lue dans les index du socle (garde contre un analyseur qui ne verrait plus rien)', () => {
   assert.ok(composants.length >= 80, `seulement ${composants.length} composants lus`);
@@ -199,7 +207,11 @@ await dit('la liste des composants est bien lue dans les index du socle (garde c
 });
 
 await dit('chaque composant exporté par le socle apparaît dans la page, sauf les exceptions écrites et justifiées', () => {
-  const absents = composants.filter((n) => !(n in EXCEPTIONS) && !new RegExp(`<${n}(?=[\\s/>]|<)`).test(pageSansCommentaires));
+  const montre = (n: string) => new RegExp(`<${n}(?=[\\s/>]|<)`).test(pageSansCommentaires);
+  // Un alias de fiche (`Card` = `Carte`) est tenu pour montré quand sa brique l'est ; sa brique doit être un composant exporté.
+  for (const [alias, origine] of ALIAS) assert.ok(composants.includes(origine), `l’alias « ${alias} » vise « ${origine} », que le socle n’exporte pas`);
+  assert.ok(ALIAS.size >= 20, `seulement ${ALIAS.size} alias lus dans noms.ts`);
+  const absents = composants.filter((n) => !(n in EXCEPTIONS) && !montre(n) && !(ALIAS.has(n) && montre(ALIAS.get(n) as string)));
   assert.deepEqual(absents, [], `composants du socle absents de la démonstration : ${absents.join(', ')}`);
   for (const [nom, raison] of Object.entries(EXCEPTIONS)) {
     assert.ok(composants.includes(nom), `l’exception « ${nom} » n’est plus exportée par le socle`);
@@ -215,7 +227,9 @@ await dit('la page ne montre rien de plus que le socle exporte : ses imports vie
     for (const m of sansCommentaires(lire(f)).matchAll(/(?:from|import)\s+'([^']+)'/g)) {
       const chemin = m[1];
       if (chemin.startsWith('.')) {
-        assert.ok(/^(\.\/|\.\.\/\.\.\/\.\.\/socle\/)/.test(chemin), `${f} importe « ${chemin} » : hors du socle`);
+        // Les exemples lisent les jeux fictifs de `src/refonte/donnees` (des données, jamais un composant) ; la page, non.
+        const permis = f.endsWith('/exemples.ts') ? /^(\.\/|\.\.\/\.\.\/\.\.\/socle\/|\.\.\/\.\.\/donnees$)/ : /^(\.\/|\.\.\/\.\.\/\.\.\/socle\/)/;
+        assert.ok(permis.test(chemin), `${f} importe « ${chemin} » : hors du socle`);
       } else assert.ok(['react', 'lucide-react'].includes(chemin), `${f} importe le paquet « ${chemin} »`);
     }
   }

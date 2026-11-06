@@ -19,6 +19,7 @@ import {
 import { choixMouvement, ecrireMouvement, lireMouvement, useMouvement, type NiveauMouvement } from '../../../socle/mouvement';
 import { FAMILLES } from '../../../socle/familles';
 import {
+  AddModuleTile,
   Anneau,
   AnneauProgression,
   Avatar,
@@ -30,6 +31,7 @@ import {
   BoutonIcone,
   Caret,
   Carte,
+  CountBadge,
   CarteAnneau,
   CarteCases,
   CarteJalon,
@@ -68,6 +70,11 @@ import {
   GrilleCartes,
   HeatCell,
   IconeEtincelle,
+  IconTile,
+  ModuleGroupGrid,
+  ModuleTile,
+  PageHead,
+  StatusPill,
   InlineSuggestion,
   Interrupteur,
   Kanban,
@@ -118,6 +125,7 @@ import {
 } from '../../../socle/ui';
 import { arriveeLigne } from '../../../socle/couche-mouvement';
 import {
+  comptesFictifs,
   BARRES,
   COLONNES_KANBAN,
   COURBE,
@@ -187,6 +195,7 @@ export const SECTIONS = [
   'etats',
   'mouvement',
   'vivant',
+  'briques',
 ] as const;
 export type IdSection = (typeof SECTIONS)[number];
 
@@ -1932,6 +1941,152 @@ function useRestaurerMouvement(): void {
   }, []);
 }
 
+/* ─────────────────────────────  17. Les briques partagées (v3, STATUT §1.10 point 1)  ───────────────────────────── */
+
+const TAILLES_TUILE = [22, 26, 28, 36, 38, 42, 44, 48] as const;
+const TONS_TUILE = ['neutre', 'succes', 'attention', 'critique', 'info'] as const;
+const ETATS_BRIQUES = ['succes', 'attention', 'critique', 'info', 'neutre'] as const;
+const GLYPHES_BRIQUES = [Calendar, Users, FileText, Mail, FolderOpen, Bell] as const;
+
+function SectionBriques() {
+  const { tm } = useMotsDemo();
+  const [choisi, setChoisi] = useState(MODULES[0].id);
+  const [vue, setVue] = useState('tous');
+  const comptes = useMemo(comptesFictifs, []);
+  const icone = (i: number) => {
+    const Glyphe = GLYPHES_BRIQUES[i % GLYPHES_BRIQUES.length];
+    return <Glyphe />;
+  };
+  const tuile = (m: (typeof MODULES)[number], i: number, accessoire?: React.ReactNode, sousTexte?: string) => (
+    <ModuleTile key={m.id} nom={m.titre} famille={m.famille} icone={icone(i)} sousTexte={sousTexte} accessoire={accessoire} actif={choisi === m.id} onClick={() => setChoisi(m.id)} />
+  );
+  return (
+    <Section id="briques">
+      <Bloc titre={tm('briques.tuile')}>
+        <div className="sd-rangee">
+          {TAILLES_TUILE.map((t) => (
+            <Cas key={t} legende={`${t} px`}>
+              <IconTile taille={t} famille="contacts" icone={<Users />} />
+            </Cas>
+          ))}
+        </div>
+        <div className="sd-rangee">
+          {TONS_TUILE.map((ton) => (
+            <Cas key={ton} legende={ton}>
+              <IconTile taille={36} ton={ton} icone={<Bell />} />
+            </Cas>
+          ))}
+          <Cas legende={tm('briques.tuile.d02')}>
+            <IconTile taille={22} famille="argent" part={10} bordure icone={<FileText />} />
+          </Cas>
+          <Cas legende={tm('briques.tuile.h41')}>
+            <IconTile taille={26} famille="contacts" part={14} icone={<Users />} />
+          </Cas>
+          <Cas legende={tm('briques.tuile.garde')}>
+            <IconTile taille={28} famille="garde" icone={<Bell />} />
+          </Cas>
+          <Cas legende={tm('briques.tuile.nommee')}>
+            <IconTile taille={38} famille="creer" libelle={tm('briques.tuile.nommee')} icone={<FolderOpen />} />
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('briques.compteur')}>
+        <div className="sd-rangee">
+          <Cas legende="standard">
+            <CountBadge n={comptes.aFaire} />
+          </Cas>
+          <Cas legende={tm('briques.compteur.critique')}>
+            <CountBadge n={2} critique />
+          </Cas>
+          <Cas legende="laterale">
+            <CountBadge n={comptes.factures} variante="laterale" />
+          </Cas>
+          <Cas legende="texte">
+            <CountBadge n={comptes.clients} variante="texte" />
+          </Cas>
+          <Cas legende={tm('briques.compteur.plafond')}>
+            <CountBadge n={120} />
+          </Cas>
+          <Cas legende={tm('briques.compteur.zero')}>
+            <span className="sd-note">{tm('briques.compteur.rien')}</span>
+            <CountBadge n={0} />
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('briques.module')}>
+        <div className="sd-rangee">
+          <Cas legende={tm('briques.module.standard')}>
+            <div className="sd-modules">
+              {tuile(MODULES[0], 0, <CountBadge n={comptes.aFaire} />, tm('briques.sous.afaire', { n: comptes.aFaire }))}
+              {tuile(MODULES[1], 1, <StatusPill etat="succes">{tm('briques.etat.succes')}</StatusPill>, tm('briques.sous.clients', { n: comptes.clients }))}
+              {tuile(MODULES[2], 2, <LiveDot libelle={tm('briques.direct')} onde={false} halo={false} taille={6} />)}
+              <AddModuleTile onClick={() => setChoisi(MODULES[0].id)} />
+            </div>
+          </Cas>
+          <Cas legende={tm('briques.module.ligne')}>
+            <div className="sd-puces">
+              {MODULES.slice(0, 5).map((m, i) => (
+                <ModuleTile key={m.id} variante="ligne" nom={m.titre} famille={m.famille} icone={icone(i)} tuile={{ part: 10, bordure: true }} onClick={() => setChoisi(m.id)} />
+              ))}
+              <AddModuleTile variante="ligne" onClick={() => setChoisi(MODULES[0].id)} />
+            </div>
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('briques.groupe')}>
+        <div className="sd-etroit sd-etroit--large">
+          <ModuleGroupGrid titre={tm('briques.groupe.a')} colonnes={3} onAjouter={() => setChoisi(MODULES[0].id)}>
+            {MODULES.slice(0, 5).map((m, i) => tuile(m, i, i === 0 ? <CountBadge n={comptes.aFaire} /> : undefined))}
+          </ModuleGroupGrid>
+          <ModuleGroupGrid titre={tm('briques.groupe.b')} colonnes={2}>
+            {MODULES.slice(3).map((m, i) => tuile(m, i + 3))}
+          </ModuleGroupGrid>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('briques.entete')}>
+        <div className="sd-etroit sd-etroit--large">
+          <Cas legende={tm('briques.entete.boutons')}>
+            <PageHead
+              titre={tm('briques.entete.titre')}
+              sousTitre={tm('briques.entete.sous')}
+              secondaires={[{ libelle: tm('briques.entete.secondaire'), icone: <Settings aria-hidden />, infobulle: tm('briques.entete.secondaire') }]}
+              primaire={{ libelle: tm('briques.entete.primaire'), icone: <Plus aria-hidden /> }}
+            />
+          </Cas>
+          <Cas legende={tm('briques.entete.controles')}>
+            <PageHead
+              titre={tm('briques.entete.titre')}
+              sousTitre={tm('briques.entete.sous')}
+              controles={
+                <Segmente
+                  libelle={tm('briques.entete.controles')}
+                  valeur={vue}
+                  onChange={setVue}
+                  options={[
+                    { cle: 'tous', libelle: tm('briques.entete.tous') },
+                    { cle: 'miens', libelle: tm('briques.entete.miens') },
+                  ]}
+                />
+              }
+            />
+          </Cas>
+        </div>
+      </Bloc>
+      <Bloc titre={tm('briques.pastille')}>
+        <div className="sd-rangee">
+          {ETATS_BRIQUES.map((e) => (
+            <Cas key={e} legende={e}>
+              <StatusPill etat={e}>{tm(`briques.etat.${e}`)}</StatusPill>
+            </Cas>
+          ))}
+        </div>
+      </Bloc>
+    </Section>
+  );
+}
+
+/* ─────────────────────────────  La page  ───────────────────────────── */
+
 export function PageDemoSocle() {
   const { tm } = useMotsDemo();
   const niveau = useMouvement();
@@ -2003,6 +2158,7 @@ export function PageDemoSocle() {
         <SectionEtats />
         <SectionMouvement />
         <SectionVivant />
+        <SectionBriques />
       </div>
     </div>
   );
