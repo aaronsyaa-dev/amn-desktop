@@ -7,7 +7,8 @@ import React from 'react';
  * C'est un élément en ligne (`span` par défaut ; `time`, `code`, `b` ou `p` au choix) qui porte `.sc-mono` : la police
  * `--socle-police-mono` de noir.css, chiffres tabulaires, sans ligatures. La couleur vient du parent (T1 à T4, ou
  * une couleur d'état : la brique n'en impose aucune). `taille` : de 11 à 18 px, les bornes du §0.4 — une valeur hors
- * de l'intervalle y est ramenée ; sans `taille`, la taille du parent.
+ * de l'intervalle y est ramenée (±Infinity compris), et la borne l'emporte sur un `style.fontSize` de l'appelant ;
+ * sans `taille` (ou NaN), la taille du parent.
  *
  *   <Mono>10:42:07</Mono>                                 → l'heure d'une ronde, dans la taille du texte voisin
  *   <Mono as="time" dateTime="2026-10-30T10:42:07">10:42:07</Mono>
@@ -16,9 +17,9 @@ import React from 'react';
 export const TAILLE_MONO_MIN = 11;
 export const TAILLE_MONO_MAX = 18;
 
-/** La taille demandée, bornée à [11, 18] ; `undefined` (hérite du parent) reste `undefined`. */
+/** La taille demandée, bornée à [11, 18] (±Infinity comme toute valeur hors bornes) ; `undefined` ou NaN (hérite du parent) donne `undefined`. */
 export function tailleMono(taille: number | undefined): number | undefined {
-  if (taille === undefined || !Number.isFinite(taille)) return undefined;
+  if (taille === undefined || Number.isNaN(taille)) return undefined;
   return Math.min(TAILLE_MONO_MAX, Math.max(TAILLE_MONO_MIN, taille));
 }
 
@@ -34,7 +35,7 @@ export interface MonoProps extends React.HTMLAttributes<HTMLElement> {
 export function Mono({ as: Balise = 'span', taille, className = '', style, children, ...reste }: MonoProps) {
   const t = tailleMono(taille);
   return (
-    <Balise data-socle="mono" className={`sc-mono ${className}`.trim()} style={t === undefined ? style : { fontSize: t, ...style }} {...reste}>
+    <Balise data-socle="mono" className={`sc-mono ${className}`.trim()} style={t === undefined ? style : { ...style, fontSize: t }} {...reste}>
       {children}
     </Balise>
   );

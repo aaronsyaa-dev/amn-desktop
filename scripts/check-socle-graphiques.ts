@@ -616,6 +616,8 @@ await dit('Anneau : de 26 à 58 px (LOT-06), épaisseur proportionnée (3 à 6),
   assert.match(feuille, /--sc-g-anneau-valeur-petit:\s*11px/);
   assert.match(feuille, /\.sc-g-anneau\[data-cote='moyen'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-moyen\); \}/);
   assert.match(feuille, /\.sc-g-anneau\[data-cote='petit'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-petit\); \}/);
+  // Muet avec un centre forcé par `children` : la plus petite cote, pas les 16 px de l'anneau de 72.
+  assert.match(feuille, /\.sc-g-anneau\[data-cote='muet'\] \.sc-anneau__centre \{ font-size: var\(--sc-g-anneau-valeur-petit\); \}/, 'un centre donné sous 40 px prend 11 px');
 });
 
 await dit('AnneauProgression : défaut inchangé — 44 px, épaisseur 4, aucun style en ligne sur le trait ni sur la piste', () => {
