@@ -7,7 +7,9 @@
  *
  *   npm run check:socle-coquille
  */
-import { assert, chargerRendu, creerEssais, lire, sansCommentaires } from './lib/essai-socle.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { assert, chargerRendu, creerEssais, lire, racine, sansCommentaires } from './lib/essai-socle.ts';
 
 const { dit, fin } = creerEssais('Coquille v3 (LOT-00)');
 
@@ -21,13 +23,13 @@ const K = await chargerRendu<Record<string, any>>( // eslint-disable-line @types
     "import { pageSysteme, motsPagesSysteme, libellePageSysteme } from '../src/refonte/coquille/pagesSysteme';",
     "import { libelleDuLieu } from '../src/refonte/coquille/lieu';",
     "import { raccourciAffiche } from '../src/refonte/coquille/touche';",
-    "import { delaiAvant } from '../src/refonte/coquille/aujourdhui';",
+    "import { delaiAvant, calculerAujourdhui } from '../src/refonte/coquille/aujourdhui';",
     "import { routeEnsemble, ensembleGenerique, PREFIXE_ENSEMBLE } from '../src/refonte/systeme/ensemble';",
   ].join('\n'),
   [
     'BarreLaterale', 'lienAutres', 'ICONES_FAMILLE', 'EPINGLES_MONTRES', 'COLLEGUES_MONTRES', 'EnTete', 'BarreAjmani',
     'choisirLesVisibles', 'placesDeModules', 'MODULES_VISIBLES', 'choisirEpingles', 'EPINGLES_BARRE', 'construireFil',
-    'pageSysteme', 'motsPagesSysteme', 'libellePageSysteme', 'libelleDuLieu', 'raccourciAffiche', 'delaiAvant',
+    'pageSysteme', 'motsPagesSysteme', 'libellePageSysteme', 'libelleDuLieu', 'raccourciAffiche', 'delaiAvant', 'calculerAujourdhui',
     'routeEnsemble', 'ensembleGenerique', 'PREFIXE_ENSEMBLE',
   ],
 );
@@ -200,9 +202,11 @@ await dit('où est un collègue : le libellé du module (catalogue) ou de la pag
   assert.equal(K.libelleDuLieu('/demarrage/metier', catalogue, sys), 'Votre métier');
   assert.equal(K.libelleDuLieu('/outils/mon-reglage', catalogue, sys), null);
   assert.equal(K.libelleDuLieu('/tous-les-modules', catalogue, sys), 'Tous les modules');
-  const glue = sansCommentaires(lire('src/refonte/accueil/useAccueil.ts'));
-  assert.match(glue, /libelleDuLieu\(r\.module, catalogue/, 'l’Accueil dit le lieu avec la même règle');
-  assert.doesNotMatch(glue, /return item \? libelleNav\(item\) : m;/, 'plus de route brute à l’Accueil');
+  const glue = sansCommentaires(lire('src/refonte/coquille/aujourdhui/useAujourdhui.ts'));
+  assert.match(glue, /libelleDuLieu\(r\.module, catalogue/, '« Aujourd’hui » dit le lieu avec la même règle, pour la barre et l’Accueil');
+  assert.doesNotMatch(glue, /return item \? libelleNav\(item\) : m;/, 'plus de route brute');
+  const accueil = sansCommentaires(lire('src/refonte/accueil/useAccueil.ts'));
+  assert.doesNotMatch(accueil, /libelleDuLieu\(|useRegards\(/, 'l’Accueil ne recalcule pas la présence : il la lit dans useAujourdhui');
 });
 
 await dit('fil d’Ariane : « Famille / Page », libellés du registre ou de la page, jamais un segment de l’adresse ; les pages système le donnent explicitement', () => {
@@ -333,7 +337,126 @@ await dit('« dans 18 min », « dans 2 h », « dans 1 h 05 », « en cours » 
   assert.equal(K.delaiAvant(new Date('2026-10-30T11:47:00'), t0, 'fr'), 'dans 1 h 05');
   assert.equal(K.delaiAvant(new Date('2026-10-30T10:30:00'), t0, 'fr'), 'en cours');
   assert.equal(K.delaiAvant(new Date('2026-10-30T11:00:00'), t0, 'en'), 'in 18 min');
-  assert.match(sansCommentaires(lire('src/refonte/coquille/aujourdhui.ts')), /const a = useAccueil\(\);/, 'les chiffres de l’Accueil, lus au même endroit');
+  const carte = sansCommentaires(lire('src/refonte/coquille/aujourdhui/carte.ts'));
+  assert.match(carte, /const a = useAujourdhui\(\);/, 'les chiffres d’« Aujourd’hui », lus au même endroit que l’Accueil');
+  assert.doesNotMatch(carte, /useAccueil/, 'la carte ne paie plus tout le calcul de l’Accueil');
+});
+
+/* ── « Aujourd’hui » : un seul calcul (§1.10 point 3) ─────────────────────────────────────────────────────────── */
+
+const T0 = new Date(2026, 9, 30, 10, 42); // vendredi 30 oct. 2026, 10:42 (local)
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const J0 = iso(T0);
+const aT = (h: number, m = 0) => new Date(2026, 9, 30, h, m);
+const LIB = { enCours: 'en cours', aFaire: 'à faire', faite: 'faite', etapeClient: 'Créer un client', etapeRdv: 'Poser un rendez-vous', etapeVisite: 'Faire la visite', heure: (s: string) => `${String(new Date(s).getHours()).padStart(2, '0')}:${String(new Date(s).getMinutes()).padStart(2, '0')}` };
+const sources = (plus: Record<string, unknown> = {}) => ({
+  moi: 'aaron@exemple.test',
+  pret: true,
+  jour: J0,
+  taches: [
+    { id: 't1', title: 'Relire le devis', status: 'doing', assigneeEmail: 'aaron@exemple.test' },
+    { id: 't2', title: 'Appeler le fournisseur', status: 'todo', assigneeEmail: 'camille@exemple.test' },
+    { id: 't3', title: 'Envoyer la facture', status: 'done', updatedAt: `${J0}T09:10:00.000Z` },
+    { id: 't4', title: 'Vieille tâche faite', status: 'done', updatedAt: '2026-10-02T09:10:00.000Z' },
+  ],
+  priorites: [
+    { email: 'aaron@exemple.test', day: J0, items: [{ id: 'p1', label: 'Boucler le dossier', doneAt: null }, { id: 'p2', label: 'Préparer la réunion', doneAt: `${J0}T08:00:00.000Z` }] },
+    { email: 'camille@exemple.test', day: J0, items: [{ id: 'p3', label: 'La sienne', doneAt: null }] },
+    { email: 'aaron@exemple.test', day: '2026-10-29', items: [{ id: 'p0', label: 'Hier', doneAt: null }] },
+  ],
+  rdv: [
+    { id: 'r1', title: 'Point du matin', clientName: '', startAt: aT(9).toISOString(), fin: aT(9, 30), status: 'scheduled' },
+    { id: 'r2', title: 'Rendez-vous', clientName: 'Client Exemple', startAt: aT(11).toISOString(), fin: aT(12), status: 'scheduled' },
+    { id: 'r3', title: 'Annulé', clientName: '', startAt: aT(15).toISOString(), fin: aT(16), status: 'cancelled' },
+    { id: 'r4', title: 'Demain', clientName: '', startAt: new Date(2026, 9, 31, 9).toISOString(), fin: new Date(2026, 9, 31, 10), status: 'scheduled' },
+  ],
+  routines: [{ ticks: [1, 2, 3, 4, 5].map((n) => iso(new Date(2026, 9, 30 - n))) }, { ticks: [J0] }],
+  clients: 3,
+  factures: 2,
+  visiteFaite: true,
+  retouches: { jour: J0, faits: [], masques: [], ajouts: [] },
+  ...plus,
+});
+
+await dit('calculerAujourdhui (pur) : « x sur y faites » sur le fil visible, le prochain rendez-vous pas encore fini, la série comptée à la clôture (B2), les règles de S2 appelées', () => {
+  const r = K.calculerAujourdhui(sources(), T0, LIB);
+  // Le fil : 3 priorités du jour (les miennes d’abord), 2 rendez-vous du jour (pas l’annulé, pas demain), 3 tâches (2 ouvertes + 1 faite aujourd’hui).
+  assert.equal(r.total, 8);
+  assert.equal(r.fil.length, 8);
+  // Faites : ma priorité p2, le rendez-vous de 9 h (fini), la tâche t3.
+  assert.equal(r.faites, 3);
+  assert.deepEqual(r.fil.filter((l: { fait: boolean }) => l.fait).map((l: { cle: string }) => l.cle), ['priorite:aaron@exemple.test:p2', 'rdv:r1', 'tache:t3'], 'ce qui est fait descend en bas, dans l’ordre');
+  assert.equal(r.fil[0].cle, 'priorite:aaron@exemple.test:p1', 'ma priorité d’abord');
+  assert.deepEqual(r.prochainRdv, { titre: 'Rendez-vous', debut: aT(11).toISOString() });
+  assert.equal(r.serie, 5, 'cinq jours cochés avant aujourd’hui : le jour en cours ne rompt pas la série');
+  assert.equal(r.masquees, 0);
+  assert.equal(r.compteVide, false);
+  assert.match(r.fil.find((l: { cle: string }) => l.cle === 'rdv:r2').titre, /Rendez-vous · Client Exemple/);
+  assert.equal(r.fil.find((l: { cle: string }) => l.cle === 'rdv:r2').detail, '11:00');
+  // Plus tard dans la journée : le rendez-vous de 11 h est passé, plus de prochain.
+  const apres = K.calculerAujourdhui(sources(), aT(12, 30), LIB);
+  assert.equal(apres.prochainRdv, null);
+  assert.equal(apres.faites, 4);
+});
+
+await dit('calculerAujourdhui : les retouches du jour (masquer, ajouter, cocher à soi) comptent ; celles d’un autre jour non ; un compte vide montre ses trois étapes', () => {
+  const r = K.calculerAujourdhui(sources({ retouches: { jour: J0, faits: ['perso:a'], masques: ['tache:t2'], ajouts: [{ cle: 'perso:a', titre: 'La mienne' }, { cle: 'perso:b', titre: 'L’autre' }] } }), T0, LIB);
+  assert.equal(r.total, 9, '8 − 1 masquée + 2 ajoutées');
+  assert.equal(r.masquees, 1);
+  assert.equal(r.faites, 4);
+  const hier = K.calculerAujourdhui(sources({ retouches: { jour: '2026-10-29', faits: ['perso:a'], masques: ['tache:t2'], ajouts: [{ cle: 'perso:a', titre: 'La mienne' }] } }), T0, LIB);
+  assert.equal(hier.total, 8, 'les retouches d’hier sont ignorées');
+  const vide = K.calculerAujourdhui(sources({ taches: [], priorites: [], rdv: [], clients: 0, factures: 0, visiteFaite: false, routines: [] }), T0, LIB);
+  assert.equal(vide.compteVide, true);
+  assert.deepEqual(vide.fil.map((l: { cle: string }) => l.cle), ['etape:client', 'etape:rdv', 'etape:visite']);
+  assert.equal(vide.total, 3);
+  assert.equal(vide.faites, 0);
+  assert.equal(vide.serie, 0);
+  const pasPret = K.calculerAujourdhui(sources({ pret: false, taches: [], priorites: [], rdv: [], clients: 0, factures: 0, routines: [] }), T0, LIB);
+  assert.equal(pasPret.compteVide, false, 'tant que la synchronisation n’a pas répondu, le compte n’est pas « vide »');
+  assert.equal(pasPret.total, 0);
+});
+
+await dit('un seul calcul : construireFil (S2) n’est appelé que dans calculer.ts ; l’Accueil et la carte lisent useAujourdhui ; la carte ne lit plus useAccueil', () => {
+  const fichiers: string[] = [];
+  const marcher = (d: string) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) marcher(p);
+      else if (/\.tsx?$/.test(e.name)) fichiers.push(p);
+    }
+  };
+  marcher(path.join(racine, 'src'));
+  const appelants = fichiers
+    .filter((f) => !f.endsWith(`${path.sep}filDuJour.ts`))
+    .filter((f) => /import\s*\{[^}]*\bconstruireFil\b[^}]*\}\s*from\s*'[^']*filDuJour'/.test(sansCommentaires(fs.readFileSync(f, 'utf8'))))
+    .map((f) => path.relative(racine, f).replace(/\\/g, '/'));
+  assert.deepEqual(appelants, ['src/refonte/coquille/aujourdhui/calculer.ts']);
+  const calc = sansCommentaires(lire('src/refonte/coquille/aujourdhui/calculer.ts'));
+  assert.match(calc, /appliquerRetouches\(lignes, s\.retouches, s\.jour, s\.moi\)/, 'les retouches de S2');
+  assert.match(calc, /serie: meilleureSerie\(s\.routines, maintenant\)/, 'la série de S2');
+  assert.doesNotMatch(calc, /import \{[^}]*\buse[A-Z]/, 'calculer.ts est pur : aucun hook');
+  const accueil = sansCommentaires(lire('src/refonte/accueil/useAccueil.ts'));
+  assert.match(accueil, /\} = useAujourdhui\(\);/);
+  for (const re of [/construireFil/, /appliquerRetouches/, /meilleureSerie/, /lireRetouches|localStorage/, /basculerFait/, /guideVu/]) assert.doesNotMatch(accueil, re, `l’Accueil ne recalcule pas « Aujourd’hui » (${re})`);
+  const hook = sansCommentaires(lire('src/refonte/coquille/aujourdhui/useAujourdhui.ts'));
+  assert.match(hook, /export function useAujourdhui\(\): Aujourdhui \{\s*const partage = useContext\(ContexteAujourdhui\);\s*const local = useCalculAujourdhui\(partage === null\);\s*return partage \?\? local;/, 'le fournisseur d’abord, sinon un calcul local');
+  assert.match(hook, /calculerAujourdhui\(/);
+  for (const acces of [/useCollection<LigneTache>\('tasks'\)/, /useCollection<JourPriorites>\('dailyPriorities'\)/, /useCollection<\{ ticks: string\[\] \}>\('routines'\)/, /useAppointments\(\)/, /useRegards\(\)/, /useAuth\(\)/, /setInterval\(\(\) => setMaintenant\(new Date\(\)\), 60_000\)/]) assert.match(hook, acces, `${acces}`);
+});
+
+await dit('FournisseurAujourdhui : monté une fois dans la coque interne (AppLayout, par @edition/coquille), autour de CoquilleRefonte ; côté cliente, un jumeau inerte', () => {
+  const layout = lire('src/components/AppLayout.tsx');
+  assert.match(layout, /import \{[^}]*\bFournisseurAujourdhui\b[^}]*\} from '@edition\/coquille';/);
+  assert.equal((layout.match(/<FournisseurAujourdhui>/g) ?? []).length, 1);
+  assert.match(layout, /<FournisseurAujourdhui>\s*(\{\/\*[^]*?\*\/\}\s*)?<CoquilleRefonte /, 'juste au-dessus de CoquilleRefonte');
+  assert.match(layout, /<\/CoquilleRefonte>\s*<\/FournisseurAujourdhui>/);
+  assert.doesNotMatch(sansCommentaires(layout), /from '[^']*(refonte|socle)\//, 'AppLayout passe par la couture, jamais par src/refonte ni src/socle');
+  assert.match(lire('src/edition/coquille.internal.tsx'), /export \{ FournisseurAujourdhui \} from '\.\.\/refonte\/coquille\/aujourdhui';/);
+  const cliente = lire('src/edition/coquille.business.tsx');
+  assert.match(cliente, /export function FournisseurAujourdhui\(\{ children \}: \{ children\?: React\.ReactNode \}\): React\.ReactElement \{\s*return <>\{children\}<\/>;/);
+  assert.doesNotMatch(cliente, /from '[^']*(socle|refonte)\//, 'la face cliente n’importe rien du socle ni de la refonte');
+  assert.match(lire('src/refonte/coquille/aujourdhui/Fournisseur.tsx'), /useCalculAujourdhui\(true\)[^]*<ContexteAujourdhui\.Provider value=\{aujourdhui\}>/);
 });
 
 await dit('chiffres tabulaires sur les nombres seulement (C11) : le corps et la coquille en chiffres normaux, les nombres du socle tabulaires', () => {

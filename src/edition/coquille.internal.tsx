@@ -10,5 +10,7 @@
 export { CoquilleRefonte } from '../refonte/coquille/CoquilleRefonte';
 export { CoquilleSection } from '../refonte/coquille/CoquilleSection';
 export { useCoquilleActive } from '../refonte/coquille/drapeau';
+/** « Aujourd'hui » : un seul calcul pour la barre latérale et l'Accueil, monté une fois dans `AppLayout`. */
+export { FournisseurAujourdhui } from '../refonte/coquille/aujourdhui';
 /** L'écran de veille v3 (G09), monté par `IdleScreensaver` quand la nouvelle coquille est allumée. */
 export { EcranDeVeille } from '../refonte/systeme/veille/EcranDeVeille';
