@@ -463,7 +463,7 @@ await dit('mots : fr et en, mêmes clés, mêmes {paramètres}, ni point d’exc
 
 await dit('la page de démo /dev/socle montre chaque composant du groupe dans sa section « vivant »', () => {
   const page = sansCommentaires(lire('src/refonte/systeme/demo/PageDemoSocle.tsx'));
-  assert.match(page, /'mouvement',\s*'vivant',\s*'briques',\s*'alignement',\s*\] as const;/, 'vivant, briques (s1a) puis alignement (s1b) ferment le sommaire');
+  assert.match(page, /'mouvement',\s*'vivant',\s*'briques',\s*'alignement',\s*\] as const;/, 'vivant, briques puis alignement ferment le sommaire');
   const section = page.slice(page.indexOf('function SectionVivant'));
   for (const c of ['LiveDot', 'Caret', 'Severity', 'FilterChips', 'Gauge', 'HeatCell', 'FlowLine', 'InlineSuggestion']) assert.match(section, new RegExp(`<${c}[\\s/>]`), c);
   for (const n of ['balayage', 'cascade', 'entree', 'arrivee']) assert.ok(section.includes(n), `la couche : ${n}`);
@@ -476,7 +476,7 @@ await dit('package.json et la CI : le script check:socle-vivant existe et tourne
   assert.match(lire('.github/workflows/editions.yml'), /run: npm run check:socle-vivant/);
 });
 
-await dit('les noms des fiches (LOT-06) : .amn-grow = entree, .amn-slide = arrivee, .amn-bar = pousse (même règle, par :is), keyframes amnFlow = flux et amnHalo = onde ; coupés comme le reste (s1b)', () => {
+await dit('les noms des fiches (LOT-06) : .amn-grow = entree, .amn-slide = arrivee, .amn-bar = pousse (même règle, par :is), keyframes amnFlow = flux et amnHalo = onde ; coupés comme le reste', () => {
   assert.match(base, /:is\(\[data-mvt='entree'\], \.amn-grow\),\s*:root\[data-ambiance='noir'\] \[data-mvt='cascade'\] > \* \{[^}]*animation: sc-mvt-entree/);
   assert.match(base, /:is\(\[data-mvt='arrivee'\], \.amn-slide\) \{ animation: sc-mvt-arrivee/);
   assert.match(base, /:is\(\[data-mvt='pousse'\], \.amn-bar\) \{[^}]*transform-origin: 50% 100%;[^}]*animation: sc-mvt-pousse/);

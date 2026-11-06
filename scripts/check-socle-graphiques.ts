@@ -589,7 +589,7 @@ await dit('Anneau : un ton d’état colore le trait ; centre libre possible', (
   assert.match(centre, /sc-anneau__centre">3\/7</);
 });
 
-await dit('Anneau : de 26 à 58 px (LOT-06), épaisseur proportionnée (3 à 6), valeur centrée 13 px puis 11 px, muette sous 40 ; borné à [26, 80] (s1b)', () => {
+await dit('Anneau : de 26 à 58 px (LOT-06), épaisseur proportionnée (3 à 6), valeur centrée 13 px puis 11 px, muette sous 40 ; borné à [26, 80]', () => {
   const G = M as unknown as { tailleAnneau: (t?: number) => number; epaisseurAnneau: (t: number) => number; coteAnneau: (t: number) => string; TAILLE_ANNEAU_MIN: number; TAILLE_ANNEAU_MAX: number };
   assert.equal(G.TAILLE_ANNEAU_MIN, 26);
   assert.equal(G.TAILLE_ANNEAU_MAX, 80);

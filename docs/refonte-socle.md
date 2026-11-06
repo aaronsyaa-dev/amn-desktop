@@ -262,7 +262,7 @@ import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageH
 
 Démonstration : section « Briques partagées » de `/dev/socle`. Garde : `npm run check:socle-briques`.
 
-## Mise à jour — alignement du § 4 (chantier s1b, 2026-11-06)
+## Mise à jour — alignement du § 4 (2026-11-06)
 
 Audit brique par brique de `01-SOCLE-DESIGN.md` § 4, mesuré dans le **CSS calculé** de `/dev/socle` (aperçu `scripts/apercu/ecrans/SOCLE-DEMO.tsx`, Chromium 1440 × 900 ; script Playwright jetable, effacé). Tout ce que la table ne cite pas était déjà à la valeur exacte (Card, Subcard, Button, IconButton, Kpi, StatusPill, Pill, Tag, FlagUrgent, Kbd, Avatar / AvatarStack / Sq, Progress, Ring, Donut, Check, Toggle, Field / Select, Tabs, Segmented, SearchBox, Table, Ticket, colonne de kanban, Suggestion, cartes ludiques) ; `check:socle-controles`, `check:socle-graphiques` et `check:socle-archetypes` tiennent désormais chaque valeur.
 
@@ -297,13 +297,13 @@ Les fiches des lots nomment les mouvements à l'anglaise ; `src/socle/mouvement.
 
 Les noms `amn-fade` et `amn-in` de la fiche D02 sont `data-mvt="fondu"` et `data-mvt="entree"` ; ils n'ont pas de classe (un seul nom par mouvement). Côté code, `CLASSES_MOUVEMENT` (`src/socle/couche-mouvement.ts`, avec le type `ClasseMouvement`) porte les trois classes et l'attribut de chacune ; `check:socle-vivant` le compare à la feuille.
 
-### `Mono` et `src/socle/formats.ts` (chantier s1b)
+### `Mono` et `src/socle/formats.ts`
 
 - `Mono` (`src/socle/ui/Mono.tsx`, exporté par `src/socle/ui`) : la donnée technique « en MONO » des fiches — `<Mono>10:42:07</Mono>`, `<Mono as="time" dateTime="…">`, `<Mono as="code">`, `taille` de 11 à 18 px (bornée, ±Infinity compris ; la borne l'emporte sur un `style.fontSize` de l'appelant ; NaN hérite du parent) ; la couleur vient du parent. C'est `.sc-mono` de `noir.css` (`--socle-police-mono`, chiffres tabulaires, sans ligatures).
 - `src/socle/formats.ts` : `formaterNombre`, `formaterPourcent` (déjà en pour cent), `formaterRatio` (0 à 1), `formaterEuro`, `formaterMontant`, `formaterDate`, `formaterHeure`, `dateIso`, importables depuis tout code interne (`import { formaterEuro } from '../../socle/formats'`) — `check:socle-graphiques` interdit d'importer `src/socle/ui/graphiques/*` hors du socle ; ce module neutre réexporte les deux sources sans rien recopier. Une valeur illisible (NaN, ±Infinity, date invalide) donne « — » sur chaque export (jamais « NaN € », « 0 % » pour un ratio inconnu ni une exception), sauf `dateIso` qui rend « » ; jamais « -0 € ».
 - Jetons ajoutés dans `noir.css` : `--socle-decor-1/2/3` (illustrations seulement), `--socle-hachure-attention` / `--socle-hachure-grise` (`background-image`), `--socle-pointille-ok` / `--socle-pointille-attention` (`border`) ; la teinte de sélection `#D9A27A` des fiches est `--socle-fam-creer`.
 
-## « Aujourd'hui » et compteurs de la barre latérale (socle v3, chantier s2)
+## « Aujourd'hui » et compteurs de la barre latérale (socle v3)
 
 ### « Aujourd'hui » : un seul calcul (`src/refonte/coquille/aujourdhui/`)
 

@@ -249,7 +249,7 @@ await dit('Case à cocher : ronde de 18 px, 24 px dans une série', () => {
   assert.match(rendre(h(K.CaseACocher, { coche: true, libelle: 'x', taille: 'serie' })), /data-taille="serie"/);
 });
 
-/* ── §4, brique par brique : les valeurs mesurées dans le CSS calculé de /dev/socle (aperçu SOCLE-DEMO, chantier s1b).
+/* ── §4, brique par brique : les valeurs mesurées dans le CSS calculé de /dev/socle (aperçu SOCLE-DEMO).
       Une assertion par valeur ; celles qui ont été corrigées le disent. ── */
 const briques = sansCommentaires(lire('src/socle/ui/briques.css'));
 const controles = sansCommentaires(lire('src/socle/ui/controles/controles.css'));
@@ -304,7 +304,7 @@ await dit('§4 Avatar, AvatarStack, Sq, Progress, Check, Toggle : cotes et coule
   for (const t of ['succes', 'attention', 'critique']) assert.match(briques, new RegExp(`\\.sc-barre\\[data-ton='${t}'\\] > span \\{ background: var\\(--socle-etat-${t}\\); \\}`));
   assert.match(regle(briques, '.sc-case'), /width:\s*18px[\s\S]*height:\s*18px[\s\S]*border:\s*1\.5px solid var\(--socle-case-vide\)[\s\S]*border-radius:\s*99px/);
   assert.match(briques, /\.sc-case\[aria-checked='true'\] \{ border-color: var\(--socle-primaire\); background: var\(--socle-primaire\); \}/);
-  // Corrigé (s1b, LOT-06) : 16 px, coche de 11 px.
+  // Corrigé (LOT-06) : 16 px, coche de 11 px.
   assert.match(briques, /\.sc-case\[data-taille='16'\] \{ width: 16px; height: 16px; \}/);
   assert.match(briques, /\.sc-case\[data-taille='16'\] svg \{ width: 11px; height: 11px; \}/);
   const petite = rendre(h(K.CaseACocher, { coche: true, libelle: 'x', taille: 16 }));
@@ -337,7 +337,7 @@ await dit('§4 Field, Tabs, Segmented (et compact), SearchBox (34 et 38) : cotes
   assert.match(controles, /\.sc-segment:disabled \{ cursor: not-allowed; opacity: 0\.6; \}/, 'un segment désactivé se voit');
   assert.match(controles, /\.sc-segment:hover:not\(:disabled\) \{ color: var\(--socle-texte-courant\); \}/, 'le survol épargne un segment désactivé');
   assert.doesNotMatch(controles, /\.sc-segment:hover \{/, 'pas de survol sans :not(:disabled)');
-  // Ajouté (s1b, LOT-06) : le segmenté compact, 26 px.
+  // Ajouté (LOT-06) : le segmenté compact, 26 px.
   assert.match(controles, /\.sc-segmente\[data-taille='compact'\] \{ padding: 2px; border-radius: var\(--socle-rayon-controle\); \}/);
   assert.match(controles, /\.sc-segmente\[data-taille='compact'\] \.sc-segment \{ padding: 3px 9px; border-radius: 6px; font-size: 12px; line-height: 14px; \}/);
   const compact = rendre(h(K.Segmente, { libelle: 'Niveau', valeur: 'a', onChange: () => undefined, taille: 'compact', options: [{ cle: 'a', libelle: 'A' }, { cle: 'b', libelle: 'B' }] }));
@@ -345,14 +345,14 @@ await dit('§4 Field, Tabs, Segmented (et compact), SearchBox (34 et 38) : cotes
   assert.doesNotMatch(rendre(h(K.Segmente, { libelle: 'Niveau', valeur: 'a', onChange: () => undefined, options: [{ cle: 'a', libelle: 'A' }] })), /data-taille/);
   assert.match(regle(controles, '.sc-boite-recherche'), /height:\s*34px[\s\S]*border:\s*1px solid var\(--socle-bord-controle\)[\s\S]*border-radius:\s*var\(--socle-rayon-champ\)[\s\S]*background:\s*var\(--socle-champ\)/);
   assert.match(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x' })), /<svg[^>]*width="14"/, 'loupe de 14 px');
-  // Ajouté (s1b, D02) : la variante de 38 px.
+  // Ajouté (D02) : la variante de 38 px.
   assert.match(controles, /\.sc-boite-recherche\[data-hauteur='38'\] \{ height: 38px; padding: 0 12px; \}/);
   assert.match(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x', hauteur: 38 })), /data-hauteur="38"/);
   assert.doesNotMatch(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x', hauteur: 38, grande: true })), /data-hauteur/, 'grande l’emporte');
   assert.doesNotMatch(rendre(h(K.BoiteRecherche, { valeur: '', onChange: () => undefined, libelle: 'x' })), /data-hauteur/);
 });
 
-await dit('§4 Empty (EtatVide) : pointillé #2e2e33, rayon 14, icône 44 px, titre 14 / 600, texte 12,5 T4 de 300 px au plus, toujours une action (corrigé s1b)', () => {
+await dit('§4 Empty (EtatVide) : pointillé #2e2e33, rayon 14, icône 44 px, titre 14 / 600, texte 12,5 T4 de 300 px au plus, toujours une action (corrigé)', () => {
   assert.match(regle(briques, '.sc-vide'), /border:\s*1px dashed var\(--socle-pointille\)[\s\S]*border-radius:\s*var\(--socle-rayon-carte\)/);
   assert.equal(j.get('--socle-pointille'), '#2e2e33');
   assert.match(regle(briques, '.sc-vide__icone'), /width:\s*44px[\s\S]*height:\s*44px[\s\S]*border-radius:\s*12px/);
@@ -380,7 +380,7 @@ await dit('§4 Suggestion et cartes ludiques : cotes', () => {
   assert.equal((rendre(h(K.CarteAnneau, { titre: 'T', texte: 'x', valeur: 0.5, centre: '50 %' })).match(/stroke-width="8"/g) ?? []).length, 2);
 });
 
-await dit('Mono (§0.4) : en ligne, .sc-mono (police monospace du socle, chiffres tabulaires), 11 à 18 px bornés, time avec dateTime (s1b)', () => {
+await dit('Mono (§0.4) : en ligne, .sc-mono (police monospace du socle, chiffres tabulaires), 11 à 18 px bornés, time avec dateTime', () => {
   assert.equal(K.TAILLE_MONO_MIN, 11);
   assert.equal(K.TAILLE_MONO_MAX, 18);
   assert.deepEqual([K.tailleMono(undefined), K.tailleMono(9), K.tailleMono(11), K.tailleMono(12.5), K.tailleMono(18), K.tailleMono(24), K.tailleMono(Number.NaN)], [undefined, 11, 11, 12.5, 18, 18, undefined]);

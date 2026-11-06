@@ -249,7 +249,7 @@ await dit('le rendu contient les cellules typées du tableau, trois colonnes de 
   assert.ok(html.includes('data-aujourdhui="true"'), 'aujourd’hui porte sa pastille : la semaine affichée est la semaine courante');
 });
 
-await dit('la section « Alignement § 4 » (s1b) montre les variantes : anneau 26 à 72 (muet, petit, moyen), case 16, segmenté compact, recherche 38, Mono 11 à 18, hachures et pointillés par leur jeton, gris de décor, état vide avec icône', () => {
+await dit('la section « Alignement § 4 » montre les variantes : anneau 26 à 72 (muet, petit, moyen), case 16, segmenté compact, recherche 38, Mono 11 à 18, hachures et pointillés par leur jeton, gris de décor, état vide avec icône', () => {
   const zone = html.slice(html.indexOf('id="sd-alignement"'));
   assert.ok(zone.length > 2000, 'section absente');
   for (const t of [26, 34, 40, 48, 58, 72]) assert.ok(zone.includes(`<svg width="${t}" height="${t}" viewBox="0 0 ${t} ${t}"`), `anneau de ${t} px`);

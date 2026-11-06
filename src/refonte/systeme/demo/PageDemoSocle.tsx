@@ -320,7 +320,7 @@ const GROUPES_JETONS: { cle: 'fonds' | 'bordures' | 'encres' | 'decor' | 'famill
     jetons: [
       { jeton: '--socle-trait-discret', role: 'role.decor1' },
       { jeton: '--socle-trait-tres-discret', role: 'role.decor2' },
-      // Les gris de décor (B15, s1b) : illustrations seulement, jamais un texte ni un état (check:socle).
+      // Les gris de décor (B15) : illustrations seulement, jamais un texte ni un état (check:socle).
       { jeton: '--socle-decor-1', role: 'role.decor3' },
       { jeton: '--socle-decor-2', role: 'role.decor3' },
       { jeton: '--socle-decor-3', role: 'role.decor3' },
@@ -1937,7 +1937,7 @@ function SectionVivant() {
   );
 }
 
-/* ─────────────────────────────  18. Alignement § 4 (chantier s1b)  ───────────────────────────── */
+/* ─────────────────────────────  18. Alignement § 4  ───────────────────────────── */
 
 const TAILLES_ANNEAU = [26, 34, 40, 48, 58, 72] as const;
 const TAILLES_CASE = [16, 18, 24] as const;

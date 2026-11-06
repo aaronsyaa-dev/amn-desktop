@@ -511,7 +511,7 @@ await dit('ligne de temps : heure 42 px (12 px T4), pastille de 26 px, filet ver
   assert.match(l, /--sc-heure-largeur:\s*42px/);
   assert.match(l, /--sc-pastille:\s*26px/);
   assert.match(css, /\.sc-ligne-temps:not\(\[data-dernier='true'\]\)::before \{[^}]*background:\s*var\(--socle-filet-vertical\)/);
-  assert.equal(noir.get('--socle-filet-vertical'), '#222224', 'le filet vertical du §4 TimelineItem (mesuré à #2a2a2d avant le chantier s1b)');
+  assert.equal(noir.get('--socle-filet-vertical'), '#222224', 'le filet vertical du §4 TimelineItem (mesuré à #2a2a2d avant l’alignement du § 4)');
   assert.match(bloc('.sc-ligne-temps__heure'), /font-size:\s*12px/);
   assert.match(bloc('.sc-ligne-temps__heure'), /color:\s*var\(--socle-texte-3\)/);
   assert.match(bloc('.sc-ligne-temps__titre'), /font-size:\s*13\.5px[^}]*font-weight:\s*500/);

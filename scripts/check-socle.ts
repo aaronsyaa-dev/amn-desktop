@@ -594,7 +594,7 @@ await dit('« discret », « très discret », les gris de décor et les hachure
   }
 });
 
-await dit('gris de décor (B15), hachures et pointillés d’état, teinte de sélection : présents, valeurs exactes, jamais un doublon (s1b)', () => {
+await dit('gris de décor (B15), hachures et pointillés d’état, teinte de sélection : présents, valeurs exactes, jamais un doublon', () => {
   assert.equal(brut('--socle-decor-1'), '#121213');
   assert.equal(brut('--socle-decor-2'), '#17171a');
   assert.equal(brut('--socle-decor-3'), '#3e3e44');
