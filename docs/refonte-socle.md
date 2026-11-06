@@ -234,7 +234,9 @@ import { IconTile, CountBadge, ModuleTile, ModuleGroupGrid, AddModuleTile, PageH
 - **`IconTile`** (`icone`, `taille` 22 | 26 | 28 | 36 | 38 | 42 | 44 | 48, `famille?` dont `garde`, `ton?` neutre | succes |
   attention | critique | info, `part?` 10 | 13 | 14 | 18, `bordure?`, `libelle?`) : le carré arrondi teinté de la famille à
   13 % (§ 4) ou neutre (`--socle-tag`). Rayon et glyphe suivent la taille. `part` et `bordure` reproduisent les images de
-  D02 (10 %, bordure à 22 %) et de H41 (14 %, 18 % pour l'aperçu) ; `BlocEtat`, D02 et H41 l'emploient sans changer un pixel.
+  D02 (10 %, bordure à 22 %) et de H41 (14 %, 18 % pour l'aperçu) ; D02 et H41 l'emploient sans changer un pixel, et
+  `BlocEtat` lui passe son ton (`attention`, `critique`, `neutre` en compact) ou sa teinte (famille, gris T3 du neutre
+  standard) par la variable `--sc-tuile-teinte` de la brique, sans redéfinir une cote ni un fond dans `situations.css`.
 - **`CountBadge`** (`n`, `libelle?`, `variante?` standard | laterale | texte, `critique?`) : 16 px, fond
   `--socle-pastille-compte`, 10,5 / 600 ; la pastille de Cyber (`laterale`, qui pose son propre `display` : 21 × 16 où
   qu'elle soit) et le chiffre seul des épinglés (`texte`) de la barre latérale ; rien à zéro, « 99+ » au-delà, le chiffre

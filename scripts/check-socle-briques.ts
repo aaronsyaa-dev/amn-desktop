@@ -309,7 +309,12 @@ await dit('D02, la barre latérale, H40, H42, H47, H41 et BlocEtat passent par l
   }
   assert.match(sansCommentaires(lire('src/refonte/systeme/recherche/PaletteRecherche.tsx')), /<IconTile\s+className="rc-tuile"\s+taille=\{grande \? 42 : 26\}\s+part=\{grande \? 18 : 14\}/);
   assert.doesNotMatch(sansCommentaires(lire('src/refonte/systeme/recherche/recherche.css')), /\.rc-tuile \{/);
-  assert.match(sansCommentaires(lire('src/socle/ui/situations/BlocEtat.tsx')), /<IconTile className="sc-bloc-etat__icone" taille=\{taille === 'compact' \? 36 : 48\} icone=\{icone\} \/>/);
+  // BlocEtat emploie la brique pour de vrai : son ton lui est passé, et situations.css ne redéfinit ni cote, ni fond, ni couleur de la tuile.
+  assert.match(sansCommentaires(lire('src/socle/ui/situations/BlocEtat.tsx')), /<IconTile className="sc-bloc-etat__icone" taille=\{taille === 'compact' \? 36 : 48\} ton=\{tonTuile\(ton, taille\)\} icone=\{icone\} \/>/);
+  const situations = sansCommentaires(lire('src/socle/ui/situations/situations.css'));
+  assert.match(situations, /\.sc-bloc-etat__icone \{ --sc-tuile-teinte: var\(--sc-ton\); \}/, 'la teinte du bloc passe par la variable de la brique');
+  assert.doesNotMatch(situations, /\.sc-bloc-etat__icone(\s+svg)? \{[^}]*(width|height|border-radius|background|color):/, 'situations.css redéfinit la tuile');
+  assert.doesNotMatch(situations, /\.sc-bloc-etat\[data-taille='compact'\][^{]*\.sc-bloc-etat__icone(\s+svg)?\s*\{/, 'plus de cote compacte locale pour la tuile');
 });
 
 /* ═══════════════════════  5. Les sources  ═══════════════════════ */
