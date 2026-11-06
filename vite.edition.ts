@@ -43,6 +43,7 @@ export function editionAliases(edition: Edition): Record<string, string> {
     '@edition/vivant': at(`src/edition/vivant.${suffix}.tsx`),
     '@edition/navigation': at(`src/edition/navigation.${suffix}.tsx`),
     '@edition/coquille': at(`src/edition/coquille.${suffix}.tsx`),
+    '@edition/substitutions': at(`src/edition/substitutions.${suffix}.tsx`),
     '@edition/mainExclusive': at(`src/main/exclusive.${suffix}.ts`),
     '@edition/preloadExclusive': at(`src/preload.exclusive.${suffix}.ts`),
   };

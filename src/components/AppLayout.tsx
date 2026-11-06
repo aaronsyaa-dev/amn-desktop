@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { OrgRail } from './org-rail/OrgRail';
@@ -51,6 +51,8 @@ import { RegardsProvider } from '../state/RegardsContext';
 import { SourceBureauxProvider, useActiverSourceBureaux } from '../bureaux/donnees/source';
 import { NavigationEspacesProvider } from '../bureaux/navigation';
 import { CoquilleRefonte, useCoquilleActive } from '@edition/coquille';
+// Refonte (§ 1.3) : le point unique de substitution d'écran, à la place de chaque Outlet ; vide côté cliente.
+import { SubstitutionDEcran } from '@edition/substitutions';
 import { bureauDuChemin } from '../bureaux/catalogue';
 import { CadreBureau } from '../bureaux/CadreBureau';
 import { PaletteEspaces } from '../bureaux/ui/PaletteEspaces';
@@ -179,7 +181,7 @@ export function AppLayout() {
                   >
                     <NavAllegesSync />
                     <PremiereOuverture />
-                    <Outlet />
+                    <SubstitutionDEcran />
                   </motion.div>
                 </div>
               </CoquilleRefonte>
@@ -241,7 +243,7 @@ export function AppLayout() {
                   >
                     <NavAllegesSync />
                     <PremiereOuverture />
-                    <Outlet />
+                    <SubstitutionDEcran />
                   </motion.div>
                 </div>
               </main>

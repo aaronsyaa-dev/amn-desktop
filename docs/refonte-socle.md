@@ -220,3 +220,18 @@ Nouveaux groupes de briques dans `src/socle/ui/` (tous réexportés par `index.t
 ## Mise à jour — v3 (2026-11-01)
 
 Couche de mouvement commune (`src/socle/mouvement.css`, attribut `data-mvt`), police monospace (`--socle-police-mono`, `.sc-mono`), composants vivants (`src/socle/ui/vivant/` : `LiveDot`, `Caret`, `Severity`, `FilterChips`, `Gauge`, `HeatCell`, `FlowLine`, `InlineSuggestion`), coquille v3 (`usePageCoquille`). Aperçus de capture : `scripts/apercu/`. Détail et chemins : section « LOT-00 v3 » de [`refonte/STATUT.md`](refonte/STATUT.md).
+
+## Substituer un écran (refonte, STATUT § 1.3)
+
+Un écran refondu est un nouveau composant dans `src/refonte/<lot>/` ; `src/screens/**` et `appRoot.internal.tsx` ne bougent pas. Le lot le déclare dans `src/refonte/substitutions/declarations/<lot>.tsx` (un fichier par lot, ramassé seul) :
+
+```tsx
+import { lazy } from 'react';
+import { declarerSubstitutions } from '../declarer';
+
+export default declarerSubstitutions('jour', [
+  { route: '/tasks', module: 'tasks', support: 'identique', composant: lazy(() => import('../../jour/PageTaches')) },
+]);
+```
+
+`route` : le chemin exact de la route d'origine (paramétré accepté : `/garde/bureaux/:equipe`) ; `module` : la garde `ModuleRoute` de la route d'origine, conservée (un module fermé renvoie à l'Accueil) ; `support` : `'identique'` rend le même substitut en session de support cliente, `'aucune'` (défaut) y laisse l'écran d'origine ; `toujours` : rendu même coquille éteinte (défaut : seulement coquille allumée). Le point unique est `SubstitutionDEcran` (`src/refonte/substitutions/SubstitutionDEcran.tsx`), monté par `AppLayout` et `ClientContextLayout` via la couture `@edition/substitutions` ; côté cliente, le jumeau rend l'`Outlet` et le registre est vide. Gardes : `npm run check:substitutions` (route existante, pas de doublon, substitut dans `src/refonte/<lot>/` sans `src/screens/**`) et `npm run check:client-statique` (le paquet client n'atteint rien de `src/socle`, `src/refonte`, `*.internal.*`).
