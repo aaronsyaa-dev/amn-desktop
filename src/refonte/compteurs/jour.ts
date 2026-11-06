@@ -4,6 +4,7 @@ import { useCollection } from '../../state/SyncContext';
 import { useInvoices, isOverdue, isoDay } from '../../state/useInvoices';
 import { useAppointments, appointmentEnd } from '../../state/useAppointments';
 import { useActivity } from '../../state/ActivityContext';
+import { useMaintenant } from '../../bureaux/donnees/useSupervisor';
 import { declarerCompteurs } from '../coquille/declarerCompteurs';
 
 /**
@@ -12,6 +13,11 @@ import { declarerCompteurs } from '../coquille/declarerCompteurs';
  * chiffres) : l'activité non vue sur chaque module (`useActivity`), ce qui
  * reste de la journée (rendez-vous à venir, priorités non faites), les tâches
  * qu'on m'a confiées, les factures en retard. Un compteur à zéro ne s'affiche pas.
+ *
+ * L'horloge est lue à la minute (`useMaintenant`) : un rendez-vous fini sort
+ * du compteur de l'agenda sans attendre un changement de donnée, et les
+ * compteurs du jour (relances, priorités) changent de jour à minuit — comme la
+ * carte « Aujourd'hui », qui suit la même cadence.
  */
 
 interface LigneTache {
@@ -32,8 +38,9 @@ function useCompteurs(): Record<string, number> {
   const taches = useCollection<LigneTache>('tasks');
   const priorites = useCollection<JourPriorites>('dailyPriorities');
   const { unseen } = useActivity();
+  const tic = useMaintenant(60_000);
   return useMemo(() => {
-    const maintenant = new Date();
+    const maintenant = new Date(tic);
     const aujourdhui = isoDay(maintenant);
     return {
       ...unseen,
@@ -42,7 +49,7 @@ function useCompteurs(): Record<string, number> {
       '/relances': invoices.filter((f) => isOverdue(f, aujourdhui, invoices)).length,
       '/priorites': priorites.filter((d) => d.day === aujourdhui && d.email.toLowerCase() === moi).flatMap((d) => d.items ?? []).filter((p) => !p.doneAt).length,
     };
-  }, [unseen, appointments, taches, invoices, priorites, moi]);
+  }, [unseen, appointments, taches, invoices, priorites, moi, tic]);
 }
 
 export default declarerCompteurs({ famille: 'jour', useCompteurs });

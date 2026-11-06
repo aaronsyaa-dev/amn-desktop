@@ -2,9 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useAuth } from '../../../auth/AuthContext';
 import { useLangue } from '../../../i18n';
 import { useCollection, useSync, stripMeta } from '../../../state/SyncContext';
-import { useClients } from '../../../state/useClients';
+import { useClients, type SyncedClient } from '../../../state/useClients';
 import { useInvoices } from '../../../state/useInvoices';
-import { useAppointments, appointmentEnd } from '../../../state/useAppointments';
+import { useAppointments, appointmentEnd, type Appointment } from '../../../state/useAppointments';
+import type { Invoice } from '../../../shared/api';
 import { useRegards } from '../../../state/RegardsContext';
 import { useProfilesOptionnel } from '../../../state/ProfilesContext';
 import { toutesLesSections } from '../../../data/spaces';
@@ -33,7 +34,9 @@ import { calculerAujourdhui, type AujourdhuiCalcule } from './calculer';
  * interne, `AppLayout`) calcule et partage l'objet ; la barre latérale et
  * l'Accueil le lisent par `useAujourdhui()`. Cocher une ligne à l'Accueil met
  * la carte de la barre à jour sans second calcul. Sans fournisseur (contrôles,
- * aperçus), `useAujourdhui()` calcule localement.
+ * aperçus), `useAujourdhui()` calcule localement. Les accès lus pour ce calcul
+ * sont exposés tels quels (`acces`) : l'Accueil les reprend de là et n'en monte
+ * pas une seconde instance (abonnements et effet d'import en double).
  */
 
 export interface PersonneAujourdhui {
@@ -60,22 +63,33 @@ export interface Aujourdhui extends AujourdhuiCalcule {
   cocher: (ligne: LigneFil) => void;
   /** Le nom d'une personne d'après son profil, sinon le début de son adresse. */
   nomDe: (email: string) => string;
+  /** Les accès lus pour le calcul (tâches, priorités du jour, rendez-vous, factures, clients), sans seconde instance. */
+  acces: AccesAujourdhui;
 }
 
-interface LigneTache {
+export interface LigneTache {
   title?: string;
   status?: string;
   assigneeEmail?: string;
 }
-interface Priorite {
+export interface Priorite {
   id: string;
   label: string;
   doneAt: string | null;
 }
-interface JourPriorites {
+export interface JourPriorites {
   email: string;
   day: string;
   items: Priorite[];
+}
+
+/** Les accès déjà lus pour le calcul, tels quels : l'Accueil les reprend de là plutôt que d'en monter une seconde instance. */
+export interface AccesAujourdhui {
+  taches: (LigneTache & { id: string; updatedAt: string })[];
+  priorites: (JourPriorites & { id: string; updatedAt: string })[];
+  appointments: Appointment[];
+  invoices: Invoice[];
+  clients: SyncedClient[];
 }
 
 const CLE_RETOUCHES = (email: string) => `amn.accueil.fil.${email || 'anonyme'}`;
@@ -209,9 +223,11 @@ export function useCalculAujourdhui(actif = true): Aujourdhui {
     return autres.filter((r) => !r.parti).map((r) => ({ email: r.email, nom: nomDe(r.email), module: libelleDuLieu(r.module, catalogue, (c) => libellePageSysteme(c, langue)) }));
   }, [actif, autres, nomDe, langue]);
 
+  const acces = useMemo<AccesAujourdhui>(() => ({ taches, priorites, appointments, invoices, clients }), [taches, priorites, appointments, invoices, clients]);
+
   return useMemo(
-    () => ({ ...calcule, pret: ready, email, maintenant, jour, enLigne, presenceMontree: montree, retouches, retoucher, cocher, nomDe }),
-    [calcule, ready, email, maintenant, jour, enLigne, montree, retouches, retoucher, cocher, nomDe],
+    () => ({ ...calcule, pret: ready, email, maintenant, jour, enLigne, presenceMontree: montree, retouches, retoucher, cocher, nomDe, acces }),
+    [calcule, ready, email, maintenant, jour, enLigne, montree, retouches, retoucher, cocher, nomDe, acces],
   );
 }
 

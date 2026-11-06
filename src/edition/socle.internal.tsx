@@ -51,11 +51,12 @@ const LIBELLES: Record<NiveauMouvement, { titre: CleSocle; aide: CleSocle }> = {
 
 /**
  * LES ANCRES DES RÉGLAGES. `SettingsScreen` (partagé, non modifié) pose un `id="reglages-<rubrique>"` sur chacune
- * de ses rubriques, et son plan y défile. Un écran de la refonte qui envoie aux Réglages (H40 « Réglages » → la
+ * de ses rubriques (« guide » et « extensions » sont posées par les sections qu'il monte, `GuideSection` et
+ * `ExtensionsSection`), et son plan y défile. Un écran de la refonte qui envoie aux Réglages (H40 « Réglages » → la
  * rubrique Notifications) passe la rubrique dans l'état de navigation : `navigate('/settings', { state: { section:
  * 'notifications' } })`. Les trois surfaces de LOT-00 ci-dessous ont aussi la leur.
  */
-export const ANCRES_REGLAGES = ['profil', 'accueil', 'securite', 'notifications', 'apparence', 'poste', 'modules', 'donnees', 'mouvement', 'ecran-de-veille', 'coquille'] as const;
+export const ANCRES_REGLAGES = ['profil', 'accueil', 'guide', 'extensions', 'securite', 'notifications', 'apparence', 'poste', 'modules', 'donnees', 'mouvement', 'ecran-de-veille', 'coquille'] as const;
 
 /** L'identifiant à faire défiler pour une rubrique demandée, ou `null` si elle n'existe pas (rien ne bouge). */
 export function ancreDeReglages(section: unknown): string | null {
@@ -119,10 +120,10 @@ function MouvementBloc() {
       <Carte titre={ts('mouvement.titre')} actions={<PastilleEtat etat={choisi ? 'info' : 'neutre'}>{ts(LIBELLES[niveau].titre)}</PastilleEtat>}>
         <p className="mb-3 max-w-2xl">{ts('mouvement.texte')}</p>
         <Segmente libelle={ts('mouvement.choix')} options={NIVEAUX_MOUVEMENT.map((n) => ({ cle: n, libelle: ts(LIBELLES[n].titre) }))} valeur={niveau} onChange={(cle) => ecrireMouvement(cle as NiveauMouvement)} />
-        <p aria-live="polite" className="mt-2 max-w-2xl text-[12.5px]">
+        <p aria-live="polite" className="mt-2 max-w-2xl">
           {ts(LIBELLES[niveau].aide)}
         </p>
-        {systeme && !choisi && <p className="mt-2 max-w-2xl text-[12.5px]">{ts('mouvement.systeme')}</p>}
+        {systeme && !choisi && <p className="mt-2 max-w-2xl">{ts('mouvement.systeme')}</p>}
         {choisi && (
           <div className="mt-3">
             <Bouton variante="discret" taille="petit" onClick={() => ecrireMouvement(null)}>

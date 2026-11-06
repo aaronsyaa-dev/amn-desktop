@@ -34,7 +34,8 @@ export interface CompteursRamasses {
 export function ramasserCompteurs(fichiers: FichierCompteurs[]): CompteursRamasses {
   const declarations: CompteursRamasses['declarations'] = [];
   const ecartes: CompteursRamasses['ecartes'] = [];
-  for (const f of [...fichiers].sort((a, b) => a.chemin.localeCompare(b.chemin))) {
+  // L'ordre des unités de code (celui de `readdirSync().sort()` dans le contrôle), quelle que soit la locale du poste.
+  for (const f of [...fichiers].sort((a, b) => (a.chemin < b.chemin ? -1 : a.chemin > b.chemin ? 1 : 0))) {
     const raison = verifierDeclaration(f.declaration);
     if (raison) ecartes.push({ chemin: f.chemin, raison });
     else {

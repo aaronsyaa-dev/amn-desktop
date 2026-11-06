@@ -95,8 +95,10 @@
  *     cloche de 34, pastille de La Garde dont le point porte l'onde ;
  *   · la barre Ajmani : 46 px, rayon 14, « Entrée pour envoyer » et ⌘J d'un
  *     bloc ;
- *   · aucun ambre dans la colonne (le seul point coloré admis est le voyant
- *     d'état de La Garde, qui redit l'état unique de la pastille d'en-tête) ;
+ *   · aucun ambre dans la colonne, opaque ou translucide (un fond teinté
+ *     `rgba(ambre, .13)`, une lueur, un dégradé comptent) — le seul point
+ *     coloré admis est le voyant d'état de La Garde, qui redit l'état unique
+ *     de la pastille d'en-tête ;
  *   · une seule ligne active (`aria-current="page"`).
  *
  * Coquille éteinte, les sept mesures d'origine restent ce qu'elles sont.
@@ -112,7 +114,9 @@
  *      `AMN_EDITION=interne` choisit la liste d'écrans interne et les bureaux,
  *      puis fait le SECOND PASSAGE, coquille v3 allumée (interne seulement : le
  *      drapeau n'existe pas dans l'édition cliente). `AMN_COQUILLE=eteinte` ou
- *      `AMN_COQUILLE=allumee` ne fait qu'un des deux passages.
+ *      `AMN_COQUILLE=allumee` ne fait qu'un des deux passages — pour isoler
+ *      une faute du second, lancer `eteinte` puis `allumee` ; `allumee` hors de
+ *      l'édition interne est refusé (sortie 2), pas mesuré à vide.
  *
  *   B. Une page statique, sans serveur ni connexion (ce chantier) :
  *
@@ -221,8 +225,16 @@ const EMAIL = process.env.AMN_E2E_EMAIL ?? '';
 const MOT_DE_PASSE = process.env.AMN_E2E_PASSWORD ?? '';
 const CHROMIUM = process.env.AMN_E2E_CHROMIUM ?? '/opt/pw-browsers/chromium';
 const INTERNE = process.env.AMN_EDITION === 'interne';
-/** Les passages du mode A : la coquille éteinte (les sept mesures), allumée (la barre v3), ou les deux (défaut, interne). */
-const PASSAGES = process.env.AMN_COQUILLE === 'allumee' ? ['allumee'] : process.env.AMN_COQUILLE === 'eteinte' || !INTERNE ? ['eteinte'] : ['eteinte', 'allumee'];
+/**
+ * Les passages du mode A : la coquille éteinte (les sept mesures), allumée (la barre v3), ou les deux (défaut, interne).
+ * Hors de l'édition interne, le drapeau n'existe pas : un seul passage, éteinte — `AMN_COQUILLE=allumee` y est refusé
+ * plutôt que mesuré à vide (aucune barre v3 à trouver, une faute par écran sans raison).
+ */
+const PASSAGES = !INTERNE ? ['eteinte'] : process.env.AMN_COQUILLE === 'allumee' ? ['allumee'] : process.env.AMN_COQUILLE === 'eteinte' ? ['eteinte'] : ['eteinte', 'allumee'];
+if (BUNDLE && !INTERNE && process.env.AMN_COQUILLE === 'allumee') {
+  console.error('AMN_COQUILLE=allumee demande AMN_EDITION=interne : le drapeau de la coquille n’existe pas dans l’édition cliente.');
+  process.exit(2);
+}
 
 /*
   Les écrans parcourus. Peu nombreux, et choisis : ce contrôle mesure une
@@ -305,8 +317,23 @@ const SIGNATURES = {
   garde: { nav: 'onglets', pieces: { onglets: { h: 42 }, pouls: { h: 16 } } },
 };
 
-/** Les rouges du critique, sous leurs écritures rendues (trait, texte, remplissage). */
-const ROUGES = ['rgb(255, 66, 48)', 'rgb(255, 88, 71)', 'rgb(221, 47, 38)'];
+/**
+ * Une teinte, par composantes. Le navigateur rend un fond, une encre, une ombre ou un dégradé en `rgb(r, g, b)` ou,
+ * teinté, en `rgba(r, g, b, a)` : le fond d'une pastille (§1 : `rgba(couleur, .10 à .13)`), une lueur, un filet
+ * translucide ne contiennent PAS la sous-chaîne `rgb(r, g, b)`. Les mesures comparent donc les triplets, quelle que
+ * soit l'alpha (une alpha de 0 ne peint rien et ne compte pas) — voir `porte` dans chaque mesure.
+ */
+const triplet = (couleur) => {
+  const hex = /^#([0-9a-f]{6})$/i.exec(couleur);
+  if (hex) return [0, 2, 4].map((i) => Number.parseInt(hex[1].slice(i, i + 2), 16));
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(couleur);
+  if (!rgb) throw new Error(`teinte illisible : ${couleur}`);
+  return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+};
+/** La teinte du signal d'avant (`#d09a4a`), par composantes. */
+const AMBRE = [triplet('#d09a4a')];
+/** Les rouges du critique (trait, texte, remplissage), par composantes. */
+const ROUGES = ['rgb(255, 66, 48)', 'rgb(255, 88, 71)', 'rgb(221, 47, 38)'].map(triplet);
 
 async function mesurerBureau(page) {
   return page.evaluate(([AMBRE, ROUGES]) => {
@@ -342,8 +369,14 @@ async function mesurerBureau(page) {
     });
     /* La coquille du poste ne doit pas être rendue en même temps que celle d'un bureau. */
     const rails = [...document.querySelectorAll('[data-coquille]')].filter(vu).length;
-    /* Ni ambre ni rouge dans la coquille : le signal vit dans la pièce, pas dans ses murs. */
-    const porte = (v, teintes) => teintes.some((a) => (v ?? '').toLowerCase().includes(a));
+    /* Ni ambre ni rouge dans la coquille : le signal vit dans la pièce, pas dans ses murs. Par composantes (rgb ou rgba). */
+    const porte = (v, triplets) => {
+      for (const m of String(v ?? '').matchAll(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/g)) {
+        if (m[4] !== undefined && Number(m[4]) === 0) continue;
+        if (triplets.some(([r, g, b]) => Number(m[1]) === r && Number(m[2]) === g && Number(m[3]) === b)) return true;
+      }
+      return false;
+    };
     const signaux = { ambre: [], rouge: [] };
     for (const el of racine.querySelectorAll('*')) {
       if (main && main.contains(el)) continue;
@@ -420,9 +453,6 @@ async function resoudre(page, route) {
   const href = await page.locator(lien).first().getAttribute('href').catch(() => null);
   return href ?? depuis;
 }
-
-/** La teinte du signal, sous ses deux écritures possibles une fois rendue. */
-const AMBRE = ['rgb(208, 154, 74)', '#d09a4a'];
 
 async function mesurer(page) {
   return page.evaluate((AMBRE) => {
@@ -503,8 +533,15 @@ async function mesurer(page) {
         getComputedStyle(el).backgroundImage.includes('rgb(21, 21, 21)'),
     );
 
-    /* L'ambre : fond, encre, bordure, ombre, remplissage SVG. */
-    const porte = (v) => AMBRE.some((a) => (v ?? '').toLowerCase().includes(a));
+    /* L'ambre : fond, encre, bordure, ombre, remplissage SVG — opaque ou translucide (par composantes). */
+    const porteTeinte = (v, triplets) => {
+      for (const m of String(v ?? '').matchAll(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/g)) {
+        if (m[4] !== undefined && Number(m[4]) === 0) continue;
+        if (triplets.some(([r, g, b]) => Number(m[1]) === r && Number(m[2]) === g && Number(m[3]) === b)) return true;
+      }
+      return false;
+    };
+    const porte = (v) => porteTeinte(v, AMBRE);
     const ambre = [];
     for (const el of coquille.querySelectorAll('*')) {
       const r = el.getBoundingClientRect();
@@ -693,7 +730,7 @@ const V3 = {
   tous: 34,
   famille: 32,
   icone: 15,
-  sectionTitre: { taille: 10.5, hauteur: 20 },
+  sectionTitre: { taille: 10.5, hauteur: 20, encre: 'rgb(138, 138, 142)', interlettrage: 0.945 }, /* T4 #8a8a8e (`--socle-texte-3`) ; .09em × 10,5 px */
   sousLignes: 5,
   sousLigne: 27,
   repere: { l: 2, h: 13 },
@@ -716,12 +753,14 @@ const TEINTES_FAMILLES = {
   outils: 'rgb(154, 154, 160)',
   garde: 'rgb(214, 214, 218)',
 };
-/** L'ambre, sous ses écritures d'avant (`#d09a4a`) et du socle v3 (ATTENTION `#e0b35a`). */
-const AMBRE_V3 = [...AMBRE, 'rgb(224, 179, 90)', '#e0b35a'];
+/** L'ambre d'avant (`#d09a4a`) et celui du socle v3 (ATTENTION `#e0b35a`), par composantes. */
+const AMBRE_V3 = [...AMBRE, triplet('#e0b35a')];
+/** Les teintes de famille, par composantes : pour voir une pastille teintée (`rgba(couleur, .13)`) comme une pleine. */
+const TRIPLETS_FAMILLES = Object.values(TEINTES_FAMILLES).map(triplet);
 
 async function mesurerV3(page) {
   return page.evaluate(
-    ([V3, TEINTES, AMBRE]) => {
+    ([V3, AMBRE, TRIPLETS]) => {
       const px = (v) => Math.round(parseFloat(v) * 100) / 100;
       const vu = (el) => {
         const r = el.getBoundingClientRect();
@@ -733,7 +772,14 @@ async function mesurerV3(page) {
         return { l: px(r.width), h: px(r.height), x: px(r.left), y: px(r.top), droite: px(r.right), bas: px(r.bottom) };
       };
       const texte = (el) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
-      const porte = (v, teintes) => teintes.some((a) => (v ?? '').toLowerCase().includes(a.toLowerCase()));
+      /* Une valeur calculée porte-t-elle une des teintes ? Par composantes : rgb ou rgba, quelle que soit l'alpha (sauf 0). */
+      const porte = (v, triplets) => {
+        for (const m of String(v ?? '').matchAll(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/g)) {
+          if (m[4] !== undefined && Number(m[4]) === 0) continue;
+          if (triplets.some(([r, g, b]) => Number(m[1]) === r && Number(m[2]) === g && Number(m[3]) === b)) return true;
+        }
+        return false;
+      };
 
       const laterales = [...document.querySelectorAll('[data-socle="lateral"]')].filter(vu);
       /* Une seconde colonne de navigation à côté de la barre v3 : une barre écrite à la main (même règle qu'avant). */
@@ -757,7 +803,7 @@ async function mesurerV3(page) {
       /* Le bord droit du contenu : la largeur moins le filet droit (1 px) et le padding. */
       const droiteContenu = px(boiteAside.droite - parseFloat(s.borderRightWidth) - parseFloat(s.paddingRight));
 
-      /* Les sections nommées. */
+      /* Les sections nommées : taille, capitales, hauteur, encre et interlettrage (§0.1 : 10,5 px, capitales, .09em, T4, 20). */
       const sections = [...aside.querySelectorAll('[data-section]')].map((sec) => {
         const h2 = sec.querySelector('.sc-section__titre');
         const st = h2 ? getComputedStyle(h2) : null;
@@ -767,6 +813,9 @@ async function mesurerV3(page) {
           taille: st ? px(st.fontSize) : null,
           capitales: st?.textTransform === 'uppercase',
           hauteur: h2 ? boite(h2).h : null,
+          encre: st ? st.color : null,
+          /* « normal » donne NaN : jugé faux. */
+          interlettrage: st ? parseFloat(st.letterSpacing) : null,
         };
       });
 
@@ -789,8 +838,8 @@ async function mesurerV3(page) {
           section: li?.closest('[data-section]')?.dataset.section ?? null,
         };
       });
-      const teintes = Object.values(TEINTES);
-      /* Une pastille de couleur : un nœud des listes au fond teinté d'une famille — hors le voyant vivant de La Garde. */
+      const teintes = TRIPLETS;
+      /* Une pastille de couleur : un nœud des listes au fond teinté d'une famille, plein ou translucide — hors le voyant vivant de La Garde. */
       const pastilles = [];
       for (const el of aside.querySelectorAll('.sc-nav *')) {
         if (el.closest('.sc-voyant')) continue;
@@ -916,17 +965,17 @@ async function mesurerV3(page) {
         actives: aside.querySelectorAll('[aria-current="page"]').length,
       };
     },
-    [V3, TEINTES_FAMILLES, AMBRE_V3],
+    [V3, AMBRE_V3, TRIPLETS_FAMILLES],
   );
 }
 
 /**
- * Juge les mesures v3. `exigeant` (mode B, page statique) : la carte
- * « Aujourd'hui », La Garde, « + N autres » et « N en ligne » doivent être
- * là — l'aperçu les porte. Dans l'application (mode A), chacun peut manquer
- * pour une raison de données (aucun module de La Garde ouvert à l'organisation,
- * personne d'autre en ligne, famille de cinq modules ou moins) : on ne juge
- * alors que ce qui est rendu.
+ * Juge les mesures v3. `exigeant` (mode B, page statique) : la section
+ * ÉPINGLÉS, la carte « Aujourd'hui », La Garde, « + N autres » et « N en
+ * ligne » doivent être là — l'aperçu les porte. Dans l'application (mode A),
+ * chacun peut manquer pour une raison de données (aucun épinglé, aucun module
+ * de La Garde ouvert à l'organisation, personne d'autre en ligne, famille de
+ * cinq modules ou moins) : on ne juge alors que ce qui est rendu.
  */
 function jugerV3(nom, m, exigeant) {
   const f = [];
@@ -963,8 +1012,13 @@ function jugerV3(nom, m, exigeant) {
   if (exigeant && !ids.includes('epingles')) f.push(`${nom} · la section « ÉPINGLÉS » manque (l'aperçu porte trois épinglés).`);
   if (ids.length > 0 && ids.join(',') !== ['espace', 'surveillance', 'epingles'].filter((i) => ids.includes(i)).join(',')) dire('ordre des sections', 'ESPACE, SURVEILLANCE, ÉPINGLÉS', ids.join(', '));
   for (const sct of m.sections) {
-    if (sct.taille !== V3.sectionTitre.taille || !sct.capitales || sct.hauteur !== V3.sectionTitre.hauteur) {
-      dire(`libellé de section « ${sct.titre} »`, `${V3.sectionTitre.taille} px, capitales, ${V3.sectionTitre.hauteur} px de haut`, `${sct.taille} px, ${sct.capitales ? 'capitales' : 'sans capitales'}, ${sct.hauteur} px`);
+    const t = V3.sectionTitre;
+    if (sct.taille !== t.taille || !sct.capitales || sct.hauteur !== t.hauteur || sct.encre !== t.encre || !(Math.abs(sct.interlettrage - t.interlettrage) <= 0.05)) {
+      dire(
+        `libellé de section « ${sct.titre} »`,
+        `${t.taille} px, capitales, ${t.hauteur} px de haut, encre T4 ${t.encre}, interlettrage ${t.interlettrage} px (0,09 em)`,
+        `${sct.taille} px, ${sct.capitales ? 'capitales' : 'sans capitales'}, ${sct.hauteur} px, encre ${sct.encre}, interlettrage ${sct.interlettrage} px`,
+      );
     }
   }
 
@@ -1211,10 +1265,16 @@ try {
     /*
       ── Second passage : la coquille v3 allumée (interne) ──
       Le drapeau `amn.coquille = 'noir'` (`src/refonte/coquille/drapeau.ts`) est
-      posé AVANT la navigation : `AppLayout` monte alors `CoquilleRefonte` à la
-      place du rail. La fenêtre passe à 1440 × 900, celle des maquettes v3.
+      posé AVANT la navigation, et l'événement `amn:coquille` auquel le drapeau
+      s'abonne est levé aussitôt (l'événement `storage`, lui, n'atteint pas la
+      fenêtre qui écrit) : `AppLayout` monte `CoquilleRefonte` à la place du
+      rail sans attendre un autre re-rendu. La fenêtre passe à 1440 × 900, celle
+      des maquettes v3.
     */
-    await page.evaluate(() => window.localStorage.setItem('amn.coquille', 'noir'));
+    await page.evaluate(() => {
+      window.localStorage.setItem('amn.coquille', 'noir');
+      window.dispatchEvent(new Event('amn:coquille'));
+    });
     await page.setViewportSize({ width: 1440, height: 900 });
     for (const [nom, route] of ECRANS_V3) {
       await page.goto(APP + route, { waitUntil: 'networkidle' }).catch(() => undefined);
@@ -1223,7 +1283,10 @@ try {
       mesuresV3 += 1;
       fautes.push(...jugerV3(`${nom} (coquille v3)`, m, false));
     }
-    await page.evaluate(() => window.localStorage.removeItem('amn.coquille'));
+    await page.evaluate(() => {
+      window.localStorage.removeItem('amn.coquille');
+      window.dispatchEvent(new Event('amn:coquille'));
+    });
   }
 } finally {
   await navigateur.close();

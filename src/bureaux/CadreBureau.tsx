@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import './bureaux.css';
 import { espace as espaceDe, type BureauKey } from './jetons';
 import { ongletDuChemin } from './catalogue';
@@ -21,6 +21,9 @@ import { BureauCtx } from './ui/kit';
 import { NAV_ITEMS } from '../data/navigation';
 import { nomEcran } from './libelles';
 import { DescriptionEcran } from './ui/DescriptionEcran';
+// Refonte (§ 1.3) : le point unique de substitution d'écran, à la place de l'Outlet — les routes des bureaux sont des
+// routes d'origine comme les autres ; vide côté cliente (CadreBureau n'y est jamais monté).
+import { SubstitutionDEcran } from '@edition/substitutions';
 
 /**
  * LE CADRE D'UN BUREAU — la barre haute commune, la coquille du bureau, et
@@ -30,6 +33,11 @@ import { DescriptionEcran } from './ui/DescriptionEcran';
  * modules recousus gardent leurs instruments, leurs actions et leur ligne
  * d'état ; le cadre leur impose seulement sa tête (typographie, surtitre) par
  * `EnTeteCtx`, et ses marges.
+ *
+ * La pièce où l'écran se pose est le point de substitution de la refonte
+ * (`SubstitutionDEcran`, par la couture `@edition/substitutions`), comme sous
+ * `AppLayout` : un écran de bureau déclaré par un lot y est rendu à la place de
+ * la route d'origine ; sinon, l'écran d'origine, à l'identique.
  */
 
 /** La tête de chaque bureau (cahier 11 §1) et ses marges de contenu (`shell()`). */
@@ -96,7 +104,7 @@ export function CadreBureau({ bureau }: { bureau: BureauKey }) {
                 {/* La présentation d'un module recousu, jamais celle d'un écran de bureau qui partage son préfixe. */}
                 {NAV_ITEMS.some((i) => i.to === pathname) && <PremiereOuverture />}
                 {(bureau === 'studio' || bureau === 'strategie') && <DescriptionEcran />}
-                <Outlet />
+                <SubstitutionDEcran />
               </EnTeteCtx.Provider>
             </BureauCtx.Provider>
           </main>

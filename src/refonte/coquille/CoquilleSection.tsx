@@ -10,7 +10,10 @@ import { ecrireCoquille, useCoquilleActive } from './drapeau';
  *
  * Sa composition, à elle : l'état en pastille dans l'en-tête de la carte ; les
  * quatre choses que la coquille apporte, avec leurs raccourcis ; puis une seule
- * ligne, l'interrupteur « La nouvelle coquille sur ce poste ».
+ * ligne, l'interrupteur « La nouvelle coquille sur ce poste », dans un
+ * `<label>` : le texte visible est relié au contrôle (un bouton est
+ * étiquetable) et le cliquer bascule l'interrupteur. Les tailles de texte sont
+ * celles de la `Carte` du socle, héritées.
  */
 export function CoquilleSection() {
   const { ts } = useSocleLangue();
@@ -27,18 +30,16 @@ export function CoquilleSection() {
         <p className="max-w-2xl">{ts('coquille.reglage.texte')}</p>
         <ul className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2">
           {points.map((p) => (
-            <li key={p.cle} className="flex items-center gap-2 text-[13px] text-socle-texte">
+            <li key={p.cle} className="flex items-center gap-2 text-socle-texte">
               {p.raccourci && <Raccourci>{p.raccourci}</Raccourci>}
               <span>{ts(p.cle)}</span>
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <span id="reglages-coquille-interrupteur" className="text-[13px] font-medium text-socle-texte">
-            {ts('coquille.reglage.surCePoste')}
-          </span>
+        <label className="mt-4 flex cursor-pointer items-center justify-between gap-4">
+          <span className="font-medium text-socle-texte">{ts('coquille.reglage.surCePoste')}</span>
           <Interrupteur actif={actif} libelle={ts('coquille.reglage.surCePoste')} onChange={ecrireCoquille} />
-        </div>
+        </label>
       </Carte>
     </div>
   );
