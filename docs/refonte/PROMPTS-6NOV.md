@@ -291,7 +291,7 @@ Branche : claude/refonte-atelier-f1. Zone : src/ateliers/** et docs/atelier/**.
 
 À faire, dans cet ordre
 1. Fusionnez origin/claude/refonte-vivante dans votre branche.
-2. Appliquez le correctif C-003 de T1 (docs/qualite/constats/C-003-verifier-f1.patch) : votre vérificateur (src/ateliers/verifier.mjs) doit lire le registre de S5 (src/refonte/modules/), plus celui de S1. node src/ateliers/verifier.mjs doit repasser au vert.
+2. Appliquez le correctif C-003 de T1 (docs/qualite/constats/C-003-verifier-f1.patch) : votre vérificateur (src/ateliers/verifier.mjs) doit lire le registre de S5 (src/refonte/modules/), et non plus celui de S1. node src/ateliers/verifier.mjs doit repasser au vert.
 3. Mettez docs/atelier/PRET.md à jour : pour chacun des 13 modules prêts, sa famille, son niveau (essentiel, courant ou avance) et sa route proposée, prêts pour le choix de Harun.
 4. Préparez vos modules pour le design v3, sans écran visuel : leurs surfaces propres décrites dans docs/atelier/modules/<id>.md, et leurs besoins en briques du socle v3 (ModuleTile pour leur carte de famille).
 5. Puis le passage 2 du BACKLOG.
