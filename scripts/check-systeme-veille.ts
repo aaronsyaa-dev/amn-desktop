@@ -279,7 +279,7 @@ await dit('le réglage : 5 et 15 min par défaut, 0 = jamais, une valeur inconnu
   assert.match(sansCommentaires(lire(`${DIR}/EcranDeVeille.tsx`)), /reglage\.actif && /, 'désactivée : elle n’apparaît jamais');
 });
 
-await dit('la ligne « Écran de veille » des Réglages : interne seulement, interrupteur et deux groupes de délais, défauts cochés', () => {
+await dit('la surface « Écran de veille » des Réglages : interne seulement, carte du socle, interrupteur, délai de veille en segmenté et délai de verrou en liste, défauts choisis', () => {
   const interne = lire('src/edition/socle.internal.tsx');
   assert.match(interne, /<MouvementBloc \/>\s*<EcranDeVeilleSection \/>\s*<CoquilleSection \/>/);
   const cliente = sansCommentaires(lire('src/edition/socle.business.tsx'));
@@ -287,15 +287,26 @@ await dit('la ligne « Écran de veille » des Réglages : interne seulement, in
   assert.doesNotMatch(cliente, /veille|refonte\//i, 'le jumeau client n’en sait rien');
   assert.doesNotMatch(lire('src/screens/SettingsScreen.tsx'), /EcranDeVeille|systeme\/veille/, 'l’écran partagé ne change pas');
   const html = M.rendre(M.h(M.EcranDeVeilleSection));
-  assert.match(html, />Écran de veille</);
-  assert.match(html, /<input type="checkbox" role="switch" aria-checked="true"[^>]*checked=""/);
-  assert.equal(compter(html, /name="amn-veille-delai"/g), 4);
-  assert.equal(compter(html, /name="amn-veille-verrou"/g), 4);
-  assert.match(html, /name="amn-veille-delai" checked="" value="5"/);
-  assert.match(html, /name="amn-veille-verrou" checked="" value="15"/);
-  assert.equal(compter(html, /checked=""/g), 3, 'l’interrupteur et un délai par groupe');
-  assert.match(html, />Jamais</);
+  assert.match(html, /^<div id="reglages-ecran-de-veille" data-reglage="ecran-de-veille"><section data-socle="carte"/, 'une carte du socle, à son ancre');
+  assert.match(html, /<h2[^>]*>Écran de veille<\/h2>/);
+  /* L'interrupteur du socle (34 × 20, role="switch"), allumé par défaut, dans l'en-tête de la carte. */
+  assert.match(html, /<button type="button" role="switch" aria-checked="true" aria-label="Afficher l’écran de veille"[^>]*class="sc-interrupteur sc-focus"/);
+  assert.equal(compter(html, /role="switch"/g), 1, 'un seul interrupteur');
+  /* « Veille après » : un segmenté de quatre délais, 5 min choisi. */
+  assert.match(html, /<div role="radiogroup" aria-label="Veille après" class="sc-segmente">/);
+  assert.equal(compter(html, /role="radio"/g), 4);
+  assert.match(html, /role="radio" aria-checked="true" tabindex="0"[^>]*>5 min</);
+  assert.equal(compter(html, /aria-checked="true"/g), 2, 'l’interrupteur et un seul délai');
+  /* « Verrouiller l'espace après » : une liste de quatre choix, 15 min choisi, « Jamais » dernier, l'aide honnête. */
+  assert.match(html, /<label for="[^"]+" class="sc-champ__etiquette">Verrouiller l’espace après<\/label>/);
+  assert.equal(compter(html, /<option /g), 4);
+  assert.match(html, /<option value="15" selected="">15 min<\/option>/);
+  assert.match(html, /<option value="0">Jamais<\/option><\/select>/);
   assert.match(html, /il ne change rien aujourd’hui/, 'le délai de verrouillage ne promet pas un verrou qui n’existe pas');
+  /* Les deux délais se coupent avec l'interrupteur : un fieldset désactivé. */
+  assert.match(html, /<fieldset class="[^"]*">/, 'actif : le fieldset n’est pas désactivé');
+  assert.match(lire('src/refonte/systeme/veille/EcranDeVeilleSection.tsx'), /<fieldset disabled=\{!reglage\.actif\}/, 'éteint : les deux délais se coupent (le rendu hors navigateur lit toujours le défaut)');
+  assert.doesNotMatch(html, /type="radio"|type="checkbox"|class="panel|class="eyebrow/, 'plus le gabarit d’avant (cases natives, panel, eyebrow)');
 });
 
 /* ── 7. Le mouvement ── */

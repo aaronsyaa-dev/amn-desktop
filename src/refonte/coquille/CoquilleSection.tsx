@@ -1,30 +1,45 @@
 import React from 'react';
-import { Bouton, PastilleEtat } from '../../socle/ui';
+import { Carte, Interrupteur, PastilleEtat, Raccourci } from '../../socle/ui';
 import { useSocleLangue } from '../../socle/i18n';
 import { ecrireCoquille, useCoquilleActive } from './drapeau';
 
 /**
- * LE RÉGLAGE « NOUVELLE COQUILLE » — dans Paramètres, édition interne seulement.
+ * LA SURFACE « NOUVELLE COQUILLE » DES RÉGLAGES — édition interne seulement.
  * Allume ou éteint, sur CE poste, la coquille noir et gris (une navigation,
  * un fil d'Ariane, ⌘K, ⌘J). Éteinte par défaut ; prend effet à l'instant.
+ *
+ * Sa composition, à elle : l'état en pastille dans l'en-tête de la carte ; les
+ * quatre choses que la coquille apporte, avec leurs raccourcis ; puis une seule
+ * ligne, l'interrupteur « La nouvelle coquille sur ce poste ».
  */
 export function CoquilleSection() {
   const { ts } = useSocleLangue();
   const actif = useCoquilleActive();
+  const points: { cle: 'coquille.reglage.point.navigation' | 'coquille.reglage.point.fil' | 'coquille.reglage.point.recherche' | 'coquille.reglage.point.ajmani'; raccourci?: string }[] = [
+    { cle: 'coquille.reglage.point.navigation' },
+    { cle: 'coquille.reglage.point.fil' },
+    { cle: 'coquille.reglage.point.recherche', raccourci: '⌘K' },
+    { cle: 'coquille.reglage.point.ajmani', raccourci: '⌘J' },
+  ];
   return (
-    <section aria-labelledby="reglage-coquille" className="panel mt-6 flex flex-col gap-3 p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 id="reglage-coquille" className="text-[16px] font-semibold text-text-primary">
-          {ts('coquille.reglage.titre')}
-        </h2>
-        <PastilleEtat etat={actif ? 'succes' : 'neutre'}>{ts(actif ? 'coquille.reglage.allumee' : 'coquille.reglage.eteinte')}</PastilleEtat>
-      </div>
-      <p className="max-w-prose text-[14px] text-text-secondary">{ts('coquille.reglage.texte')}</p>
-      <div>
-        <Bouton variante="secondaire" taille="petit" aria-pressed={actif} onClick={() => ecrireCoquille(!actif)}>
-          {ts(actif ? 'coquille.reglage.eteindre' : 'coquille.reglage.allumer')}
-        </Bouton>
-      </div>
-    </section>
+    <div id="reglages-coquille" data-reglage="coquille">
+      <Carte titre={ts('coquille.reglage.titre')} actions={<PastilleEtat etat={actif ? 'succes' : 'neutre'}>{ts(actif ? 'coquille.reglage.allumee' : 'coquille.reglage.eteinte')}</PastilleEtat>}>
+        <p className="max-w-2xl">{ts('coquille.reglage.texte')}</p>
+        <ul className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+          {points.map((p) => (
+            <li key={p.cle} className="flex items-center gap-2 text-[13px] text-socle-texte">
+              {p.raccourci && <Raccourci>{p.raccourci}</Raccourci>}
+              <span>{ts(p.cle)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <span id="reglages-coquille-interrupteur" className="text-[13px] font-medium text-socle-texte">
+            {ts('coquille.reglage.surCePoste')}
+          </span>
+          <Interrupteur actif={actif} libelle={ts('coquille.reglage.surCePoste')} onChange={ecrireCoquille} />
+        </div>
+      </Carte>
+    </div>
   );
 }

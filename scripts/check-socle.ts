@@ -406,7 +406,7 @@ await dit('noir.css : les jetons validés par la direction de design, valeur pou
     '--socle-primaire': '#ededed', '--socle-primaire-encre': '#0c0c0d',
     '--socle-fam-jour': '#8aa4d6', '--socle-fam-contacts': '#6fb7a8', '--socle-fam-ecrire': '#a79bdb', '--socle-fam-argent': '#8fbf7a', '--socle-fam-echanger': '#d98fa8', '--socle-fam-creer': '#d9a27a', '--socle-fam-outils': '#9a9aa0',
     '--socle-etat-succes': '#8fbf7a', '--socle-etat-attention': '#e0b35a', '--socle-etat-critique': '#e08a80', '--socle-etat-info': '#8aa4d6',
-    '--socle-rayon-carte': '14px', '--socle-rayon-controle': '9px', '--socle-rayon-bouton': '10px', '--socle-rayon-pastille': '99px',
+    '--socle-rayon-carte': '14px', '--socle-rayon-controle': '9px', '--socle-rayon-bouton': '9px', '--socle-rayon-pastille': '99px',
     '--socle-largeur-lateral': '252px', '--socle-hauteur-entete': '60px', '--socle-hauteur-ajmani': '46px',
   };
   for (const [nom, valeur] of Object.entries(attendu)) assert.equal(brut(nom), valeur, nom);
@@ -422,6 +422,105 @@ await dit('noir.css : les noms du socle S0 disent la même chose que les jetons 
     ...['jour', 'contacts', 'ecrire', 'argent', 'echanger', 'creer', 'outils'].flatMap((f): [string, string][] => [[`--color-fam-${f}`, `--socle-fam-${f}`], [`--color-fam-${f}-texte`, `--socle-fam-${f}`]]),
   ];
   for (const [socle, brutNom] of paires) assert.equal(brut(socle), brut(brutNom), `${socle} ≠ ${brutNom}`);
+});
+
+/* ── § 1.2 de docs/refonte/STATUT.md : les écarts DS → socle, une assertion par ligne ────
+   Le CO a comparé `noir.css` à 01-SOCLE-DESIGN et listé ce que LOT-00 doit corriger. Chaque
+   ligne du § 1.2 est tenue ici : le jeton existe avec la valeur du socle, ET une feuille du
+   socle le lit (un jeton déclaré que rien ne pose n'est pas une correction). */
+
+console.log('\nSocle de la refonte — § 1.2 (écarts DS → socle)\n');
+
+const FEUILLES_SOCLE = {
+  briques: sansCommentaires(lireSrc('src/socle/ui/briques.css')),
+  controles: sansCommentaires(lireSrc('src/socle/ui/controles/controles.css')),
+  coquille: sansCommentaires(lireSrc('src/socle/coquille/coquille.css')),
+  archetypes: sansCommentaires(lireSrc('src/socle/ui/archetypes/archetypes.css')),
+  situations: sansCommentaires(lireSrc('src/socle/ui/situations/situations.css')),
+  graphiques: sansCommentaires(lireSrc('src/socle/ui/graphiques/graphiques.css')),
+};
+const TOUTES_LES_FEUILLES = Object.values(FEUILLES_SOCLE).join('\n');
+const lu = (jeton: string) => assert.ok(TOUTES_LES_FEUILLES.includes(`var(${jeton})`), `${jeton} est déclaré mais aucune feuille du socle ne le lit`);
+
+await dit('§1.2 conformes : fond, latéral, carte, champ, cinq bordures, T1, plancher T4, sept familles, états, gabarits 252 et 60', () => {
+  const conformes: Record<string, string> = {
+    '--socle-fond-page': '#0c0c0d', '--socle-fond-lateral': '#101011', '--socle-carte-haut': '#161617', '--socle-carte-bas': '#131314', '--socle-champ': '#131314',
+    '--socle-bord-carte': '#232325', '--socle-bord-entete': '#1d1d1f', '--socle-bord-ligne': '#19191b', '--socle-bord-lateral': '#222224', '--socle-bord-controle': '#28282b',
+    '--socle-texte-1': '#ededed', '--socle-texte-3': '#8a8a8e',
+    '--socle-etat-succes': '#8fbf7a', '--socle-etat-critique': '#e08a80', '--socle-etat-info': '#8aa4d6',
+    '--socle-largeur-lateral': '252px', '--socle-hauteur-entete': '60px',
+  };
+  for (const [nom, valeur] of Object.entries(conformes)) assert.equal(brut(nom), valeur, nom);
+  assert.equal(['jour', 'contacts', 'ecrire', 'argent', 'echanger', 'creer', 'outils'].filter((f) => /^#[0-9a-f]{6}$/.test(brut(`--socle-fam-${f}`))).length, 7, 'sept familles');
+});
+
+await dit('§1.2 ATTENTION vaut #e0b35a (le socle), et plus la couleur de la famille Créer', () => {
+  assert.equal(brut('--socle-etat-attention'), '#e0b35a');
+  assert.equal(brut('--color-etat-attention'), '#e0b35a');
+  assert.notEqual(brut('--socle-etat-attention'), brut('--socle-fam-creer'), 'ATTENTION ne doit pas être #d9a27a (Créer)');
+  lu('--socle-etat-attention');
+});
+
+await dit('§1.2 le texte courant T2 #c4c4c8 existe (--socle-texte-courant) et sert d’encre ; #a0a0a5 reste le T3', () => {
+  assert.equal(brut('--socle-texte-courant'), '#c4c4c8');
+  assert.equal(brut('--socle-texte-2'), '#a0a0a5');
+  assert.match(TOUTES_LES_FEUILLES, /(?:^|[;{\s])color:\s*var\(--socle-texte-courant\)/, 'T2 est posé en `color` par une feuille du socle');
+  assert.match(FEUILLES_SOCLE.coquille, /\.sc-famille \{[^}]*color: var\(--socle-texte-courant\)/, 'le libellé de famille est en T2 (§0.1)');
+});
+
+await dit('§1.2 bordure de champ #5a5a60 (--socle-bord-champ), posée sur le champ et la liste', () => {
+  assert.equal(brut('--socle-bord-champ'), '#5a5a60');
+  assert.notEqual(brut('--socle-bord-champ'), '#6e6e73', 'plus la bordure forte de DS');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-champ__controle,\s*\.sc-selecteur \{[^}]*border: 1px solid var\(--socle-bord-champ\)/);
+});
+
+await dit('§1.2 la 8e famille « La Garde et la supervision » #d6d6da (--socle-fam-garde), sur l’icône bouclier de la famille active, jamais en pastille', () => {
+  assert.equal(brut('--socle-fam-garde'), '#d6d6da');
+  assert.match(FEUILLES_SOCLE.coquille, /\[data-cle='garde'\] > \.sc-famille\[data-active='true'\] \.sc-famille__icone,\s*\[data-cle='cyber'\][^{]*\{ color: var\(--socle-fam-garde\); \}/);
+  for (const [, declarations] of TOUTES_LES_FEUILLES.matchAll(/\{([^}]*--socle-fam-garde[^}]*)\}/g)) {
+    assert.doesNotMatch(declarations, /background[^;]*--socle-fam-garde/, 'la teinte de La Garde ne fait jamais un fond (pastille)');
+  }
+});
+
+await dit('§1.2 rayons : bouton 9, champ 10, sous-carte 11, tag 6, ticket 12 (et colonne de kanban 14), chacun lu par sa brique', () => {
+  assert.equal(brut('--socle-rayon-bouton'), '9px');
+  assert.equal(brut('--socle-rayon-controle'), '9px', 'le rayon des contrôles est celui du bouton');
+  assert.equal(brut('--socle-rayon-champ'), '10px');
+  assert.equal(brut('--socle-rayon-sous-carte'), '11px');
+  assert.equal(brut('--socle-rayon-tag'), '6px');
+  assert.equal(brut('--socle-rayon-ticket'), '12px');
+  assert.equal(brut('--socle-rayon-kanban'), '14px');
+  assert.match(FEUILLES_SOCLE.briques, /\[data-socle='bouton'\] \{[^}]*border-radius: var\(--socle-rayon-controle\)/, 'le bouton porte le rayon 9');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-selecteur \{[^}]*border-radius: var\(--socle-rayon-champ\)/, 'le champ porte le rayon 10');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-bouton-icone \{[^}]*border-radius: var\(--socle-rayon-controle\)/, 'le bouton-icône porte le rayon 9');
+  for (const j of ['--socle-rayon-bouton', '--socle-rayon-sous-carte', '--socle-rayon-tag', '--socle-rayon-ticket', '--socle-rayon-kanban']) lu(j);
+});
+
+await dit('§1.2 bordures #212123 (sous-carte), #2e2e31 (bouton secondaire) et le pointillé #2e2e33 (zone vide, dépôt)', () => {
+  assert.equal(brut('--socle-bord-sous-carte'), '#212123');
+  assert.equal(brut('--socle-bord-bouton'), '#2e2e31');
+  assert.equal(brut('--socle-pointille'), '#2e2e33');
+  lu('--socle-bord-sous-carte');
+  assert.match(FEUILLES_SOCLE.briques, /\[data-variante='secondaire'\] \{[^}]*border-color: var\(--socle-bord-bouton\)/);
+  assert.match(TOUTES_LES_FEUILLES, /border: 1px dashed var\(--socle-pointille\)/, 'le pointillé est posé en `dashed`');
+});
+
+await dit('§1.2 barre Ajmani : 46 px (--socle-hauteur-ajmani), la hauteur de .sc-ajmani', () => {
+  assert.equal(brut('--socle-hauteur-ajmani'), '46px');
+  assert.match(FEUILLES_SOCLE.coquille, /\.sc-ajmani \{[^}]*height: var\(--socle-hauteur-ajmani\)/);
+});
+
+const COMPOSANTS_1_2 = ['Interrupteur', 'Onglets', 'Segmente', 'Tableau', 'Ticket', 'ColonneKanban', 'Kanban', 'Donut', 'Courbe', 'Barres', 'MiniCourbe', 'LigneTemps', 'CarteCases', 'CarteAnneau', 'CarteSerie', 'CarteJalon', 'SuggestionAjmani'];
+const U = await charger<Record<string, unknown>>({ code: `export { ${COMPOSANTS_1_2.join(', ')} } from '../src/socle/ui';` });
+await dit('§1.2 composants du §4 cités comme manquants — Toggle, Tabs, Segmented, Table, Ticket, colonne de kanban, Donut, graphiques, TimelineItem, cartes ludiques, Suggestion — exportés par src/socle/ui, aux valeurs du §4', () => {
+  for (const nom of COMPOSANTS_1_2) assert.equal(typeof U[nom], 'function', `${nom} n’est pas exporté par src/socle/ui`);
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-interrupteur \{[^}]*width: 34px;[^}]*height: 20px;[^}]*background: var\(--socle-toggle-inactif\)/, 'Toggle 34 × 20');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-interrupteur\[aria-checked='true'\] \{ background: var\(--socle-toggle-actif\); \}/, 'Toggle actif #2e4327');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-onglet\[aria-selected='true'\]::after \{[^}]*height: 2px;[^}]*background: var\(--socle-primaire\)/, 'Tabs : filet 2 px #ededed');
+  assert.match(FEUILLES_SOCLE.controles, /\.sc-segmente \{[^}]*padding: 3px;[^}]*border: 1px solid var\(--socle-bord-controle\);[^}]*border-radius: var\(--socle-rayon-champ\);[^}]*background: var\(--socle-segment-fond\)/, 'Segmented : #141415, #28282b, rayon 10, 3 px');
+  assert.match(FEUILLES_SOCLE.archetypes, /border-radius: var\(--socle-rayon-ticket\);[^}]*background: var\(--socle-ticket\)/, 'Ticket : rayon 12, fond #171718');
+  assert.match(FEUILLES_SOCLE.archetypes, /border: 1px solid var\(--socle-bord-kanban\);\s*border-radius: var\(--socle-rayon-kanban\)/, 'colonne de kanban : #1e1e20, rayon 14');
+  assert.match(lireSrc('src/socle/ui/graphiques/Donut.tsx'), /epaisseur = 14/, 'Donut : épaisseur 14');
 });
 
 const FONDS_TEXTE = ['--socle-fond-page', '--socle-fond-lateral', '--socle-carte-haut', '--socle-carte-bas', '--socle-encart', '--socle-champ'];
@@ -756,6 +855,114 @@ await dit('le drapeau de la coquille : éteint par défaut, allumé sur ce poste
   stockage.set(drapeau.CLE_COQUILLE, 'autre chose');
   assert.equal(drapeau.lireCoquille(), false, 'une valeur inconnue = éteint');
   stockage.delete(drapeau.CLE_COQUILLE);
+});
+
+/* ── Les Réglages de LOT-00 : trois surfaces propres, les liens « Réglages » des écrans, aucun archétype en gabarit ── */
+
+console.log('\nSocle de la refonte — réglages des écrans LOT-00\n');
+
+const entreeReglages = {
+  code: [
+    "import { createElement as h } from 'react';",
+    "import { renderToStaticMarkup } from 'react-dom/server.browser';",
+    "import { MemoryRouter } from 'react-router-dom';",
+    "import { MouvementSection, ancreDeReglages, ANCRES_REGLAGES } from '../src/edition/socle.internal';",
+    "export const rendre = (etat) => renderToStaticMarkup(h(MemoryRouter, { initialEntries: [{ pathname: '/settings', state: etat ?? null }] }, h(MouvementSection)));",
+    'export { ancreDeReglages, ANCRES_REGLAGES };',
+  ].join('\n'),
+};
+const R = await charger<{ rendre: (etat?: unknown) => string; ancreDeReglages: (s: unknown) => string | null; ANCRES_REGLAGES: readonly string[] }>(entreeReglages);
+
+await dit('Réglages : Mouvement, Écran de veille et Nouvelle coquille sont trois surfaces propres (carte du socle, ancre, contrôles différents), pas un gabarit répété', () => {
+  /* framer-motion sonde `prefers-reduced-motion` au premier rendu et s'y abonne : la fenêtre factice le lui permet, le temps de ce rendu. */
+  const fenetre = (globalThis as Record<string, unknown>).window as Record<string, unknown>;
+  const matchMediaAvant = fenetre.matchMedia;
+  fenetre.matchMedia = () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined, addListener: () => undefined, removeListener: () => undefined });
+  let html: string;
+  try {
+    html = R.rendre();
+  } finally {
+    fenetre.matchMedia = matchMediaAvant;
+  }
+  const surfaces = [...html.matchAll(/<div id="(reglages-[a-z-]+)" data-reglage="([a-z-]+)"><section data-socle="carte"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(surfaces, [['reglages-mouvement', 'mouvement'], ['reglages-ecran-de-veille', 'ecran-de-veille'], ['reglages-coquille', 'coquille']]);
+  const decoupe = (id: string) => {
+    const debut = html.indexOf(`id="${id}"`);
+    const fin = html.indexOf('<div id="reglages-', debut + 1);
+    return html.slice(debut, fin < 0 ? undefined : fin);
+  };
+  const mouvement = decoupe('reglages-mouvement');
+  const veille = decoupe('reglages-ecran-de-veille');
+  const coquille = decoupe('reglages-coquille');
+  /* Chacune a son titre et son aide. */
+  assert.match(mouvement, /<h2[^>]*>Mouvement<\/h2>/);
+  assert.match(mouvement, /Ce qui bouge dans l’interface/);
+  assert.match(veille, /<h2[^>]*>Écran de veille<\/h2>/);
+  assert.match(veille, /ce poste couvre l’écran de noir/);
+  assert.match(coquille, /<h2[^>]*>Nouvelle coquille<\/h2>/);
+  assert.match(coquille, /Une seule navigation, un fil d’Ariane/);
+  /* Mouvement : un segmenté à trois niveaux, l'aide du niveau choisi, aucun interrupteur ni liste. */
+  assert.match(mouvement, /<div role="radiogroup" aria-label="Niveau de mouvement" class="sc-segmente">/);
+  assert.equal((mouvement.match(/role="radio"/g) ?? []).length, 3);
+  assert.match(mouvement, /aria-live="polite"[^>]*>Les panneaux glissent/);
+  assert.doesNotMatch(mouvement, /role="switch"|<select/);
+  /* Écran de veille : un interrupteur, un segmenté de délais, une liste de délais. */
+  assert.equal((veille.match(/role="switch"/g) ?? []).length, 1);
+  assert.equal((veille.match(/role="radio"/g) ?? []).length, 4);
+  assert.equal((veille.match(/<select /g) ?? []).length, 1);
+  /* Nouvelle coquille : l'état en pastille, les quatre points avec ⌘K et ⌘J, un interrupteur ; ni segmenté ni liste. */
+  assert.match(coquille, /class="sc-etat"[^>]*>Éteinte</);
+  assert.equal((coquille.match(/<li /g) ?? []).length, 4);
+  assert.match(coquille, /<kbd class="sc-kbd">⌘K<\/kbd><span>pour chercher<\/span>/);
+  assert.match(coquille, /<kbd class="sc-kbd">⌘J<\/kbd><span>pour Ajmani<\/span>/);
+  assert.match(coquille, /role="switch" aria-checked="false" aria-label="La nouvelle coquille sur ce poste"/);
+  assert.doesNotMatch(coquille, /role="radio"|<select/);
+  /* Trois compositions distinctes : les jeux de contrôles ne se répètent pas. */
+  const signature = (x: string) => ['switch', 'radio', 'select', 'sc-kbd', 'aria-live'].map((c) => (x.includes(c) ? c : '-')).join(',');
+  assert.equal(new Set([signature(mouvement), signature(veille), signature(coquille)]).size, 3, 'deux surfaces ont la même composition');
+  /* Plus rien du gabarit d'avant : ni case native, ni `panel`, ni `eyebrow`. */
+  assert.doesNotMatch(html, /type="radio"|type="checkbox"|class="panel|class="eyebrow/);
+  for (const f of ['src/edition/socle.internal.tsx', 'src/refonte/systeme/veille/EcranDeVeilleSection.tsx', 'src/refonte/coquille/CoquilleSection.tsx']) {
+    assert.doesNotMatch(lireSrc(f).replace(/\/\*[\s\S]*?\*\//g, ''), /["' ]panel[ "']|eyebrow|accent-\[var/, `${f} reprend le gabarit d’avant`);
+  }
+});
+
+await dit('Réglages : H40 « Réglages » mène aux Paramètres (/settings), rubrique Notifications, par l’ancre que la porte interne fait défiler', () => {
+  const page = lireSrc('src/refonte/systeme/notifications/PageNotifications.tsx');
+  assert.match(page, /navigate\('\/settings', \{ state: \{ section: 'notifications' \} \}\)/);
+  assert.match(lireSrc('src/edition/appRoot.internal.tsx'), /<Route path="\/settings" element=\{<SettingsScreen \/>\} \/>/, 'la route réelle des Paramètres de l’édition interne');
+  const reglages = lireSrc('src/screens/SettingsScreen.tsx');
+  assert.match(reglages, /<div id="reglages-notifications">/, 'l’ancre de la rubrique Notifications');
+  assert.match(reglages, /<MouvementSection \/>/, 'la porte interne est montée dans les Paramètres');
+  assert.equal(R.ancreDeReglages('notifications'), 'reglages-notifications');
+  for (const a of R.ANCRES_REGLAGES) assert.ok(reglages.includes(`id="reglages-${a}"`) || ['mouvement', 'ecran-de-veille', 'coquille'].includes(a), `l’ancre « ${a} » n’existe pas dans les Paramètres`);
+  assert.equal(R.ancreDeReglages('inconnue'), null);
+  assert.equal(R.ancreDeReglages({ toString: () => 'notifications' }), null, 'un état qui n’est pas une chaîne ne fait rien défiler');
+  assert.match(lireSrc('src/edition/socle.internal.tsx'), /scrollIntoView\(\{ behavior: niveau === 'complet' \? 'smooth' : 'auto', block: 'start' \}\)/, 'le défilement suit le réglage Mouvement');
+});
+
+await dit('Réglages : G09 « Réglages · Écran de veille » reste inactif pendant la veille ; G05, H41, H42, H47, H43, D02 et G06 n’envoient à aucun réglage', () => {
+  assert.match(lireSrc('src/refonte/systeme/veille/VueVeille.tsx'), /<p className="ve-pied__reglages">\{tm\('pied\.reglages'\)\}<\/p>/, 'un texte, ni lien ni bouton');
+  const dossiers = ['src/refonte/systeme/ajmani', 'src/refonte/systeme/recherche', 'src/refonte/systeme/demarrage', 'src/refonte/systeme/h43-etats', 'src/refonte/systeme/modules', 'src/refonte/systeme/connexion', 'src/refonte/systeme/veille'];
+  for (const d of dossiers) {
+    for (const f of fichiersSous(d).filter((x) => /\.tsx?$/.test(x))) {
+      const src = lireSrc(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      assert.doesNotMatch(src, /['"`]\/settings|navigate\(['"]\/settings|to=['"]\/settings/, `${f} envoie aux Paramètres : aucune fiche de ces écrans ne le prévoit`);
+    }
+  }
+});
+
+await dit('aucun écran LOT-00 n’est composé sur un archétype du §5 comme gabarit (DispositionPage, Page, RangeeKpi, ColonneDroite, GrilleCartes, Scinde, Semaine, Kanban) — la démonstration exceptée', () => {
+  const gabarits = /\b(DispositionPage|Page|RangeeKpi|ColonneDroite|GrilleCartes|Scinde|Semaine|Kanban)\b/;
+  for (const f of fichiersSous('src/refonte/systeme').filter((x) => /\.tsx$/.test(x) && !x.includes('/demo/'))) {
+    const src = lireSrc(f);
+    for (const [, noms, source] of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+      if (!/socle\/ui/.test(source)) continue;
+      const importes = noms.split(',').map((n) => n.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]);
+      const fautifs = importes.filter((n) => gabarits.test(n));
+      assert.deepEqual(fautifs, [], `${f} importe ${fautifs.join(', ')} du socle : un archétype du §5 pris pour squelette d’écran`);
+    }
+  }
 });
 
 console.log('');
