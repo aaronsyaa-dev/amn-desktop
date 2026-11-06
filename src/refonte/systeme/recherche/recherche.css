@@ -170,22 +170,7 @@
 .rc-ligne__touche { display: inline-flex; flex: none; margin-left: 9px; }
 .rc-ligne--squelette { cursor: default; }
 
-.rc-tuile {
-  --rc-teinte: var(--fam, var(--socle-fam-outils));
-  display: inline-flex;
-  box-sizing: border-box;
-  width: 26px;
-  height: 26px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--rc-teinte) 14%, transparent);
-  color: var(--rc-teinte);
-}
-/* L'action d'Ajmani est verte : la couleur d'un état réussi, la même que son étincelle. */
-.rc-tuile[data-ajmani] { --rc-teinte: var(--socle-etat-succes); }
-.rc-tuile[data-grande] { width: 42px; height: 42px; border-radius: 10px; background: color-mix(in srgb, var(--rc-teinte) 18%, transparent); }
+/* La tuile d'une ligne : `IconTile` du socle (26 px, rayon 7, part 14 % ; l'aperçu 42 px, 18 %), voir `briques-partagees.css`. */
 
 /* ── L'aperçu : 430 × 495, marges 16 / 20 / 14 ── */
 .rc-apercu { min-width: 0; min-height: 0; overflow: hidden; }

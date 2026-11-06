@@ -498,7 +498,7 @@ await dit('palette : le Raccourci ↵ n’est que sur la ligne sélectionnée, �
 await dit('palette : la première ligne est « Demander à Ajmani » (étincelle verte, jamais un avatar), puis les autres', () => {
   const r = vue();
   const premiere = /role="option"[^>]*>([\s\S]*?)<\/div>(?=<div id=|<\/div>)/.exec(r)?.[1] ?? '';
-  assert.match(premiere, /data-ajmani="true"/);
+  assert.match(premiere, /data-taille="26" data-ton="succes" data-part="14" class="sc-icon-tile rc-tuile"/, 'la tuile d’Ajmani : IconTile verte (ton succès)');
   assert.match(premiere, /sc-etincelle/);
   assert.match(premiere, /Résumer l’historique de <mark>Orchidée<\/mark> Conseil<\/span><span class="rc-ligne__type">Demander à Ajmani</);
   assert.doesNotMatch(r, /sc-avatar|<img|<canvas/);
@@ -511,7 +511,7 @@ await dit('palette : la première ligne est « Demander à Ajmani » (étincelle
   // La porte générique vers Ajmani répète la saisie : rien n'y est mis en évidence.
   assert.doesNotMatch(vue({ texteInitial: 'relire le plan' }), /Demander à Ajmani\u00a0: «\u00a0<mark>/);
   // La tuile suit la famille du module de destination.
-  assert.match(r, /class="rc-tuile" data-famille="contacts"/);
+  assert.match(r, /data-taille="26" data-famille="contacts" data-part="14" class="sc-icon-tile rc-tuile"/);
 });
 
 await dit('palette : saisie vide → RÉCENTS puis ACTIONS de la page ; sans « Demander à Ajmani »', () => {
@@ -713,8 +713,14 @@ await dit('cotes de la feuille (v3) : 862 × 642 à 88 px, champ 61, portée 43,
   assert.match(bloc('.rc-ligne__type'), /font-size:\s*11\.5px/);
   assert.match(bloc(".rc-ligne[aria-selected='true']"), /background:\s*var\(--socle-segment-actif\)/);
   assert.match(css, /\.rc-ligne__libelle mark \{[^}]*background:\s*var\(--sc-recherche-trouve\)[^}]*font-weight:\s*600/);
-  assert.match(bloc('.rc-tuile'), /width:\s*26px[\s\S]*height:\s*26px[\s\S]*border-radius:\s*7px/);
-  assert.match(bloc('.rc-tuile'), /color-mix\(in srgb, var\(--rc-teinte\) 14%, transparent\)/);
+  // La tuile est l'`IconTile` du socle : 26 px, rayon 7, part de teinte 14 % (42 px et 18 % pour l'aperçu), lus dans sa feuille.
+  const briques = sansCommentaires(lire('src/socle/ui/briques-partagees/briques-partagees.css'));
+  assert.match(briques, /\.sc-icon-tile\[data-taille='26'\] \{ --sc-tuile: 26px; --sc-tuile-rayon: 7px;/);
+  assert.match(briques, /\.sc-icon-tile\[data-taille='42'\] \{ --sc-tuile: 42px; --sc-tuile-rayon: 10px;/);
+  assert.match(briques, /\.sc-icon-tile\[data-part='14'\] \{ --sc-tuile-part: 14%; \}/);
+  assert.match(briques, /\.sc-icon-tile\[data-part='18'\] \{ --sc-tuile-part: 18%; \}/);
+  assert.match(briques, /\.sc-icon-tile \{[^}]*background: color-mix\(in srgb, var\(--sc-tuile-teinte\) var\(--sc-tuile-part\), transparent\)/);
+  assert.doesNotMatch(css, /\.rc-tuile \{/, 'plus de tuile locale');
   assert.match(bloc('.rc-apercu__corps'), /padding:\s*16px 20px 14px/);
   assert.match(bloc('.rc-chiffre'), /height:\s*72px/);
   assert.match(bloc('.rc-chiffres'), /grid-template-columns:\s*repeat\(3/);

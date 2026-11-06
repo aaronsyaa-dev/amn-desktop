@@ -7,6 +7,7 @@ import { useMouvement, type NiveauMouvement } from '../../../socle/mouvement';
 import { useSocleLangue } from '../../../socle/i18n';
 import { Bouton, FilterChips, MiniCourbe, Raccourci, Squelette, formaterEuro, formaterPourcent } from '../../../socle/ui';
 import { IconeEtincelle } from '../../../socle/ui/controles';
+import { IconTile } from '../../../socle/ui/briques-partagees';
 import { NAV_ITEMS } from '../../../data/navigation';
 import { useToucheModificatrice } from '../../coquille/touche';
 import { apercuDeCle, joursEntre, jourIso, type Apercu, type ApercuClient, type ApercuFacture, type FaitActivite } from './apercu';
@@ -682,13 +683,23 @@ function LigneOption({
   );
 }
 
+/**
+ * La tuile d'une ligne : `IconTile` du socle, aux cotes de l'image H41 (26 px, part de teinte 14 % ; l'aperçu : 42 px,
+ * 18 %). L'action d'Ajmani est verte : la couleur d'un état réussi, la même que son étincelle.
+ */
 function Tuile({ ligne, iconePage, grande = false }: { ligne: LigneRecherche; iconePage?: (module: string | undefined) => IconeComposant | undefined; grande?: boolean }) {
   const Icone: IconeComposant | undefined = ligne.icone === 'ajmani' ? undefined : ligne.icone === 'page' ? (iconePage?.(ligne.module) ?? LayoutGrid) : ICONES[ligne.icone];
   const taille = grande ? 18 : 13;
+  const ajmani = ligne.famille === 'ajmani';
   return (
-    <span aria-hidden className="rc-tuile" data-grande={grande || undefined} data-famille={ligne.famille === 'ajmani' ? undefined : ligne.famille} data-ajmani={ligne.famille === 'ajmani' || undefined}>
-      {Icone ? <Icone size={taille} strokeWidth={1.8} /> : <IconeEtincelle taille={taille} />}
-    </span>
+    <IconTile
+      className="rc-tuile"
+      taille={grande ? 42 : 26}
+      part={grande ? 18 : 14}
+      famille={ligne.famille === 'ajmani' ? undefined : ligne.famille}
+      ton={ajmani ? 'succes' : undefined}
+      icone={Icone ? <Icone size={taille} strokeWidth={1.8} /> : <IconeEtincelle taille={taille} />}
+    />
   );
 }
 
