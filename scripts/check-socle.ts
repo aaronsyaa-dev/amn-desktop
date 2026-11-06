@@ -552,13 +552,41 @@ function couleursDeTexte(css: string): string[] {
 const INTERDITS_EN_TEXTE = /trait-discret|trait-tres-discret|#77777c|#5f5f64|#777777|#5f5f5f/i;
 /* Les gris de décor (B15) et les motifs (hachures, pointillés d'état) : jamais une couleur de texte, nulle part dans l'édition interne. */
 const DECOR_EN_TEXTE = /socle-decor-|socle-hachure-|socle-pointille-(ok|attention)|#121213|#17171a|#3e3e44/i;
+/* Les gris de décor seuls : « illustration seulement », donc jamais non plus la teinte d'un état ni le trait d'un texte SVG. */
+const GRIS_DECOR = /socle-decor-|#121213|#17171a|#3e3e44/i;
+/* Un sélecteur qui désigne un état (pastille, tag, drapeau, niveau, voyant, variation, ton) ou une variable de teinte. */
+const SELECTEUR_ETAT = /\.sc-etat|\[data-etat|\[data-ton|\[data-niveau|\.sc-severite|\.sc-voyant|\.sc-tag\b|\.sc-urgent|\.sc-kpi__variation|--etat|--fam/;
+const PROP_TEINTE = /^(--fam|--etat(-[\w-]+)?|--sc-ton|--sc-tuile-teinte)$/;
 
-await dit('« discret », « très discret », les gris de décor et les hachures ne sont jamais la couleur d’un texte (feuilles et classes)', () => {
+/** Chaque déclaration `prop: valeur` d'une feuille, avec le sélecteur de sa règle (les blocs imbriqués d'un @media sont lus comme les autres). */
+function declarationsCss(css: string): { selecteur: string; prop: string; valeur: string }[] {
+  const out: { selecteur: string; prop: string; valeur: string }[] = [];
+  for (const m of sansCommentaires(css).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selecteur = m[1].trim().split('\n').pop()?.trim() ?? '';
+    for (const d of m[2].split(';')) {
+      const i = d.indexOf(':');
+      if (i > 0) out.push({ selecteur, prop: d.slice(0, i).trim(), valeur: d.slice(i + 1).trim() });
+    }
+  }
+  return out;
+}
+
+await dit('« discret », « très discret », les gris de décor et les hachures ne sont jamais la couleur d’un texte (feuilles et classes) ; un gris de décor ne teinte ni un état (fond, bordure, --fam, --etat) ni un texte SVG (fill, stroke)', () => {
   const socle = fichiersSous('src/socle').filter((f) => f.endsWith('.css'));
   const css = [...new Set([...socle, 'src/socle/noir.css', 'src/socle/ui/briques.css', 'src/socle/coquille/coquille.css'])];
   for (const f of css) for (const c of couleursDeTexte(lireSrc(f))) assert.ok(!INTERDITS_EN_TEXTE.test(c), `${f} : color: ${c}`);
   const toutes = [...socle, ...fichiersSous('src/refonte').filter((f) => f.endsWith('.css'))];
   for (const f of toutes) for (const c of couleursDeTexte(lireSrc(f))) assert.ok(!DECOR_EN_TEXTE.test(c), `${f} : color: ${c} (gris de décor ou motif)`);
+  // L'autre moitié de « illustration seulement » : ni la teinte d'un état (fond ou bordure sous un sélecteur d'état, variable --fam / --etat / --sc-ton), ni le trait d'un texte SVG.
+  for (const f of toutes) {
+    for (const d of declarationsCss(lireSrc(f))) {
+      if (!GRIS_DECOR.test(d.valeur)) continue;
+      const teinte = PROP_TEINTE.test(d.prop);
+      const texteSvg = /^(fill|stroke)$/.test(d.prop) && /(^|[\s>+~])(text|tspan)(\b|[.:[#])/.test(d.selecteur);
+      const etat = /^(background|background-color|background-image|border|border-color|border-top|border-right|border-bottom|border-left|outline|outline-color|box-shadow|fill|stroke)$/.test(d.prop) && SELECTEUR_ETAT.test(d.selecteur);
+      assert.ok(!(teinte || texteSvg || etat), `${f} : ${d.selecteur} { ${d.prop}: ${d.valeur} } (un gris de décor sur un état ou un texte)`);
+    }
+  }
   const sources = [...fichiersSous('src/socle'), ...fichiersSous('src/refonte')].filter((f) => /\.tsx?$/.test(f));
   for (const f of sources) {
     const src = lireSrc(f).replace(/\/\*[\s\S]*?\*\//g, '');
