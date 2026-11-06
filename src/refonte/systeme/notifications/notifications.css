@@ -72,31 +72,10 @@
   flex-direction: column;
   padding-bottom: 4px;
 }
-.sc-notif__entete {
-  display: flex;
-  height: var(--sc-notif-entete);
-  flex: none;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-.sc-notif__titres { min-width: 0; }
-.sc-notif__titre {
-  margin: 0;
-  color: var(--socle-texte-1);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-.sc-notif__sous-titre {
-  margin: 7px 0 0;
-  color: var(--socle-texte-3);
-  font-size: 13.5px;
-  line-height: 1.4;
-}
-.sc-notif__boutons { display: flex; flex: none; align-items: center; gap: 9px; margin-top: 23px; }
-.sc-notif__boutons [data-socle='bouton'] { min-height: var(--sc-notif-bouton); }
+/* L'en-tête : `PageHead` du socle (titre 28 / 600, sous-titre 13,5 T4 à 7 px, deux secondaires de 31 px à 9 px). */
+.sc-notif__entete.sc-page__entete { height: var(--sc-notif-entete); flex-wrap: nowrap; gap: 16px; }
+.sc-notif__entete .sc-page__actions { flex-wrap: nowrap; margin-top: 23px; }
+.sc-notif__entete .sc-page__actions [data-socle='bouton'] { min-height: var(--sc-notif-bouton); }
 
 /* Les trois volets : 300 / le reste / 300, écart 16, toute la hauteur qui reste. */
 .sc-notif__corps {
@@ -675,8 +654,8 @@
 /* ── En dessous de 1280 px de fenêtre (contenu de 948 px) : le volet gauche passe au-dessus du fil (anneau et point
    côte à côte), le volet droit dessous. ── */
 @container (max-width: 948px) {
-  .sc-notif__entete { height: auto; flex-wrap: wrap; margin-bottom: 16px; }
-  .sc-notif__boutons { margin-top: 0; }
+  .sc-notif__entete.sc-page__entete { height: auto; flex-wrap: wrap; margin-bottom: 16px; }
+  .sc-notif__entete .sc-page__actions { margin-top: 0; }
   .sc-notif__corps { grid-template-columns: minmax(0, 1fr); }
   .sc-notif__volet--gauche,
   .sc-notif__volet--droit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }

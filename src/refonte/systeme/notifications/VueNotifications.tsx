@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Bell, Check, CircleAlert, Settings, WifiOff } from 'lucide-react';
 import { Bouton } from '../../../socle/ui/Bouton';
+import { PageHead } from '../../../socle/ui/archetypes';
 import { Chargement, Squelette } from '../../../socle/ui/Etats';
 import { cleSuivante } from '../../../socle/ui/controles';
 import { BlocEtat } from '../../../socle/ui/situations';
@@ -449,22 +450,15 @@ export function VueNotifications(props: VueNotificationsProps): React.ReactEleme
 
   return (
     <div ref={racine} className="sc-notif">
-      <header className="sc-notif__entete">
-        <div className="sc-notif__titres">
-          <h1 className="sc-notif__titre">{tm('page.titre')}</h1>
-          <p className="sc-notif__sous-titre" aria-live="polite">
-            {chargement ? ' ' : tm(sous.cle, sous.params)}
-          </p>
-        </div>
-        <div className="sc-notif__boutons">
-          <Bouton variante="secondaire" icone={<Check aria-hidden />} onClick={actions.toutMarquerLu} disabled={chargement || c.nonLues === 0}>
-            {tm('page.toutLu')}
-          </Bouton>
-          <Bouton variante="secondaire" icone={<Settings aria-hidden />} onClick={actions.versReglages}>
-            {tm('page.reglages')}
-          </Bouton>
-        </div>
-      </header>
+      <PageHead
+        className="sc-notif__entete"
+        titre={tm('page.titre')}
+        sousTitre={<span aria-live="polite">{chargement ? ' ' : tm(sous.cle, sous.params)}</span>}
+        secondaires={[
+          { libelle: tm('page.toutLu'), icone: <Check aria-hidden />, onClick: actions.toutMarquerLu, disabled: chargement || c.nonLues === 0 },
+          { libelle: tm('page.reglages'), icone: <Settings aria-hidden />, onClick: actions.versReglages },
+        ]}
+      />
 
       <div className="sc-notif__corps">
         <div className="sc-notif__volet sc-notif__volet--gauche" data-mvt="cascade">

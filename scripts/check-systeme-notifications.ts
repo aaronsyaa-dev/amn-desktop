@@ -742,7 +742,8 @@ await dit('rendu : un seul h1, deux boutons SECONDAIRES dans l’en-tête, aucun
   assert.equal(compter(html, /<h1[ >]/g), 1);
   assert.match(html, /<h1[^>]*>Notifications<\/h1>/);
   assert.match(html, />4 nouvelles, dont 1 urgente · l’important d’abord, le reste attend</);
-  const entete = entre(html, '<header class="sc-notif__entete"', '</header>');
+  const entete = entre(html, '<header class="sc-page__entete sc-notif__entete"', '</header>');
+  assert.match(entete, /<h1 class="sc-page__titre">Notifications<\/h1><p class="sc-page__sous-titre"><span aria-live="polite">/, 'l’en-tête est le PageHead du socle');
   assert.equal(compter(entete, /data-variante="secondaire"/g), 2);
   assert.equal(compter(entete, /data-variante="primaire"/g), 0);
   assert.match(entete, /Tout marquer comme lu/);
@@ -1077,7 +1078,10 @@ await dit('feuille : les cotes de la fiche v3 (rubrique 3) — volets 300 / 476 
   assert.match(cssNu, /\.sc-notif__case-boite \{[^}]*width:\s*26px[^}]*height:\s*22px[^}]*dashed/);
   assert.match(cssNu, /\.sc-notif__groupe-titre \{[^}]*height:\s*var\(--sc-notif-groupe\)[^}]*font-size:\s*11px[^}]*letter-spacing:\s*0\.08em/);
   assert.match(cssNu, /\.sc-notif__groupe-nom \{[^}]*text-transform:\s*uppercase/);
-  assert.match(cssNu, /\.sc-notif__titre \{[^}]*font-size:\s*28px[^}]*font-weight:\s*600/);
+  assert.match(sansCommentaires(lire('src/socle/ui/archetypes/archetypes.css')), /\.sc-page__titre \{[^}]*font-size: 28px; font-weight: 600/, 'le titre est celui du PageHead');
+  assert.match(cssNu, /\.sc-notif__entete\.sc-page__entete \{ height: var\(--sc-notif-entete\); flex-wrap: nowrap; gap: 16px; \}/);
+  assert.match(cssNu, /\.sc-notif__entete \.sc-page__actions \{ flex-wrap: nowrap; margin-top: 23px; \}/);
+  assert.doesNotMatch(cssNu, /\.sc-notif__titre|\.sc-notif__boutons/, 'plus de titre ni de boutons locaux');
   assert.match(cssNu, /\.sc-notif__ligne-nom \{[^}]*font-size:\s*13px/);
   assert.match(cssNu, /\.sc-notif__detail \{[^}]*font-size:\s*12px/);
   assert.match(cssNu, /\.sc-notif__heure \{[^}]*min-width:\s*var\(--sc-notif-heure\)[^}]*font-size:\s*12px/);
