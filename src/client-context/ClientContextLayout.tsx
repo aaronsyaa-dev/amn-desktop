@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Menu } from 'lucide-react';
 import { ClientSidebar, CLIENT_NAV_ITEMS } from './ClientSidebar';
@@ -17,6 +17,8 @@ import { variantsForPath } from '../lib/transitions';
 import { StatusRail } from '../components/StatusRail';
 import { SupportNotifier } from '../components/SupportNotifier';
 import { useLangue } from '../i18n';
+// Refonte (§ 1.3) : un substitut déclaré `support: 'identique'` est rendu ici aussi ; vide côté cliente.
+import { SubstitutionDEcran } from '@edition/substitutions';
 
 /**
  * La coquille d'un contexte client.
@@ -117,7 +119,7 @@ export function ClientContextLayout() {
                         <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">{t('support.verrou.texte')}</p>
                       </div>
                     ) : (
-                      <Outlet />
+                      <SubstitutionDEcran support />
                     )}
                     </motion.div>
                     {/*

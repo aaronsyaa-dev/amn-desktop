@@ -149,6 +149,10 @@ jobs:
         run: npm run check:navigation
       - name: Données fictives de la refonte — jeux reproductibles, recoupements, aucune donnée réelle
         run: npm run check:donnees
+      - name: Substitution d'écrans (§ 1.3) — routes d'origine, garde ModuleRoute, jumeau cliente inerte
+        run: npm run check:substitutions
+      - name: Preuve statique d'isolement de l'édition cliente — graphe d'imports et texte du paquet
+        run: npm run check:client-statique
 
       - name: Contrôle de la file d'envoi
         run: npm run check:envoi

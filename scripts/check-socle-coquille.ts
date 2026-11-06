@@ -599,7 +599,7 @@ await dit('l’aperçu ApercuBureau (données fictives) rend toujours la coquill
   const r = m.rendre(m.h(m.ApercuBureau, { famille: 'jour', sousPage: 'accueil', fil: ['Ma journée', 'Démarrage'], ajmani: 'Demandez à Ajmani' }));
   assert.match(r, /<section aria-labelledby="sc-aujourdhui"[\s\S]*5 sur 8 faites · série 6 j[\s\S]*Rendez-vous Menna[\s\S]*11:00 · dans 18 min/);
   assert.match(r, /data-section="espace"[\s\S]*data-section="surveillance"[\s\S]*data-section="epingles"/);
-  assert.match(r, /data-cle="cyber">[\s\S]*?<span class="sc-compteur" data-pastille="true" title="5 alertes ouvertes">5</);
+  assert.match(r, /data-cle="cyber">[\s\S]*?<span class="sc-count-badge" data-variante="laterale" title="5 alertes ouvertes">5<span class="sr-only"> 5 alertes ouvertes<\/span><\/span>/);
   assert.match(r, /aria-current="page"[^>]*><span class="sc-module__nom">Accueil</);
   assert.match(r, /Ma journée<\/a><\/li><li aria-current="page"><span>Démarrage<\/span>/);
   assert.match(r, /Demandez à Ajmani/);
