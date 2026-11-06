@@ -70,10 +70,10 @@ await dit('les boutons : primaire 8 × 15, secondaire 7 × 13 + bordure, 12,5 px
 
 const K = await chargerRendu<Record<string, any>>( // eslint-disable-line @typescript-eslint/no-explicit-any
   [
-    "import { Bouton, Carte, Saisie, Avatar, PileAvatars, PastilleEtat, BarreProgression, TuileKpi, CaseACocher, EtatVide, tonDeSante, teinteDe } from '../src/socle/ui';",
+    "import { Bouton, Carte, Saisie, Avatar, PileAvatars, PastilleEtat, BarreProgression, TuileKpi, CaseACocher, EtatVide, Mono, tailleMono, TAILLE_MONO_MIN, TAILLE_MONO_MAX, tonDeSante, teinteDe } from '../src/socle/ui';",
     "import { SousCarte, Tag, DrapeauUrgent, PastilleFiltre, Interrupteur, BoutonIcone, Selecteur, BoiteRecherche, Onglets, PanneauOnglet, Segmente, cleSuivante, IconeEtincelle, SuggestionAjmani, CarteCases, CarteAnneau, CarteSerie, CarteJalon } from '../src/socle/ui/controles';",
   ].join('\n'),
-  ['Bouton', 'Carte', 'Saisie', 'Avatar', 'PileAvatars', 'PastilleEtat', 'BarreProgression', 'TuileKpi', 'CaseACocher', 'EtatVide', 'tonDeSante', 'teinteDe', 'SousCarte', 'Tag', 'DrapeauUrgent', 'PastilleFiltre', 'Interrupteur', 'BoutonIcone', 'Selecteur', 'BoiteRecherche', 'Onglets', 'PanneauOnglet', 'Segmente', 'cleSuivante', 'IconeEtincelle', 'SuggestionAjmani', 'CarteCases', 'CarteAnneau', 'CarteSerie', 'CarteJalon'],
+  ['Bouton', 'Carte', 'Saisie', 'Avatar', 'PileAvatars', 'PastilleEtat', 'BarreProgression', 'TuileKpi', 'CaseACocher', 'EtatVide', 'Mono', 'tailleMono', 'TAILLE_MONO_MIN', 'TAILLE_MONO_MAX', 'tonDeSante', 'teinteDe', 'SousCarte', 'Tag', 'DrapeauUrgent', 'PastilleFiltre', 'Interrupteur', 'BoutonIcone', 'Selecteur', 'BoiteRecherche', 'Onglets', 'PanneauOnglet', 'Segmente', 'cleSuivante', 'IconeEtincelle', 'SuggestionAjmani', 'CarteCases', 'CarteAnneau', 'CarteSerie', 'CarteJalon'],
 );
 const { h, rendre } = K;
 
@@ -371,6 +371,22 @@ await dit('§4 Suggestion et cartes ludiques : cotes', () => {
   assert.match(controles, /\.sc-ludique__serie li \{/);
   assert.match(rendre(h(K.CarteAnneau, { titre: 'T', texte: 'x', valeur: 0.5, centre: '50 %' })), /<svg width="72" height="72"/);
   assert.equal((rendre(h(K.CarteAnneau, { titre: 'T', texte: 'x', valeur: 0.5, centre: '50 %' })).match(/stroke-width="8"/g) ?? []).length, 2);
+});
+
+await dit('Mono (§0.4) : en ligne, .sc-mono (police monospace du socle, chiffres tabulaires), 11 à 18 px bornés, time avec dateTime (s1b)', () => {
+  assert.equal(K.TAILLE_MONO_MIN, 11);
+  assert.equal(K.TAILLE_MONO_MAX, 18);
+  assert.deepEqual([K.tailleMono(undefined), K.tailleMono(9), K.tailleMono(11), K.tailleMono(12.5), K.tailleMono(18), K.tailleMono(24), K.tailleMono(Number.NaN)], [undefined, 11, 11, 12.5, 18, 18, undefined]);
+  assert.equal(rendre(h(K.Mono, null, '10:42:07')), '<span data-socle="mono" class="sc-mono">10:42:07</span>');
+  assert.match(rendre(h(K.Mono, { taille: 24, className: 'x' }, '3')), /<span data-socle="mono" class="sc-mono x" style="font-size:18px">3<\/span>/);
+  assert.match(rendre(h(K.Mono, { as: 'time', dateTime: '2026-10-30T10:42:07', taille: 11 }, '10:42:07')), /<time data-socle="mono" class="sc-mono" style="font-size:11px" dateTime="2026-10-30T10:42:07">/);
+  assert.match(rendre(h(K.Mono, { as: 'code' }, 'FAC-0142')), /^<code /);
+  assert.doesNotMatch(sansCommentaires(lire('src/socle/ui/Mono.tsx')), /#[0-9a-f]{6}|color:|font-family/i, 'ni couleur ni police écrites ici : .sc-mono de noir.css');
+  const mono = /\.sc-mono \{[^}]*\}/.exec(sansCommentaires(noir))?.[0] ?? '';
+  assert.match(mono, /font-family:\s*var\(--socle-police-mono\)/);
+  assert.match(mono, /font-variant-numeric:\s*tabular-nums/);
+  assert.match(mono, /font-variant-ligatures:\s*none/);
+  assert.match(noir, /--socle-police-mono:\s*ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;/);
 });
 
 await dit('aucun avatar, personnage ni image dans les composants du groupe', () => {

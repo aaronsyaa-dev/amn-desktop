@@ -78,6 +78,7 @@ import {
   LiveDot,
   MiniCourbe,
   Modale,
+  Mono,
   Onglets,
   Page,
   PanneauOnglet,
@@ -1757,9 +1758,9 @@ function SectionVivant() {
         </div>
         <div className="sd-rangee">
           <Cas legende={tm('vivant.mono')}>
-            <p className="sd-journal sc-mono">
+            <Mono as="p" className="sd-journal" taille={12}>
               <span>10:42:07</span> <Severity niveau="info" /> <span>{tm('vivant.mono.journal')}</span>
-            </p>
+            </Mono>
           </Cas>
         </div>
       </Bloc>
