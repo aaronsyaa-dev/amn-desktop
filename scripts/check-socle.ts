@@ -602,8 +602,9 @@ await dit('barre latérale v3 : SURVEILLANCE (La Garde, Cyber), « Tous les modu
 await dit('barre latérale : aucun compteur sur une famille ni dans la sous-liste (v3) ; un compteur d’épinglé se dit en mots, un zéro ne s’affiche pas', () => {
   const r = rendreK(LATERALE({ familles: FAMILLES_TEST('argent') }));
   const espace = r.slice(r.indexOf('data-section="espace"'), r.indexOf('data-section="surveillance"'));
-  assert.doesNotMatch(espace, /sc-compteur|à voir/);
-  assert.match(r, /sc-epingle__compteur[^>]*title="2 à voir">2<span class="sr-only"> 2 à voir/);
+  assert.doesNotMatch(espace, /sc-compteur|sc-count-badge|à voir/);
+  // Le compteur d'un épinglé est le `CountBadge` du socle, variante `texte` (le chiffre seul, dit en mots).
+  assert.match(r, /class="sc-count-badge sc-epingle__compteur" data-variante="texte" title="2 à voir">2<span class="sr-only"> 2 à voir/);
   assert.equal((r.match(/sc-epingle__compteur/g) ?? []).length, 1, 'Facturation (2), pas Clients (0)');
 });
 

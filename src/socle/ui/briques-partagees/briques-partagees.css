@@ -1,0 +1,165 @@
+/*
+  LES BRIQUES PARTAGÉES (v3, STATUT §1.10 point 1) — `IconTile`, `CountBadge`, `ModuleTile`, `ModuleGroupGrid`,
+  `AddModuleTile`. Chargée par `src/socle/ui/briques.css` (`@import`), donc par `Ambiance.tsx`, en édition interne
+  seulement. Les couleurs viennent de `src/socle/noir.css` (`--socle-*`) ou de la famille (`--fam`) : aucune n'est
+  écrite ici. Les cotes sont celles des images qui dessinent déjà ces briques (D02, H41, H43, 01-SOCLE-DESIGN §4) ;
+  `check:socle-briques` les lit.
+*/
+
+/* ── La tuile d'icône : un carré arrondi teinté de la famille (13 % par défaut) ou neutre (aplat `--socle-tag`) ──
+   Le rayon et le glyphe suivent la taille ; `data-part` dit la part mesurée sur une image (D02 10, H41 14 et 18). */
+.sc-icon-tile {
+  --sc-tuile-teinte: var(--fam, var(--socle-fam-outils));
+  --sc-tuile-part: 13%;
+  display: inline-flex;
+  box-sizing: border-box;
+  flex: none;
+  width: var(--sc-tuile);
+  height: var(--sc-tuile);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sc-tuile-rayon);
+  background: color-mix(in srgb, var(--sc-tuile-teinte) var(--sc-tuile-part), transparent);
+  color: var(--sc-tuile-teinte);
+}
+.sc-icon-tile > svg { width: var(--sc-tuile-glyphe); height: var(--sc-tuile-glyphe); }
+.sc-icon-tile[data-famille='garde'] { --fam: var(--socle-fam-garde); }
+.sc-icon-tile[data-taille='22'] { --sc-tuile: 22px; --sc-tuile-rayon: 6px; --sc-tuile-glyphe: 11px; }
+.sc-icon-tile[data-taille='26'] { --sc-tuile: 26px; --sc-tuile-rayon: 7px; --sc-tuile-glyphe: 13px; }
+.sc-icon-tile[data-taille='28'] { --sc-tuile: 28px; --sc-tuile-rayon: 8px; --sc-tuile-glyphe: 13px; }
+.sc-icon-tile[data-taille='36'] { --sc-tuile: 36px; --sc-tuile-rayon: 10px; --sc-tuile-glyphe: 16px; }
+.sc-icon-tile[data-taille='38'] { --sc-tuile: 38px; --sc-tuile-rayon: 10px; --sc-tuile-glyphe: 18px; }
+.sc-icon-tile[data-taille='42'] { --sc-tuile: 42px; --sc-tuile-rayon: 10px; --sc-tuile-glyphe: 18px; }
+.sc-icon-tile[data-taille='44'] { --sc-tuile: 44px; --sc-tuile-rayon: 12px; --sc-tuile-glyphe: 20px; }
+.sc-icon-tile[data-taille='48'] { --sc-tuile: 48px; --sc-tuile-rayon: 14px; --sc-tuile-glyphe: 20px; }
+.sc-icon-tile[data-part='10'] { --sc-tuile-part: 10%; }
+.sc-icon-tile[data-part='14'] { --sc-tuile-part: 14%; }
+.sc-icon-tile[data-part='18'] { --sc-tuile-part: 18%; }
+.sc-icon-tile[data-bordure='true'] { border: 1px solid color-mix(in srgb, var(--sc-tuile-teinte) 22%, transparent); }
+.sc-icon-tile[data-ton='succes'] { --sc-tuile-teinte: var(--socle-etat-succes); }
+.sc-icon-tile[data-ton='attention'] { --sc-tuile-teinte: var(--socle-etat-attention); }
+.sc-icon-tile[data-ton='critique'] { --sc-tuile-teinte: var(--socle-etat-critique); }
+.sc-icon-tile[data-ton='info'] { --sc-tuile-teinte: var(--socle-etat-info); }
+.sc-icon-tile[data-ton='neutre'] { background: var(--socle-tag); color: var(--socle-texte-2); }
+
+/* ── Le compteur : chaque variante garde les pixels de l'écran qui la dessine ── */
+.sc-count-badge { font-variant-numeric: tabular-nums; }
+/* D02 (fiche § 5) : 16 px, fond `--socle-pastille-compte`, chiffre 10,5 px / 600. */
+.sc-count-badge[data-variante='standard'] {
+  display: inline-flex;
+  min-width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--socle-pastille-compte);
+  color: var(--socle-texte-1);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+/* La barre latérale §0.1 : la pastille de Cyber (21 px de large au moins, 11,5 / 500, fond `--socle-lateral-compteur`). */
+.sc-count-badge[data-variante='laterale'] {
+  flex: none;
+  min-width: 21px;
+  padding: 0 6px;
+  border-radius: var(--socle-rayon-pastille);
+  background: var(--socle-lateral-compteur);
+  color: var(--socle-texte-courant);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+}
+/* Les épinglés de la barre latérale (images v3) : le chiffre seul, 11,5 px T3. */
+.sc-count-badge[data-variante='texte'] { flex: none; color: var(--socle-texte-2); font-size: 11.5px; }
+.sc-count-badge[data-critique='true'] { color: var(--socle-etat-critique); }
+
+/* ── La tuile de module ── */
+.sc-module-tile {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--socle-texte-courant);
+  font-family: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+/* `ligne` : la puce des épinglés de D02 (image : 132 × 34, tuile 22, nom 12,5 / 500, bordée, rayon 9). */
+.sc-module-tile[data-variante='ligne'] {
+  height: 34px;
+  gap: 9px;
+  padding: 0 8px;
+  border: 1px solid var(--socle-bord-sous-carte);
+  border-radius: 9px;
+  background: var(--socle-sous-carte);
+  color: var(--socle-texte-1);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.sc-module-tile[data-variante='ligne']:hover { border-color: var(--socle-bord-survol); }
+/* `standard` : « ModuleTile (41 px) » — PROVISOIRE jusqu'aux fiches F10–F70 (rayon, marge, écart et poids supposés). */
+.sc-module-tile[data-variante='standard'] {
+  height: 41px;
+  gap: 10px;
+  padding: 0 8px;
+  border-radius: var(--socle-rayon-controle);
+  font-size: 13px;
+  font-weight: 500;
+}
+.sc-module-tile[aria-current='page'] { background: var(--socle-ligne-choisie); color: var(--socle-texte-1); }
+.sc-module-tile__textes { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.sc-module-tile__nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-module-tile[data-variante='standard'] .sc-module-tile__nom { line-height: 16px; }
+.sc-module-tile__sous { overflow: hidden; color: var(--socle-texte-3); font-size: 11.5px; font-weight: 400; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.sc-module-tile__acc { display: inline-flex; flex: none; align-items: center; gap: 6px; margin-left: auto; }
+
+/* ── « + Ajouter un module » : pointillé `--socle-pointille`, même hauteur et même rayon que la tuile, icône + 14, libellé T3 ── */
+.sc-add-module-tile {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: 41px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 1px dashed var(--socle-pointille);
+  border-radius: var(--socle-rayon-controle);
+  background: transparent;
+  color: var(--socle-texte-2);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--sc-mvt-survol, 160ms) ease-out, border-color var(--sc-mvt-survol, 160ms) ease-out;
+}
+.sc-add-module-tile__libelle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-add-module-tile[data-variante='ligne'] { height: 34px; border-radius: 9px; }
+.sc-add-module-tile:hover { border-color: var(--socle-bord-survol); background: var(--socle-ligne-survol); color: var(--socle-texte-1); }
+@media (prefers-reduced-motion: reduce) {
+  .sc-add-module-tile { transition: none; }
+}
+
+/* ── La grille d'un groupe de modules (F10, F30, F50) : titre 11 px capitales T4 `.08em` + effectif, N colonnes, écart 6 ── */
+.sc-module-group { min-width: 0; }
+.sc-module-group + .sc-module-group { margin-top: var(--sc-ecart-page, 14px); }
+.sc-module-group__titre {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  color: var(--socle-texte-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.sc-module-group__effectif { font-weight: 500; letter-spacing: 0; }
+.sc-module-group__grille { display: grid; grid-template-columns: repeat(var(--sc-module-colonnes, 3), minmax(0, 1fr)); gap: 6px; }

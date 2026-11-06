@@ -17,6 +17,9 @@
   ne se posent JAMAIS en `color` (voir `check:socle`).
 */
 
+/* Les briques partagées v3 (`IconTile`, `CountBadge`, `ModuleTile`…) : leur feuille vit à côté d'elles. */
+@import './briques-partagees/briques-partagees.css';
+
 /* ── Le focus : le même partout, visible sur chaque fond ── */
 :root[data-ambiance='noir'] .sc-focus:focus-visible,
 :root[data-ambiance='noir'] [data-socle]:focus-visible {

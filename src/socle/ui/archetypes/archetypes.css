@@ -59,6 +59,8 @@
 .sc-page__sous-titre { margin: 7px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.4; }
 .sc-page__actions { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; }
 .sc-page__actions [data-socle='bouton'] { min-height: 31px; }
+/* « Des contrôles à la place des boutons » (D02) : un segmenté, un champ ; chaque écran règle leur marge dans sa feuille. */
+.sc-page__controles { display: flex; flex: none; align-items: center; gap: 9px; }
 
 /* La rangée de KPI : quatre colonnes égales, écart 14 (une à trois tuiles se partagent toute la largeur). */
 .sc-rangee-kpi { display: grid; flex: none; grid-template-columns: repeat(var(--sc-kpi-colonnes, 4), minmax(0, 1fr)); gap: 14px; }

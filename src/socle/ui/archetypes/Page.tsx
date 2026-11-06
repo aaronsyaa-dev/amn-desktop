@@ -8,7 +8,7 @@ import { useSocleLangue } from '../../i18n';
  * Mode d'emploi, dans la coquille (`src/socle/coquille`, réglée sur `largeur="pleine"` : elle pose déjà le rembourrage et la barre Ajmani) :
  *
  *   <Page>
- *     <EnTeteDePage titre="…" sousTitre="…" secondaires={[{ libelle: '…', onClick }]} primaire={{ libelle: '…', onClick }} />
+ *     <PageHead titre="…" sousTitre="…" secondaires={[{ libelle: '…', onClick }]} primaire={{ libelle: '…', onClick }} />   // ou EnTeteDePage
  *     <RangeeKpi><TuileKpi … /><TuileKpi … /></RangeeKpi>            // 1 à 4 tuiles, sans trou
  *     <DispositionPage droite={<><CarteCases … /><Carte … /><SuggestionAjmani … /></>}>
  *       <Tableau libelle="…" colonnes={…} lignes={…} cleLigne={…} />   // ou GrilleCartes, Kanban, Scinde, Semaine
@@ -18,7 +18,7 @@ import { useSocleLangue } from '../../i18n';
  * Hors coquille (bac à sable, page seule), `<Page autonome>` pose le rembourrage `24px 40px 0` lui-même : le
  * parent doit alors avoir une hauteur (par exemple `100dvh`). La page ne défile jamais en entier au bureau ;
  * ce qui est long défile dans sa carte. Sous 1280 px de fenêtre, la colonne droite passe sous le contenu.
- * Un seul bouton primaire par page : `EnTeteDePage` n'en accepte qu'un, par construction.
+ * Un seul bouton primaire par page : `PageHead` n'en accepte qu'un, par construction.
  */
 
 export interface PageProps {
@@ -45,48 +45,75 @@ export interface ActionPage {
   raccourci?: string;
   disabled?: boolean;
   chargement?: boolean;
+  /** Une info-bulle sur le bouton (dite aussi quand il est inactif : « choisissez un métier d'abord »). */
+  infobulle?: string;
 }
 
-export interface EnTeteDePageProps {
+export interface PageHeadProps {
   /** Le titre de la page : le seul `h1` de l'écran. */
   titre: string;
   sousTitre?: React.ReactNode;
   /** Le bouton blanc plein de la page. Un seul, par construction. */
   primaire?: ActionPage;
-  /** Les autres boutons (bordure grise), de gauche à droite, avant le primaire. */
+  /** Les autres boutons (bordure grise, 31 px de haut comme H40), de gauche à droite, avant le primaire. */
   secondaires?: ActionPage[];
-  /** Un contrôle qui n'est pas un bouton (un segmenté, un sélecteur). Jamais un second bouton primaire. */
+  /** Un contrôle posé avant les boutons (un segmenté, un sélecteur). Jamais un second bouton primaire. */
   extra?: React.ReactNode;
+  /**
+   * « Des contrôles à la place des boutons » (D02 : un segmenté et un champ de recherche) : rendus seuls, dans
+   * `.sc-page__controles`, sans groupe d'actions. Exclusif de `primaire` et `secondaires`.
+   */
+  controles?: React.ReactNode;
+  /** Une classe de l'écran sur le `<header>` : ses cotes propres (hauteur, alignement) vivent dans sa feuille. */
+  className?: string;
+  /** Des attributs de données posés sur le `h1` (`data-guide` d'une visite guidée). */
+  attributsTitre?: Record<`data-${string}`, string>;
 }
 
-/** Titre de 28 px, sous-titre de 13,5 px, et à droite les actions de la page (boutons de 31 px, écart de 9). */
-export function EnTeteDePage({ titre, sousTitre, primaire, secondaires = [], extra }: EnTeteDePageProps) {
+/** Nom de fiche de l'en-tête de page (le §3 du socle). */
+export type EnTeteDePageProps = PageHeadProps;
+
+function BoutonAction({ action, variante }: { action: ActionPage; variante: 'primaire' | 'secondaire' }) {
+  const bouton = (
+    <Bouton variante={variante} icone={action.icone} raccourci={action.raccourci} disabled={action.disabled} chargement={action.chargement} onClick={action.onClick}>
+      {action.libelle}
+    </Bouton>
+  );
+  return action.infobulle ? <span title={action.infobulle}>{bouton}</span> : bouton;
+}
+
+/**
+ * L'EN-TÊTE DE PAGE (`PageHead`, 01-SOCLE-DESIGN §3) : titre de 28 px / 600 (`letter-spacing` −.02 em, interligne
+ * 1,1), sous-titre de 13,5 px T4 à 7 px, et à droite les actions de la page (au plus un primaire, des secondaires
+ * de 31 px, écart de 9) ou, à leur place, des contrôles (`controles`). `EnTeteDePage` est son nom français.
+ */
+export function PageHead({ titre, sousTitre, primaire, secondaires = [], extra, controles, className, attributsTitre }: PageHeadProps) {
   const { ts } = useSocleLangue();
   const aDesActions = Boolean(primaire) || secondaires.length > 0 || Boolean(extra);
   return (
-    <header className="sc-page__entete">
+    <header className={['sc-page__entete', className].filter(Boolean).join(' ')}>
       <div className="sc-page__titres">
-        <h1 className="sc-page__titre">{titre}</h1>
+        <h1 className="sc-page__titre" {...attributsTitre}>
+          {titre}
+        </h1>
         {sousTitre && <p className="sc-page__sous-titre">{sousTitre}</p>}
       </div>
-      {aDesActions && (
+      {controles && <div className="sc-page__controles">{controles}</div>}
+      {!controles && aDesActions && (
         <div role="group" aria-label={ts('page.actions')} className="sc-page__actions">
           {extra}
           {secondaires.map((a, i) => (
-            <Bouton key={`${a.libelle}-${i}`} variante="secondaire" icone={a.icone} raccourci={a.raccourci} disabled={a.disabled} chargement={a.chargement} onClick={a.onClick}>
-              {a.libelle}
-            </Bouton>
+            <BoutonAction key={`${a.libelle}-${i}`} action={a} variante="secondaire" />
           ))}
-          {primaire && (
-            <Bouton variante="primaire" icone={primaire.icone} raccourci={primaire.raccourci} disabled={primaire.disabled} chargement={primaire.chargement} onClick={primaire.onClick}>
-              {primaire.libelle}
-            </Bouton>
-          )}
+          {primaire && <BoutonAction action={primaire} variante="primaire" />}
         </div>
       )}
     </header>
   );
 }
+
+/** L'alias français de `PageHead`. */
+export const EnTeteDePage = PageHead;
 
 /**
  * La rangée de tuiles KPI : quatre colonnes égales, écart de 14. Avec une, deux ou trois tuiles, la rangée se

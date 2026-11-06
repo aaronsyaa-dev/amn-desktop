@@ -17,7 +17,7 @@
  * Mode d'emploi : `import { Page, EnTeteDePage, RangeeKpi, DispositionPage, Tableau } from '../socle/ui';` — voir l'en-tête de `Page.tsx`.
  * La logique sans React (tri, placement des événements, clavier) est dans `./logique/*` ; les entrées utiles sont réexportées ici.
  */
-export { Page, EnTeteDePage, RangeeKpi, ColonneDroite, DispositionPage, type PageProps, type ActionPage, type EnTeteDePageProps, type ColonneDroiteProps, type DispositionPageProps } from './Page';
+export { Page, PageHead, EnTeteDePage, RangeeKpi, ColonneDroite, DispositionPage, type PageProps, type ActionPage, type PageHeadProps, type EnTeteDePageProps, type ColonneDroiteProps, type DispositionPageProps } from './Page';
 export {
   Tableau,
   CelluleNom,

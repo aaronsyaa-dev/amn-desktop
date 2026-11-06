@@ -17,3 +17,5 @@ export * from './graphiques';
 export * from './archetypes';
 export * from './controles';
 export * from './vivant';
+export * from './briques-partagees';
+export * from './noms';

@@ -272,7 +272,7 @@
   les pose elle-même, ou les reçoit de la seconde règle. `.sc-nombre` sert à tout autre nombre posé dans un texte.
 */
 :root[data-ambiance='noir'] body { font-variant-numeric: normal; }
-:root[data-ambiance='noir'] :is(.sc-nombre, .sc-compteur, .sc-kbd, .sc-anneau__centre, .sc-cloche__badge, .sc-aujourdhui__detail, .sc-aujourdhui__quand) {
+:root[data-ambiance='noir'] :is(.sc-nombre, .sc-compteur, .sc-kbd, .sc-anneau__centre, .sc-cloche__badge, .sc-count-badge, .sc-aujourdhui__detail, .sc-aujourdhui__quand) {
   font-variant-numeric: tabular-nums;
 }
 
