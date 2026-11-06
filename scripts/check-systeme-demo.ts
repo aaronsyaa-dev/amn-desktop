@@ -103,27 +103,27 @@ await dit('la page se rend en HTML statique sans exception, sous le fond de page
 /** Les groupes du socle et la ou les sections qui les montrent. */
 const GROUPES: Record<string, string[]> = {
   base: ['jetons', 'boutons', 'cartes', 'avatars', 'progression', 'kpi', 'taches', 'etats'],
-  controles: ['cartes', 'champs', 'ludiques', 'suggestion'],
-  graphiques: ['graphiques', 'progression'],
+  controles: ['cartes', 'champs', 'ludiques', 'suggestion', 'alignement'],
+  graphiques: ['graphiques', 'progression', 'alignement'],
   situations: ['etats'],
   archetypes: ['archetypes', 'gabarit'],
 };
 
 await dit('une section par groupe du socle, chacune avec titre, description et liste des états ; l’ordre est celui du sommaire', () => {
-  assert.equal(R.SECTIONS.length, 16);
+  assert.equal(R.SECTIONS.length, 17);
   const trouvees = [...html.matchAll(/<section id="sd-([a-z]+)" data-section="([a-z]+)" aria-labelledby="sd-([a-z]+)-titre" class="sd-section">/g)];
   assert.deepEqual(trouvees.map((m) => m[1]), [...R.SECTIONS], 'sections absentes ou dans le désordre');
   for (const m of trouvees) assert.ok(m[1] === m[2] && m[2] === m[3], `identifiants incohérents pour ${m[1]}`);
-  assert.equal(compter(html, /<h2 id="sd-[a-z]+-titre" class="sd-section__titre">[^<]+<\/h2>/g), 16, 'un titre par section');
-  assert.equal(compter(html, /<p class="sd-section__desc">[^<]{20,}<\/p>/g), 16, 'une description par section');
-  assert.equal(compter(html, /<p class="sd-section__etats"><span class="sd-section__etats-etiquette">ÉTATS<\/span> [^<]{10,}<\/p>/g), 16, 'une liste d’états par section');
+  assert.equal(compter(html, /<h2 id="sd-[a-z]+-titre" class="sd-section__titre">[^<]+<\/h2>/g), 17, 'un titre par section');
+  assert.equal(compter(html, /<p class="sd-section__desc">[^<]{20,}<\/p>/g), 17, 'une description par section');
+  assert.equal(compter(html, /<p class="sd-section__etats"><span class="sd-section__etats-etiquette">ÉTATS<\/span> [^<]{10,}<\/p>/g), 17, 'une liste d’états par section');
   for (const [groupe, sections] of Object.entries(GROUPES)) for (const s of sections) assert.ok(R.SECTIONS.includes(s), `le groupe « ${groupe} » vise la section « ${s} », qui n’existe pas`);
   assert.ok(R.SECTIONS.includes('mouvement') && R.SECTIONS.includes('jetons'));
 });
 
 await dit('le sommaire est fait de boutons qui font scrollIntoView : aucun href="#…" (HashRouter), aucune ancre', () => {
   const nav = /<nav aria-label="[^"]+">([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? '';
-  assert.equal(compter(nav, /<button type="button"[^>]*class="sd-sommaire__lien sc-focus"/g), 16, 'seize boutons');
+  assert.equal(compter(nav, /<button type="button"[^>]*class="sd-sommaire__lien sc-focus"/g), 17, 'dix-sept boutons');
   assert.equal(compter(nav, /<a[\s>]/g), 0, 'aucune ancre dans le sommaire');
   assert.ok(!/href="#/.test(html), 'un href="#…" dans le rendu');
   assert.ok(!/href="#/.test(pageSansCommentaires) && !/href=\{`#/.test(pageSansCommentaires), 'un href="#…" dans la source');
@@ -235,6 +235,24 @@ await dit('le rendu contient les cellules typées du tableau, trois colonnes de 
   assert.ok(html.includes('data-aujourdhui="true"'), 'aujourd’hui porte sa pastille : la semaine affichée est la semaine courante');
 });
 
+await dit('la section « Alignement § 4 » (s1b) montre les variantes : anneau 26 à 72 (muet, petit, moyen), case 16, segmenté compact, recherche 38, Mono 11 à 18, hachures et pointillés par leur jeton, gris de décor, état vide avec icône', () => {
+  const zone = html.slice(html.indexOf('id="sd-alignement"'));
+  assert.ok(zone.length > 2000, 'section absente');
+  for (const t of [26, 34, 40, 48, 58, 72]) assert.ok(zone.includes(`<svg width="${t}" height="${t}" viewBox="0 0 ${t} ${t}"`), `anneau de ${t} px`);
+  for (const cote of ['muet', 'petit', 'moyen']) assert.ok(zone.includes(`data-cote="${cote}"`), `anneau ${cote}`);
+  assert.ok(zone.includes('data-taille="16"') && zone.includes('data-taille="serie"'), 'cases de 16 et 24 px');
+  assert.ok(zone.includes('data-taille="compact"'), 'segmenté compact');
+  assert.ok(zone.includes('data-hauteur="38"'), 'recherche de 38 px');
+  assert.equal(compter(zone, /data-socle="mono"/g), 6, 'six Mono (11, 12,5, 14, 18, time, code)');
+  assert.ok(zone.includes('style="font-size:11px"') && zone.includes('style="font-size:18px"'), 'Mono de 11 et 18 px');
+  for (const j of ['--socle-hachure-attention', '--socle-hachure-grise', '--socle-pointille-ok', '--socle-pointille-attention']) assert.ok(zone.includes(`style="--sd-motif:var(${j})"`), `motif ${j}`);
+  assert.match(css, /\.sd-motif\[data-genre='fond'\] \{ background-image: var\(--sd-motif\); \}/);
+  assert.match(css, /\.sd-motif\[data-genre='bord'\] \{ border: var\(--sd-motif\); \}/);
+  assert.match(zone, /<span aria-hidden="true" class="sc-vide__icone"><svg/, 'état vide avec icône');
+  for (const g of ['--socle-decor-1', '--socle-decor-2', '--socle-decor-3']) assert.ok(html.includes(`data-genre="decor"><div class="sd-jeton__echantillon" style="--sd-ech:var(${g})"`), `gris de décor ${g}`);
+  assert.match(css, /\.sd-jeton\[data-genre='decor'\] \.sd-jeton__echantillon\[style\*='--socle-decor'\] \{ background: var\(--sd-ech\); \}/);
+});
+
 await dit('le gabarit de page : Page autonome, en-tête avec un seul bouton primaire, quatre KPI, colonne droite', () => {
   const mini = /<main[^>]*data-socle-page[^>]*data-autonome="true"[\s\S]*?<\/main>/.exec(html)?.[0] ?? '';
   assert.ok(mini.length > 500, 'miniature introuvable');
@@ -261,7 +279,7 @@ await dit('jetons : tous les noms montrés existent dans noir.css, par groupe, e
   const nombre = (g: string) => parGenre.get(g)?.length ?? 0;
   assert.ok(nombre('fond') >= 12 && nombre('bord') >= 10, 'fonds et bordures');
   assert.equal(nombre('encre'), 4, 'les quatre encres T1 à T4');
-  assert.equal(nombre('decor'), 2, 'les deux filets décoratifs');
+  assert.equal(nombre('decor'), 5, 'les deux filets décoratifs et les trois gris de décor (B15)');
   assert.equal(nombre('famille'), 7);
   assert.equal(nombre('etat'), 4);
   assert.equal(nombre('avatar'), 6);

@@ -174,6 +174,9 @@
 /* Un filet décoratif : posé en fond d'une barre, jamais en couleur de texte. */
 .sd-jeton[data-genre='decor'] .sd-jeton__echantillon { background: var(--socle-carte-bas); }
 .sd-jeton[data-genre='decor'] .sd-jeton__echantillon::before { content: ''; width: 70%; height: 2px; border-radius: 99px; background: var(--sd-ech); }
+/* Les gris de décor (B15) ne sont pas des filets : l'échantillon se remplit, comme un fond d'illustration. */
+.sd-jeton[data-genre='decor'] .sd-jeton__echantillon[style*='--socle-decor'] { background: var(--sd-ech); }
+.sd-jeton[data-genre='decor'] .sd-jeton__echantillon[style*='--socle-decor']::before { display: none; }
 .sd-jeton[data-genre='famille'] .sd-jeton__echantillon { background: var(--sd-ech); }
 .sd-jeton[data-genre='etat'] .sd-jeton__echantillon { background: var(--socle-carte-bas); }
 .sd-jeton[data-genre='avatar'] .sd-jeton__echantillon { background: var(--sd-ech); color: var(--socle-texte-1); font-size: 16px; font-weight: 600; }
@@ -277,3 +280,8 @@
   font-size: 13px;
 }
 .sd-survol-ligne { min-width: 220px; padding: 10px 12px; border-bottom: 1px solid var(--socle-bord-ligne); color: var(--socle-texte-courant); font-size: 13px; }
+
+/* ═══ Alignement § 4 (s1b) : les motifs — hachure en fond, pointillé d'état en bordure, posés par leur jeton (--sd-motif) ═══ */
+.sd-motif { display: block; width: 120px; height: 44px; border-radius: 10px; background-color: var(--socle-sous-carte); }
+.sd-motif[data-genre='fond'] { background-image: var(--sd-motif); }
+.sd-motif[data-genre='bord'] { border: var(--sd-motif); }
