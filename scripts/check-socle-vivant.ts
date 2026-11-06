@@ -462,7 +462,7 @@ await dit('mots : fr et en, mêmes clés, mêmes {paramètres}, ni point d’exc
 
 await dit('la page de démo /dev/socle montre chaque composant du groupe dans sa section « vivant »', () => {
   const page = sansCommentaires(lire('src/refonte/systeme/demo/PageDemoSocle.tsx'));
-  assert.match(page, /'mouvement',\s*'vivant',\s*'alignement',\s*\] as const;/, 'vivant puis alignement (s1b) ferment le sommaire');
+  assert.match(page, /'mouvement',\s*'vivant',\s*'briques',\s*'alignement',\s*\] as const;/, 'vivant, briques (s1a) puis alignement (s1b) ferment le sommaire');
   const section = page.slice(page.indexOf('function SectionVivant'));
   for (const c of ['LiveDot', 'Caret', 'Severity', 'FilterChips', 'Gauge', 'HeatCell', 'FlowLine', 'InlineSuggestion']) assert.match(section, new RegExp(`<${c}[\\s/>]`), c);
   for (const n of ['balayage', 'cascade', 'entree', 'arrivee']) assert.ok(section.includes(n), `la couche : ${n}`);
