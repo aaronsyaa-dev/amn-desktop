@@ -39,12 +39,9 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--socle-texte-1);
 }
-.dem-entete { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 13px; }
-.dem-entete__titres { min-width: 0; }
-.dem-titre { margin: 0; color: var(--socle-texte-1); font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
-.dem-sous { margin: 7px 0 0; color: var(--socle-texte-3); font-size: 13.5px; line-height: 1.4; }
-/* Les boutons d'en-tête de page : ceux de H40 (le bouton du socle, 31 px), posés à 3 px du bas du sous-titre. */
-.dem-actions { display: flex; flex: none; align-items: center; gap: 9px; padding-bottom: 3px; }
+/* L'en-tête : `PageHead` du socle (titre 28 / 600, sous-titre 13,5 T4), aligné en bas ; les boutons de 31 px comme H40 (C13). */
+.dem-entete.sc-page__entete { flex-wrap: nowrap; align-items: flex-end; gap: 16px; margin-bottom: 13px; }
+.dem-entete .sc-page__actions { flex-wrap: nowrap; padding-bottom: 3px; }
 .dem-lien {
   margin: 0 0 0 6px;
   padding: 0;
@@ -429,7 +426,7 @@
   .met-barre { display: none; }
   .met-apercu__cartes, .met-extras { grid-template-columns: minmax(0, 1fr); }
   .met-apercu__carte { height: auto; }
-  .dem-entete { flex-wrap: wrap; align-items: flex-start; }
+  .dem-entete.sc-page__entete { flex-wrap: wrap; align-items: flex-start; }
 }
 
 /* Mouvement réduit : rien ne glisse ni ne se remplit, les états changent d'un coup (la couche coupe `data-mvt`). */

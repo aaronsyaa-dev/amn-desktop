@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ArrowRight, Book, Box, CalendarDays, Check, CircleAlert, File, House, Layers, Pencil, RotateCcw, Truck, Users, Zap } from 'lucide-react';
-import { Bouton, Carte, Chargement, Saisie, Squelette } from '../../../socle/ui';
+import { Bouton, Carte, Chargement, PageHead, Saisie, Squelette, type ActionPage } from '../../../socle/ui';
 import { IconeEtincelle, Segmente } from '../../../socle/ui/controles';
 import { ICONES_FAMILLE } from '../../../socle/coquille/BarreLaterale';
 import { useMots } from './i18n';
@@ -215,26 +215,25 @@ export function VueMetier(p: VueMetierProps) {
     return p.autresPrets > 0 ? tm('apercu.phrase', { nombre, autres: p.autresPrets }) : tm('apercu.phrase.sans', { nombre });
   })();
 
+  /* « Continuer » : primaire tant que le volet « Décrire » est fermé, secondaire ensuite (le volet porte alors le primaire). */
+  const continuer: ActionPage = {
+    libelle: modele ? tm('metier.continuer.avec', { metier: modele.nom[langue] }) : tm('metier.continuer'),
+    icone: <ArrowRight aria-hidden />,
+    disabled: !peutContinuer,
+    infobulle: peutContinuer ? undefined : tm('metier.continuer.info'),
+    onClick: p.onContinuer,
+  };
+
   return (
     <div className="met-page" data-refonte-police="inter">
-      <header className="dem-entete">
-        <div className="dem-entete__titres">
-          <h1 className="dem-titre" data-guide="titre">
-            {tm('metier.titre')}
-          </h1>
-          <p className="dem-sous">{tm('metier.sous')}</p>
-        </div>
-        <div className="dem-actions">
-          <Bouton variante="secondaire" onClick={p.onPasser}>
-            {tm('metier.passer')}
-          </Bouton>
-          <span title={peutContinuer ? undefined : tm('metier.continuer.info')}>
-            <Bouton variante={p.decrireOuvert ? 'secondaire' : 'primaire'} disabled={!peutContinuer} icone={<ArrowRight aria-hidden />} onClick={p.onContinuer}>
-              {modele ? tm('metier.continuer.avec', { metier: modele.nom[langue] }) : tm('metier.continuer')}
-            </Bouton>
-          </span>
-        </div>
-      </header>
+      <PageHead
+        className="dem-entete"
+        titre={tm('metier.titre')}
+        attributsTitre={{ 'data-guide': 'titre' }}
+        sousTitre={tm('metier.sous')}
+        secondaires={[{ libelle: tm('metier.passer'), onClick: p.onPasser }, ...(p.decrireOuvert ? [continuer] : [])]}
+        primaire={p.decrireOuvert ? undefined : continuer}
+      />
 
       {p.erreurEnregistrement && (
         <div role="alert" className="dem-bandeau met-erreur">

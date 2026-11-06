@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Check, CircleAlert, Database, Euro, File, LayoutGrid, Mail, MessageSquare, Phone, Play, RotateCcw, Shield, Smartphone, Users } from 'lucide-react';
 import { encoderQr } from '../../../lib/qr';
-import { AnneauProgression, Avatar, Bouton, Carte, Chargement, PastilleEtat, PileAvatars, Raccourci, Squelette } from '../../../socle/ui';
+import { AnneauProgression, Avatar, Bouton, Carte, Chargement, PageHead, PastilleEtat, PileAvatars, Raccourci, Squelette, type ActionPage } from '../../../socle/ui';
 import { IconeEtincelle } from '../../../socle/ui/controles';
 import { FlowLine } from '../../../socle/ui/vivant';
 import { etapeApres, RACCOURCIS_SAVOIR, type EtapeCalculee, type IdEtape, type RaccourciSavoir, type ResultatEtapes } from './etapes';
@@ -604,24 +604,16 @@ export function VueDemarrage(p: VueDemarrageProps) {
 
   return (
     <div className="dem-page" data-refonte-police="inter">
-      <header className="dem-entete">
-        <div className="dem-entete__titres">
-          <h1 className="dem-titre" data-guide="titre">
-            {tm('titre')}
-          </h1>
-          <p className="dem-sous">{p.prenom ? tm('sous.prenom', { prenom: p.prenom }) : tm('sous')}</p>
-        </div>
-        <div className="dem-actions">
-          {!calcul.tout && (
-            <Bouton variante="secondaire" onClick={p.onPlusTard}>
-              {tm('plusTard')}
-            </Bouton>
-          )}
-          <Bouton variante="secondaire" icone={<Play aria-hidden />} onClick={p.onReprendreVisite}>
-            {tm('reprendreVisite')}
-          </Bouton>
-        </div>
-      </header>
+      <PageHead
+        className="dem-entete"
+        titre={tm('titre')}
+        attributsTitre={{ 'data-guide': 'titre' }}
+        sousTitre={p.prenom ? tm('sous.prenom', { prenom: p.prenom }) : tm('sous')}
+        secondaires={[
+          ...(calcul.tout ? [] : [{ libelle: tm('plusTard'), onClick: p.onPlusTard } satisfies ActionPage]),
+          { libelle: tm('reprendreVisite'), icone: <Play aria-hidden />, onClick: p.onReprendreVisite },
+        ]}
+      />
 
       {p.etat === 'chargement' ? (
         <SqueletteDemarrage />
